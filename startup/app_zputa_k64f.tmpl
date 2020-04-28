@@ -1,0 +1,234 @@
+/********************************************************************************************************
+ *
+ * Name:            app_zputa_k64f.tmpl
+ * Created:         April 2020
+ * Author(s):       Philip Smart
+ * Description:     ZPUTA/zOS application linker map.
+ *                  This is the linker map for application programs to be run under zOS/ZPUTA. It defines
+ *                  where an application is loaded and the memory locations of the various components
+ *                  such as code (.text), static data (.data), uninitialised variables (.bss) etc.
+ *
+ * Credits:         
+ * Copyright:       (c) 2019-20 Philip Smart <philip.smart@net2net.org>
+ *
+ * History:         April 2020   - Initial script based on ZPU linker script and contributions from 
+ *                                 various newlib crt0.s files.
+ *
+ ********************************************************************************************************
+ * This source file is free software: you can redistribute it and#or modify
+ * it under the terms of the GNU General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This source file is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http:#www.gnu.org;licenses;>.
+ ********************************************************************************************************/
+
+/* Entry Point
+*/
+ENTRY(_start)
+
+/* Stack set and managed by zOS/ZPUTA, only needed if an app has a large stack requirement.
+ * Heap is used in the application for memory allocation and management.
+ " NB: These variables are now managed by build.sh and cited within the stack/heap blocks.
+*/
+/* HEAP_SIZE  = DEFINED(__heap_size__)  ? __heap_size__  : APP_HEAP_SIZE; */
+/* STACK_SIZE = DEFINED(__stack_size__) ? __stack_size__ : APP_STACK_SIZE; */
+
+/* For the memory map, there is only one block, termed CODE, where all components of the app are located.
+*/
+MEMORY
+{
+    CODE (rwx) : ORIGIN = APPSTART, LENGTH = APPLEN
+}
+
+/* Start point of the application. This is generally assembly code to copy static data, initialise memory
+ * and call the main app() function. 
+*/
+ENTRY(_start)
+
+SECTIONS
+{
+    /* first section is .fixed_vectors which is used for startup code */
+    . = APPSTART ;
+  
+    /* As the Cortex-M4 in the K64F is a 32bit architecture, keep word aligned.
+    */
+    . = ALIGN(4);
+    __text_section_begin__ = . ;
+    .text :
+    {
+        __text_start = . ;
+        . = ALIGN(4);
+        *(.text)                 /* .text sections (code) */
+        *(.text*)                /* .text* sections (code) */
+        *(.rodata)               /* .rodata sections (constants, strings, etc.) */
+        *(.rodata*)              /* .rodata* sections (constants, strings, etc.) */
+        *(.glue_7)               /* glue arm to thumb code */
+        *(.glue_7t)              /* glue thumb to arm code */
+        *(.eh_frame)
+        KEEP (*(.init))
+        KEEP (*(.fini))
+        . = ALIGN(4);      
+        __text_end = . ;
+      } >CODE
+  
+    .ARM.extab :
+    {
+        __extab_start = .;
+        *(.ARM.extab* .gnu.linkonce.armextab.*)
+        __extab_end = .;
+    } > CODE
+  
+    .ARM :
+    {
+        __exidx_start = .;
+        *(.ARM.exidx*)
+        __exidx_end = .;
+    } > CODE
+  
+    /* C++ Constructor section.
+    */
+    .ctors :
+    {
+        __ctor_start = .;
+        /* gcc uses crtbegin.o to find the start of
+           the constructors, so we make sure it is
+           first.  Because this is a wildcard, it
+           doesn't matter if the user does not
+           actually link against crtbegin.o; the
+           linker won't look for a file to match a
+           wildcard.  The wildcard also means that it
+           doesn't matter which directory crtbegin.o
+           is in.  */
+        KEEP (*crtbegin.o(.ctors))
+        KEEP (*crtbegin?.o(.ctors))
+        /* We don't want to include the .ctor section from
+           from the crtend.o file until after the sorted ctors.
+           The .ctor section from the crtend file contains the
+           end of ctors marker and it must be last */
+        KEEP (*(EXCLUDE_FILE(*crtend?.o *crtend.o) .ctors))
+        KEEP (*(SORT(.ctors.*)))
+        KEEP (*(.ctors))
+        __ctor_end = .;
+    } > CODE
+  
+    /* C++ Destructor section.
+    */
+    .dtors :
+    {
+        __dtor_start = . ;
+        KEEP (*crtbegin.o(.dtors))
+        KEEP (*crtbegin?.o(.dtors))
+        KEEP (*(EXCLUDE_FILE(*crtend?.o *crtend.o) .dtors))
+        KEEP (*(SORT(.dtors.*)))
+        KEEP (*(.dtors))
+        __dtor_end = . ;
+    } > CODE
+  
+    .preinit_array :
+    {
+        __preinit_start = . ;
+        PROVIDE_HIDDEN (__preinit_array_start = .);
+        KEEP (*(.preinit_array*))
+        PROVIDE_HIDDEN (__preinit_array_end = .);
+        __preinit_end = . ;
+    } > CODE
+  
+    .init_array :
+    {
+        __init_start = . ;
+        PROVIDE_HIDDEN (__init_array_start = .);
+        KEEP (*(SORT(.init_array.*)))
+        KEEP (*(.init_array*))
+        PROVIDE_HIDDEN (__init_array_end = .);
+        __init_end = . ;
+    } > CODE
+  
+    .fini_array :
+    {
+        __fini_start = . ;
+        PROVIDE_HIDDEN (__fini_array_start = .);
+        KEEP (*(SORT(.fini_array.*)))
+        KEEP (*(.fini_array*))
+        PROVIDE_HIDDEN (__fini_array_end = .);
+        __fini_end = . ;
+    } > CODE
+    __text_section_end__ = . ;
+  
+    __etext = . ;
+  
+    /* .data section which is used for initialized data. */
+    . = ALIGN(4);
+    __data_section_begin__ = . ;
+    .data : AT(__etext)
+    {
+        . = ALIGN(4);
+        __data_start__ = .;      /* create a global symbol at data start */
+        *(.data)                 /* .data sections */
+        *(.data*)                /* .data* sections */
+        KEEP(*(.jcr*))
+        . = ALIGN(4);
+        __data_end__ = .;        /* define a global symbol at data end */      
+    } >CODE
+    __data_section_end__ = . ;
+  
+    . = ALIGN(4);
+    __rodata_section_begin__ = . ;
+    .noinit (NOLOAD) :
+    {
+        *(.noinit*)
+    } > CODE
+    __rodata_section_end__ = . ;
+  
+  
+    /* Uninitialized data section, all of the app is in RAM but this section falls after all code and static data.
+    */
+    .bss :
+    {
+        /* This is used by the startup in order to initialize the .bss section */
+        . = ALIGN(4);
+        __bss_section_begin__ = .;
+        __bss_start__ = .;
+        *(.bss)
+        *(.bss*)
+        *(COMMON)
+        . = ALIGN(4);
+		_ebss = . ;
+        __bss_section_end__ = .;
+    } >CODE
+  
+    /* Variable expanded by build.sh */
+    .heap APP_HEAP_STARTADDR:
+    {
+        /* . = APP_HEAP_STARTADDR; */
+        . = ALIGN(4);
+        __heap_section_start__ = .;
+        __HeapBase = .;
+        PROVIDE(end = .);
+        . += APP_HEAP_SIZE;
+        __end__ = .;
+        __HeapLimit = .;
+        __heap_section_end__ = .;
+    } > CODE
+  
+    /* Variable expanded by build.sh */
+    .stack APP_STACK_STARTADDR :
+    {
+        /* . = APP_STACK_STARTADDR; */
+        . = ALIGN(4);
+        __stack_section_start__ = .;
+        . += APP_STACK_SIZE;
+        __stack_section_end__ = .;
+    } > CODE
+  
+    /* Top of stack pointer, used for sbrk validation. */
+    _stack = ORIGIN(CODE) + LENGTH(CODE) ;
+    _estack = ORIGIN(CODE) + LENGTH(CODE);
+    _teensy_model_identifier = 0x1F;
+}

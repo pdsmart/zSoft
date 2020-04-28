@@ -1,0 +1,319 @@
+#########################################################################################################
+##
+## Name:            Makefile.k64f
+## Created:         January 2019
+## Author(s):       Philip Smart
+## Description:     zOS - zpu Operating System
+##                  This makefile builds the zOS application the purpose of which is to provide test,
+##                  monitoring tools and an execution environment for applications for the ZPU and
+##                  devices within the SoC. 
+##                  zOS more recently upgraded to handle the K64F on the Teensy 3.5 board which is used
+##                  as part of the tranZPUter SW project.
+##
+## Credits:         Makefile based on the teensy-template written by AP Morton for the Teensy boards.
+##                  Website of the original tempate: https://github.com/apmorton/teensy-template
+##                  Teensy code and tools in the teensy3 directory (apart from modifications) are (C) pjrc.com 
+## Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
+##
+## History:         January 2019   - Initial script written for the STORM processor then changed to the ZPU.
+##                  April 2020     - Split from the latest ZPUTA and added K64F logic to support the
+##                                   tranZPUter SW board.
+##
+## Notes:           Optional component enables:
+##                  USELOADB              - The Byte write command is implemented in hw#sw so use it.
+##                  USE_BOOT_ROM          - The target is ROM so dont use initialised data.
+##                  MINIMUM_FUNTIONALITY  - Minimise functionality to limit code size.
+##                  __SD_CARD__           - Add the SDCard logic.
+##
+#########################################################################################################
+## This source file is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This source file is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#########################################################################################################
+
+# The name of your project (used to name the compiled .hex file)
+TARGET = main
+#$(notdir $(CURDIR))
+
+# The teensy version to use, 30, 31, 35, 36, or LC
+TEENSY = 35
+
+# Set to 24000000, 48000000, or 96000000 to set CPU core speed
+TEENSY_CORE_SPEED = 48000000
+
+# Some libraries will require this to be defined
+# If you define this, you will break the default main.cpp
+#ARDUINO = 10600
+
+# configurable options
+OPTIONS = -DUSB_SERIAL -DLAYOUT_US_ENGLISH
+
+# directory to build in
+BUILD_DIR = $(abspath $(CURDIR)/build)
+
+# Addresses where the zOS/ZPUTA base program loads and where apps load and execute.
+# With IOCP. These are defaults as they should be overriden by caller.
+ifeq ($(OS_BASEADDR),)
+OS_BASEADDR = 0x00000000
+endif
+ifeq ($(OS_APPADDR),)
+OS_APPADDR  = 0x1FFF8000
+endif
+
+#************************************************************************
+# Location of Teensyduino utilities, Toolchain, and Arduino Libraries.
+# To use this makefile without Arduino, copy the resources from these
+# locations and edit the pathnames.  The rest of Arduino is not needed.
+#************************************************************************
+
+# path location for Teensy Loader, teensy_post_compile and teensy_reboot
+TOOLSPATH = $(CURDIR)/../tools
+
+ifeq ($(OS),Windows_NT)
+    $(error What is Win Dose? What is it good for? Ask Frankie!)
+else
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Darwin)
+        TOOLSPATH = /Applications/Arduino.app/Contents/Java/hardware/tools/
+    endif
+endif
+
+
+# path location for the arm-none-eabi compiler
+COMPILERPATH = $(TOOLSPATH)/arm/bin
+
+# path location for Teensy 3 core
+TEENSY3_DIR     = $(CURDIR)/../teensy3
+# path location for any needed libraries
+LIBRARY_DIR     = $(CURDIR)/../libraries
+STARTUP_DIR     = $(CURDIR)/../startup
+COMMON_DIR      = $(CURDIR)/../common
+INCLUDE_DIR     = $(CURDIR)/../include
+FATFS_DIR       = $(CURDIR)/../common/FatFS
+DHRY_DIR        = $(CURDIR)/../common/Dhrystone
+COREMARK_DIR    = $(CURDIR)/../common/CoreMark
+
+# names for the compiler programs
+BASE	        = $(abspath $(COMPILERPATH))/arm-none-eabi
+CC              = $(BASE)-gcc
+CXX             = $(BASE)-g++
+LD              = $(BASE)-gcc
+AS              = $(BASE)-as
+CP              = $(BASE)-objcopy
+DUMP            = $(BASE)-objdump
+OBJCOPY         = $(BASE)-objcopy
+SIZE            = $(BASE)-size
+
+#CC = $(abspath $(COMPILERPATH))/arm-none-eabi-gcc
+#CXX = $(abspath $(COMPILERPATH))/arm-none-eabi-g++
+#OBJCOPY = $(abspath $(COMPILERPATH))/arm-none-eabi-objcopy
+#SIZE = $(abspath $(COMPILERPATH))/arm-none-eabi-size
+
+
+#************************************************************************
+# Settings below this point usually do not need to be edited
+#************************************************************************
+
+# CPPFLAGS = compiler options for C and C++
+CPPFLAGS       = -Wall -g -Os -mthumb -ffunction-sections -fdata-sections -nostdlib -MMD $(OPTIONS) -DTEENSYDUINO=144 -DF_CPU=$(TEENSY_CORE_SPEED)
+CPPFLAGS      += -Isrc -Iteensy3 -I$(COMMON_DIR) -I$(FATFS_DIR) -I$(COREMARK_DIR) -I$(DHRY_DIR) -I$(INCLUDE_DIR) -I$(TEENSY3_DIR)
+CPPFLAGS      += -D__K64F__ -D__ZOS__ -DDEBUG -D__SD_CARD__ -DOS_BASEADDR=$(OS_BASEADDR) -DOS_APPADDR=$(OS_APPADDR) 
+#CPPFLAGS      += -fno-use-cxa-atexit
+
+# compiler options for C++ only
+#CXXFLAGS      = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
+CXXFLAGS       = -std=gnu++14 -felide-constructors -fno-exceptions -fno-rtti
+
+# compiler options for C only
+CFLAGS         = 
+
+# linker options
+LDFLAGS        = -Os -Wl,--gc-sections -mthumb
+#LDFLAGS        = -Os -mthumb
+
+# Assembler flags.
+# On the Teensy the startup vectors and code are written in C in the module mk20dx128.c. As zOS/ZPUTA need function vectors to support
+# applications making calls to embedded functions, we need to add our own vector table. This can be done in C or assembler, at the time of
+# writing I have modified mk20dx128.c and placed it in the startup directory, but still keep the assembler configuration in case of future
+# additions needed in assembler.
+ASFLAGS         = -I. -I$(COMMON_DIR) -I$(INCLUDE_DIR) -I$(STARTUP_DIR) --defsym OS_BASEADDR=$(OS_BASEADDR) --defsym OS_APPADDR=$(OS_APPADDR)
+
+# additional libraries to link
+LIBS           = -lm
+
+# compiler options specific to teensy version
+ifeq ($(TEENSY), 30)
+    CPPFLAGS   += -D__MK20DX128__ -mcpu=cortex-m4
+    LDSCRIPT    = $(TEENSY3_DIR)/mk20dx128.ld
+    LDFLAGS    += -mcpu=cortex-m4 -T$(LDSCRIPT)
+else ifeq ($(TEENSY), 31)
+    CPPFLAGS   += -D__MK20DX256__ -mcpu=cortex-m4
+    LDSCRIPT    = $(TEENSY3_DIR)/mk20dx256.ld
+    LDFLAGS    += -mcpu=cortex-m4 -T$(LDSCRIPT)
+else ifeq ($(TEENSY), LC)
+    CPPFLAGS   += -D__MKL26Z64__ -mcpu=cortex-m0plus
+    LDSCRIPT    = $(TEENSY3_DIR)/mkl26z64.ld
+    LDFLAGSi   += -mcpu=cortex-m0plus -T$(LDSCRIPT)
+    LIBS       += -larm_cortexM0l_math
+else ifeq ($(TEENSY), 35)
+    CPPFLAGS   += -D__MK64FX512__ -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
+    LDSCRIPT    = $(STARTUP_DIR)/zos_k64f.ld   #$(TEENSY3_DIR)/mk64fx512.ld
+   #LDFLAGS    += -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 -T$(STARTUP_DIR)/zos_k64f.ld -ffreestanding -mthumb #-fno-use-cxa-atexit
+    LDFLAGS    += -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 -T$(LDSCRIPT) 
+    LIBS       += -larm_cortexM4lf_math
+else ifeq ($(TEENSY), 36)
+    CPPFLAGS   += -D__MK66FX1M0__ -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
+    LDSCRIPT    = $(TEENSY3_DIR)/mk66fx1m0.ld
+    LDFLAGS    += -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 -T$(LDSCRIPT)
+    LIBS       += -larm_cortexM4lf_math
+else
+    $(error Invalid setting for TEENSY)
+endif
+
+# set arduino define if given
+ifdef ARDUINO
+	CPPFLAGS   += -DARDUINO=$(ARDUINO)
+else
+	CPPFLAGS   += -DUSING_MAKEFILE
+endif
+
+# automatically create lists of the sources and objects
+LIB_C_FILES    := $(wildcard $(LIBRARY_DIR)/*/*.c)
+LIB_CPP_FILES  := $(wildcard $(LIBRARY_DIR)/*/*.cpp)
+TEENSY_C_FILES := $(wildcard $(TEENSY3_DIR)/*.c)
+TEENSY_CPP_FILES:= $(wildcard $(TEENSY3_DIR)/*.cpp)
+SRC_C_FILES    := $(wildcard src/*.c) 
+SRC_CPP_FILES  := $(wildcard src/*.cpp)
+INO_FILES      := $(wildcard src/*.ino)
+CRT0_ASM_FILES := #$(STARTUP_DIR)/zos_k64f_crt0.s
+CRT0_C_FILES   := $(STARTUP_DIR)/mk20dx128.c
+COMMON_FILES   := $(COMMON_DIR)/utils.c $(COMMON_DIR)/k64f_soc.c $(COMMON_DIR)/interrupts.c $(COMMON_DIR)/ps2.c $(COMMON_DIR)/swap.c $(COMMON_DIR)/spi.c $(COMMON_DIR)/xprintf.c $(COMMON_DIR)/readline.c
+DHRYSTONE_FILES:= $(DHRY_DIR)/dhry_1.c $(DHRY_DIR)/dhry_2.c
+COREMARK_FILES := $(COREMARK_DIR)/core_list_join.c $(COREMARK_DIR)/core_main_embedded.c $(COREMARK_DIR)/core_matrix.c $(COREMARK_DIR)/core_state.c $(COREMARK_DIR)/core_util.c $(COREMARK_DIR)/ee_printf.c $(COREMARK_DIR)/core_portme.c
+FATFS_C_FILES  := $(FATFS_DIR)/ff.c
+FATFS_CPP_FILES:= $(FATFS_DIR)/sdmmc_k64f.cpp
+PFS_FILES      := $(PFS_DIR)/sdmmc_teensy.c   $(PFS_DIR)/pff.c
+
+# include paths for libraries
+LIB_FILES      := $(foreach lib,$(filter %/, $(wildcard $(LIBRARY_DIR)/*/)), -I$(lib))
+
+# Define the sources and what they compile from->to.
+SOURCES        := $(CRT0_ASM_FILES:.s=.o) $(CRT0_C_FILES:.c=.o) $(COMMON_FILES:.c=.o) $(DHRYSTONE_FILES:.c=.o) $(COREMARK_FILES:.c=.o) $(FATFS_C_FILES:.c=.o) $(FATFS_CPP_FILES:.cpp=.o) $(SRC_C_FILES:.c=.o) $(SRC_CPP_FILES:.cpp=.o) $(INO_FILES:.ino=.o) $(TEENSY_C_FILES:.c=.o) $(TEENSY_CPP_FILES:.cpp=.o) $(LIB_C_FILES:.c=.o) $(LIB_CPP_FILES:.cpp=.o)
+OBJS           := $(foreach src,$(SOURCES), $(BUILD_DIR)/$(src))
+
+all: version hex bin srec rpt lss dmp
+
+version:
+	$(CC) --version | head -1
+	$(CXX) --version | head -1
+
+build: $(TARGET).elf $(TARGET).bin $(TARGET).srec $(TARGET).rpt $(TARGET).lss $(TARGET).dmp
+
+hex:	$(TARGET).hex
+bin:	$(TARGET).bin
+srec:	$(TARGET).srec
+rpt:	$(TARGET).rpt
+lss:	$(TARGET).lss
+dmp:	$(TARGET).dmp
+
+post_compile: $(TARGET).hex
+	@$(abspath $(TOOLSPATH))/teensy_post_compile -file="$(basename $<)" -path=$(CURDIR) -tools="$(abspath $(TOOLSPATH))"
+
+reboot:
+	@-$(abspath $(TOOLSPATH))/teensy_reboot
+
+upload: post_compile reboot
+
+# Convert ELF binary to bin file.
+%.bin: %.elf
+	@$(CP) -O binary $< $@
+
+# Convert ELF to srec format for serial upload.
+%.srec: %.elf
+	@$(CP) -O srec $< $@
+
+%.rpt: %.elf
+	@echo ""
+	@echo >$@      "Flash RAM Usage:"
+	@echo >>$@ -n  "\tStart      = \t0x"
+	@$(DUMP) -x $< | grep " d " | grep .text | cut -d' ' -f1 >>$@
+	@echo >>$@ -n  "\tEnd        = \t0x"
+	@$(DUMP) -x $< | grep " d " | grep .fini | cut -d' ' -f1 >>$@
+
+	@echo >>$@ "RAM Usage:"
+	@echo >>$@ -n  "\tStart      = \t0x"
+	@$(DUMP) -x $< | grep " d " | grep .usbdescriptortable | cut -d' ' -f1 >>$@
+	@echo >>$@ -n  "\tEnd        = \t"
+	@$(DUMP) -x $< | grep " 2\*\*" | grep .bss | tr -s ' ' > $@.tmp
+	@bash -c "printf '0x%X\n' $$((0x`cat $@.tmp | cut -d' ' -f5` + 0x`cat $@.tmp | cut -d' ' -f4`))" >>$@
+	@echo >>$@ -n  "\tdata Start = \t0x"
+	@$(DUMP) -x $< | grep " d " | grep .data | cut -d' ' -f1 >>$@
+	@echo >>$@ -n  "\tdata End = \t"
+	@$(DUMP) -x $< | grep " 2\*\*" | grep .data | tr -s ' ' > $@.tmp
+	@bash -c "printf '0x%X\n' $$((0x`cat $@.tmp | cut -d' ' -f5` + 0x`cat $@.tmp | cut -d' ' -f4`))" >>$@
+	@echo >>$@ -n  "\tbss Start  = \t0x"
+	@$(DUMP) -x $< | grep " d " | grep .bss | cut -d' ' -f1 >>$@
+	@echo >>$@ -n  "\tbss End    = \t"
+	@$(DUMP) -x $< | grep " 2\*\*" | grep .bss | tr -s ' ' > $@.tmp
+	@bash -c "printf '0x%X\n' $$((0x`cat $@.tmp | cut -d' ' -f5` + 0x`cat $@.tmp | cut -d' ' -f4`))" >>$@
+#@rm $@.tmp
+	@cat $@
+
+%.dmp: %.elf
+	@$(DUMP) -x $< >>$@
+
+# Create extended listing file from ELF output file.
+# testing: option -C
+%.lss: %.elf
+	@echo
+	@$(DUMP) -h -S -C $< > $@
+
+$(BUILD_DIR)/%.o: %.c
+	@echo "[CC]\t$<"
+	@mkdir -p "$(dir $@)"
+	@$(CC) $(CPPFLAGS) $(CFLAGS) $(LIB_FILES) -o "$@" -c "$<"
+
+$(BUILD_DIR)/%.o: %.cpp
+	@echo "[CXX]\t$<"
+	@mkdir -p "$(dir $@)"
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LIB_FILES) -o "$@" -c "$<"
+
+$(BUILD_DIR)/%.o: %.s
+	@echo "[AS]\t$<"
+	@mkdir -p "$(dir $@)"
+	@$(AS) $(ASFLAGS) $(LIB_FILES) -o "$@" -c "$<"
+
+$(BUILD_DIR)/%.o: %.ino
+	@echo "[CXX]\t$<"
+	@mkdir -p "$(dir $@)"
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LIB_FILES) -o "$@" -x c++ -include Arduino.h -c "$<"
+
+$(TARGET).elf: $(OBJS) $(LDSCRIPT)
+	@echo "[LD]\t$@"
+	$(LD) $(LDFLAGS) -o "$@" $(OBJS) $(LIBS)
+
+%.hex: %.elf
+	@echo "[HEX]\t$@"
+	@$(SIZE) "$<"
+	@$(OBJCOPY) -O ihex -R .eeprom "$<" "$@"
+
+# compiler generated dependency info
+-include $(OBJS:.o=.d)
+
+clean:
+	@echo Cleaning zOS...
+	@rm -rf "$(BUILD_DIR)"
+	@rm -f "$(TARGET).elf" "$(TARGET).hex" "$(TARGET).lss" "$(TARGET).rpt" "$(TARGET).bin" "$(TARGET).srec" "$(TARGET).dmp" "$(TARGET).tmp"
+
+deepclean: clean
+	@echo Cleaning dependencies...
+

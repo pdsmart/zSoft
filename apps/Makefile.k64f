@@ -1,0 +1,353 @@
+#########################################################################################################
+##
+## Name:            Makefile.k64f
+## Created:         July 2019
+## Author(s):       Philip Smart
+## Description:     App Makefile - Build an App for the ZPU Test Application (zputa) or the zOS 
+##                                 operating system.
+##                  This makefile builds an app which is stored on an SD card and called by ZPUTA/zOS
+##                  The app is for testing some component where the code is not built into ZPUTA or 
+##                  a user application for zOS.
+##
+## Credits:         
+## Copyright:       (c) 2019-20 Philip Smart <philip.smart@net2net.org>
+##
+## History:         July 2019   - Initial Makefile created for template use.
+##                  April 2020  - Added K64F as an additional target and resplit ZPUTA into zOS.
+##
+## Notes:           Optional component enables:
+##                  USELOADB              - The Byte write command is implemented in hw#sw so use it.
+##                  USE_BOOT_ROM          - The target is ROM so dont use initialised data.
+##                  MINIMUM_FUNTIONALITY  - Minimise functionality to limit code size.
+##
+#########################################################################################################
+## This source file is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This source file is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#########################################################################################################
+
+ifeq ($(__K64F__),1)
+  BASEDIR      = $(CURDIR)/../..
+  TOOLSPATH    = $(BASEDIR)/tools
+  COMPILERPATH = $(TOOLSPATH)/arm/bin
+  BASE	       = $(abspath $(COMPILERPATH))/arm-none-eabi
+  # path location for Teensy 3 core
+  COREPATH     = $(BASEDIR)/teensy3
+else
+  BASEDIR      = $(CURDIR)/../..
+  TOOLSPATH    = /opt/zpu
+  COMPILERPATH = $(TOOLSPATH)/bin
+  BASE	       = zpu-elf
+endif
+CC             = $(BASE)-gcc
+CXX            = $(BASE)-g++
+LD             = $(BASE)-gcc
+AS             = $(BASE)-as
+CP             = $(BASE)-objcopy
+DUMP           = $(BASE)-objdump
+OBJCOPY        = $(BASE)-objcopy
+SIZE           = $(BASE)-size
+
+# The teensy version to use, 30, 31, 35, 36, or LC
+TEENSY = 35
+
+# Set to 24000000, 48000000, or 96000000 to set CPU core speed
+TEENSY_CORE_SPEED = 48000000
+
+# Some libraries will require this to be defined
+# If you define this, you will break the default main.cpp
+#ARDUINO = 10600
+
+# configurable options
+OPTIONS = -DUSB_SERIAL -DLAYOUT_US_ENGLISH
+
+# APP_NAME, APP_DIR and BASEDIR defined in calling Makefile
+
+# Addresses where the ZPUTA base program loads and where apps load and execute.
+# With IOCP
+#OS_BASEADDR = 0x02000
+#OS_APPADDR  = 0x50000
+# Standalone
+ifeq ($(OS_BASEADDR),)
+  OS_BASEADDR  = 0x00000000
+endif
+ifeq ($(OS_APPADDR),)
+  OS_APPADDR   = 0x1FFF0000
+endif
+
+IOCPDIR        = $(CURDIR)/../../iocp
+ifeq ($(__ZPUTA__), 1)
+  OSDIR        = $(CURDIR)/../../zputa/src
+else
+  OSDIR        = $(CURDIR)/../../zOS/src
+endif
+
+# we use mincrt0.s from here
+STARTUP_DIR    = $(CURDIR)/../../startup
+
+# we use printf from here
+COMMON_DIR     = $(CURDIR)/../../common
+FATFS_DIR      = $(CURDIR)/../../common/FatFS
+#PFS_DIR       = $(CURDIR)/../../common/PetitFS
+DHRY_DIR       = $(CURDIR)/../../common/Dhrystone
+COREMARK_DIR   = $(CURDIR)/../../common/CoreMark
+UMM_DIR        = $(CURDIR)/../../common/umm
+INCLUDE_DIR    = $(CURDIR)/../../include
+APP_INCLUDE_DIR= $(CURDIR)/../include
+
+# Working directory to build object files.
+BUILD_DIR      = $(abspath $(CURDIR)/build)
+
+# Startup code.
+CRT0_ASM_SRC   = $(STARTUP_DIR)/app_k64f_crt0.s
+
+# Memory management code. Bring in the UMM library if stdlib isnt being used.
+ifeq (-nostdlib,$(findstring -nostdlib,$(LDFLAGS)))
+  UMM_C_SRC    = $(UMM_DIR)/umm_malloc.c
+else
+  UMM_C_SRC    =
+endif
+
+# Teensy3 modules which may be needed.
+TEENSY3_C_SRC  = #$(wildcard $(COREPATH)/*.c)
+TEENSY3_CPP_SRC= #$(wildcard $(COREPATH)/*.cpp)
+
+# Common modules needed for this app.
+COMMON_SRC     =
+
+# Application being built.
+MAIN_PRJ_APP   = $(APP_NAME)
+MAIN_SRC       = $(APP_NAME).c
+
+# Define the sources and what they compile from->to.
+SOURCES        := $(CRT0_ASM_SRC:.s=.o) $(COMMON_SRC:.c=.o) $(UMM_C_SRC:.c=.o) $(CORE_SRC:.c=.o) $(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o) $(TEENSY3_C_SRC:.c=.o) $(TEENSY3_CPP_SRC:.cpp=.o) $(DHRY_SRC:.c=.o) $(COREMARK_SRC:.c=.o) $(APP_C_SRC:.c=.o) $(APP_CPP_SRC:.cpp=.o) $(MAIN_SRC:.c=.o)
+OBJS           := $(foreach src,$(SOURCES), $(BUILD_DIR)/$(src))
+
+# CPPFLAGS = compiler options for C and C++
+#CPPFLAGS      = -Wall -g -Os -mthumb -ffunction-sections -fdata-sections -nostdlib -MMD $(OPTIONS) -DTEENSYDUINO=144 -DF_CPU=$(TEENSY_CORE_SPEED)
+CPPFLAGS      += -Wall -g -mthumb -nostdlib -MMD $(OPTIONS) -DTEENSYDUINO=144 -DF_CPU=$(TEENSY_CORE_SPEED) 
+CPPFLAGS      += -I. -I$(COMMON_DIR) -I$(FATFS_DIR) -I$(OSDIR) -I$(INCLUDE_DIR) -I$(APP_INCLUDE_DIR) -I$(COREPATH) -I$(COREMARK_DIR) -I$(DHRY_DIR) -I$(UMM_DIR)
+CPPFLAGS      += -D__K64F__ -D__APP__ -DDEBUG -D__SD_CARD__ -DOS_BASEADDR=$(OS_BASEADDR) -DOS_APPADDR=$(OS_APPADDR)
+CPPFLAGS      += -mlong-calls # WARNING! This is needed as a bug in the compiler creates veneer wrappers which switch to ARM mode and not Thumb.
+ifeq (-nostdlib,$(findstring -nostdlib,$(LDFLAGS)))
+  CPPFLAGS    += -DUMM_BEST_FIT -DUMM_INFO -DUMM_DBG_LOG_LEVEL=0
+endif
+
+ifeq ($(__ZPUTA__),1)
+  CPPFLAGS    += -D__ZPUTA__
+else ifeq ($(__ZOS__),1)
+  CPPFLAGS    += -D__ZOS__
+endif
+
+# Allow local overrides to the HEAPADDR for certain applications.
+ifeq (,$(findstring __HEAPADDR__,$(CPPFLAGS)))
+ifeq ($(HEAPADDR),)
+  CPPFLAGS    += -D__HEAPADDR__=0x1fffc000
+else
+  CPPFLAGS    += -D__HEAPADDR__=$(HEAPADDR)
+endif
+endif
+
+# Allow local overrides to the HEAPSIZE for certain applications.
+ifeq (,$(findstring __HEAPSIZE__,$(CPPFLAGS)))
+ifeq ($(HEAPSIZE),)
+  CPPFLAGS    += -D__HEAPSIZE__=0x400
+else
+  CPPFLAGS    += -D__HEAPSIZE__=$(HEAPSIZE)
+endif
+endif
+
+# compiler options for C++ only
+#CXXFLAGS      = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
+CXXFLAGS       = -std=gnu++14 -felide-constructors -fno-exceptions -fno-rtti
+
+# compiler options for C only
+CFLAGS        += -Os
+
+# linker options
+#LDFLAGS        = -Os -Wl,--gc-sections -mthumb -ffreestanding -Wl,--defsym=OS_BASEADDR=$(OS_BASEADDR) -Wl,--defsym=OS_APPADDR=$(OS_APPADDR)
+#LDFLAGS         = -nostdlib -nostartfiles -ffreestanding -Wl,--gc-sections -mthumb -Wl,--relax -Os -Wl,--defsym=OS_BASEADDR=$(OS_BASEADDR) -Wl,--defsym=OS_APPADDR=$(OS_APPADDR)
+#LDFLAGS         = -nostdlib -nostartfiles -ffreestanding -mthumb -Wl,--relax -Os -Wl,--defsym=OS_BASEADDR=$(OS_BASEADDR) -Wl,--defsym=OS_APPADDR=$(OS_APPADDR)
+LDFLAGS        +=  -nostartfiles -ffreestanding -mthumb -Wl,--relax -Os -Wl,--defsym=OS_BASEADDR=$(OS_BASEADDR) -Wl,--defsym=OS_APPADDR=$(OS_APPADDR)
+#LDFLAGS         = -ffreestanding -Wl,--gc-sections -mthumb -Wl,--relax -Os -Wl,--defsym=OS_BASEADDR=$(OS_BASEADDR) -Wl,--defsym=OS_APPADDR=$(OS_APPADDR)
+
+# additional libraries to link
+LIBS           = -lm
+
+# compiler options specific to teensy version
+ifeq ($(TEENSY), 30)
+    CPPFLAGS   += -D__MK20DX128__ -mcpu=cortex-m4
+    LDSCRIPT    = $(COREPATH)/mk20dx128.ld
+    LINKMAPAPP  = $(STARTUP_DIR)/app_mk20dx128_${OS_BASEADDR}_${OS_APPADDR}.ld
+    LDFLAGS    += -mcpu=cortex-m4
+else ifeq ($(TEENSY), 31)
+    CPPFLAGS   += -D__MK20DX256__ -mcpu=cortex-m4
+    LDSCRIPT    = $(COREPATH)/mk20dx256.ld
+    LINKMAPAPP  = $(STARTUP_DIR)/app_mk20dx256_${OS_BASEADDR}_${OS_APPADDR}.ld
+    LDFLAGS    += -mcpu=cortex-m4
+else ifeq ($(TEENSY), LC)
+    CPPFLAGS   += -D__MKL26Z64__ -mcpu=cortex-m0plus
+    LDSCRIPT    = $(COREPATH)/mkl26z64.ld
+    LINKMAPAPP  = $(STARTUP_DIR)/app_mkl26z64_${OS_BASEADDR}_${OS_APPADDR}.ld
+    LDFLAGS    += -mcpu=cortex-m0plus
+    LIBS       += -larm_cortexM0l_math
+else ifeq ($(TEENSY), 35)
+    CPPFLAGS   += -D__MK64FX512__ -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
+    LDSCRIPT    = $(COREPATH)/mk64fx512.ld
+    LINKMAPAPP  = $(STARTUP_DIR)/app_k64f_${OS_BASEADDR}_${OS_APPADDR}.ld
+    LDFLAGS    += -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
+    LIBS       += -larm_cortexM4lf_math
+else ifeq ($(TEENSY), 36)
+    CPPFLAGS   += -D__MK66FX1M0__ -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
+    LDSCRIPT    = $(COREPATH)/mk66fx1m0.ld
+    LINKMAPAPP  = $(STARTUP_DIR)/app_mk66fx1m0_${OS_BASEADDR}_${OS_APPADDR}.ld
+    LDFLAGS    += -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
+    LIBS       += -larm_cortexM4lf_math
+else
+    $(error Invalid setting for TEENSY)
+endif
+
+# set arduino define if given
+ifdef ARDUINO
+	CPPFLAGS   += -DARDUINO=$(ARDUINO)
+else
+	CPPFLAGS   += -DUSING_MAKEFILE
+endif
+
+
+FLAGS_STR      = -DFLAGS_STR="$(CPPFLAGS)"
+LFLAGS         = -nostartfiles -Wl,--gc-sections -Wl,--relax -Os -Wl,--defsym=OS_BASEADDR=$(OS_BASEADDR) -Wl,--defsym=OS_APPADDR=$(OS_APPADDR)
+#
+# Assembler flags.
+ASFLAGS        = -I. -I$(COMMON_DIR) -I$(INCLUDE_DIR) -I$(STARTUP_DIR) --defsym OS_BASEADDR=$(OS_BASEADDR) --defsym OS_APPADDR=$(OS_APPADDR)
+
+# Our target.
+all: $(BUILD_DIR) $(MAIN_PRJ_APP).k64 $(MAIN_PRJ_APP).srec $(MAIN_PRJ_APP).dmp $(MAIN_PRJ_APP).lss $(MAIN_PRJ_APP).rpt
+
+clean:
+	rm -fr $(BUILD_DIR)/* *.hex *.lss *.elf *.map *.lst *.srec $(MAIN_PRJ_APP).k64 *~ */*.o *.o *.bin *.srec *.dmp *.vhd *.rpt
+
+install:
+	@cp $(MAIN_PRJ_APP).k64 $(APP_DIR)/bin/
+
+# Convert ELF binary to bin file.
+%.bin: %.elf
+	@$(CP) -O binary $< $@
+
+# Convert ELF binary to app file.
+%.k64: %.elf
+	@$(CP) -O binary $< $@
+
+# Convert ELF to srec format for serial upload.
+%.srec: %.elf
+	@$(CP) -O srec $< $@
+
+%.rpt: %.elf
+	@echo ""
+	@echo >$@  -n  "RAM Usage (code): 0x"
+	@$(DUMP) -x $< | grep " d " | grep .text | cut -d' ' -f1 | tr -d '\n' >>$@
+	@$(DUMP) -x $< | grep " 2\*\*" | grep .text | tr -s ' ' > $@.tmp
+	@bash -c "printf ':0x%X\n' $$((0x`cat $@.tmp | cut -d' ' -f5` + 0x`cat $@.tmp | cut -d' ' -f4`))" >>$@
+
+	@echo >>$@ -n  "          (data): 0x"
+	@$(DUMP) -x $< | grep " d " | grep .data | cut -d' ' -f1 | tr -d '\n' >>$@
+	@$(DUMP) -x $< | grep " 2\*\*" | grep .bss | tr -s ' ' > $@.tmp
+	@bash -c "printf ':0x%X\n' $$((0x`cat $@.tmp | cut -d' ' -f5` + 0x`cat $@.tmp | cut -d' ' -f4`))" >>$@
+
+	@echo >>$@     "Segments:"
+	@echo >>$@ -n  "          data  = 0x"
+	@$(DUMP) -x $< | grep " d " | grep .data | cut -d' ' -f1 | tr -d '\n' >>$@
+	@$(DUMP) -x $< | grep " 2\*\*" | grep .data | tr -s ' ' > $@.tmp
+	@bash -c "printf ':0x%X\n' $$((0x`cat $@.tmp | cut -d' ' -f5` + 0x`cat $@.tmp | cut -d' ' -f4`))" >>$@
+
+	@echo >>$@ -n  "          bss   = 0x"
+	@$(DUMP) -x $< | grep " d " | grep .bss | cut -d' ' -f1 | tr -d '\n' >>$@
+	@$(DUMP) -x $< | grep " 2\*\*" | grep .bss | tr -s ' ' > $@.tmp
+	@bash -c "printf ':0x%X\n' $$((0x`cat $@.tmp | cut -d' ' -f5` + 0x`cat $@.tmp | cut -d' ' -f4`))" >>$@
+
+	@echo >>$@ -n  "          heap  = 0x"
+	@$(DUMP) -x $< | grep " d " | grep .heap | cut -d' ' -f1 | tr -d '\n' >>$@
+	@$(DUMP) -x $< | grep " 2\*\*" | grep .heap | tr -s ' ' > $@.tmp
+	@bash -c "printf ':0x%X\n' $$((0x`cat $@.tmp | cut -d' ' -f5` + 0x`cat $@.tmp | cut -d' ' -f4`))" >>$@
+
+	@echo >>$@ -n  "          stack = 0x"
+	@$(DUMP) -x $< | grep " d " | grep .stack | cut -d' ' -f1 | tr -d '\n' >>$@
+	@$(DUMP) -x $< | grep " 2\*\*" | grep .stack | tr -s ' ' > $@.tmp
+	@bash -c "printf ':0x%X\n' $$((0x`cat $@.tmp | cut -d' ' -f5` + 0x`cat $@.tmp | cut -d' ' -f4`))" >>$@
+	@cat $@
+#@rm $@.tmp
+
+%.dmp: %.elf
+	@$(DUMP) -x $< >>$@
+
+# Create extended listing file from ELF output file.
+# testing: option -C
+%.lss: %.elf
+	@echo
+	@$(DUMP) -h -S -C $< > $@
+
+# Link - this produces an ELF binary.
+
+$(MAIN_PRJ_APP).elf: $(OBJS)
+	@cat $(TMPLFILE) | sed -e "s/BOOTADDR/$(BASEADDR)/g"  \
+                      -e "s/BOOTLEN/$(BASELEN)/g"    \
+                      -e "s/APPSTART/$(APPSTART)/g" \
+                      -e "s/APPLEN/$(APPSIZE)/g"         \
+                      -e "s/APP_HEAP_STARTADDR/$(HEAPADDR)/g"      \
+                      -e "s/APP_HEAP_SIZE/$(HEAPSIZE)/g"      \
+                      -e "s/APP_STACK_SIZE/$(STACKSIZE)/g"    \
+                      -e "s/APP_STACK_STARTADDR/$(STACKADDR)/g"    \
+                      -e "s/APP_STACK_ENDADDR/$(STACKENDADDR)/g" > $(LINKMAPAPP)
+	$(LD) $(LDFLAGS) -T $(LINKMAPAPP) -o "$@" $(OBJS) $(LIBS)
+#	$(LD) $(LDFLAGS) -T $(LINKMAPAPP) -o "$@" $+ $(LIBS)
+
+$(BUILD_DIR)/%.o: %.c Makefile
+	@mkdir -p "$(dir $@)"
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(OFLAGS) -o $@ -c $<
+
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p "$(dir $@)"
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OFLAGS) -o $@ -c $<
+
+$(BUILD_DIR)/%.o: $(COMMON_DIR)/%.c Makefile
+	@mkdir -p "$(dir $@)"
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(OFLAGS) -o $@ -c $<
+
+$(BUILD_DIR)/%.o: $(FATFS_DIR)/%.c Makefile
+	@mkdir -p "$(dir $@)"
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(OFLAGS) -o $@ -c $<
+
+$(BUILD_DIR)/%.o: $(PFS_DIR)/%.c Makefile
+	@mkdir -p "$(dir $@)"
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(OFLAGS)  -o $@ -c $<
+
+$(BUILD_DIR)/%.o: %.s
+	@mkdir -p "$(dir $@)"
+	$(AS) $(ASFLAGS) -o $@ $<
+
+$(BUILD_DIR)/%.o: $(STARTUP_DIR)/%.s
+	@mkdir -p "$(dir $@)"
+	$(AS) $(ASFLAGS) -o $@ $<
+
+$(BUILD_DIR)/%.o: $(DHRY_DIR)/%.c Makefile
+	@mkdir -p "$(dir $@)"
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(OFLAGS) -o $@ -c $<
+
+$(BUILD_DIR)/%.o: $(CORE_DIR)/%.c Makefile
+	@mkdir -p "$(dir $@)"
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(OFLAGS) $(FLAGS_STR) -o $@ -c $<
+
+$(BUILD_DIR):
+	mkdir $(BUILD_DIR)
+
+# compiler generated dependency info
+-include $(OBJS:.o=.d)
