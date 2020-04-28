@@ -1,7 +1,7 @@
 #!/bin/bash
 #========================================================================================================
 # NAME
-#     build.sh -  Shell script to build a ZPU program or OS.
+#     build.sh -  Shell script to build a ZPU/K64F program or OS.
 #
 # SYNOPSIS
 #     build.sh [-CIOoMBAsdxh]
