@@ -53,10 +53,8 @@ ifeq ($(OS_APPADDR),)
 OS_APPADDR  = 0x0C000
 endif
 
-BASEDIR         = ../..
-#BASEDIR        = ../../..
-SWDIR           = $(BASEDIR)/software
-#SWDIR          = $(BASEDIR)/software/zpu
+BASEDIR         = $(CURDIR)/..
+SWDIR           = $(BASEDIR)/
 ROMGEN          = $(SWDIR)/tools/zpugen
 IOCPDIR         = $(SWDIR)/iocp
 
@@ -64,7 +62,7 @@ IOCPDIR         = $(SWDIR)/iocp
 STARTUP_DIR     = $(SWDIR)/startup
 
 # we fetch RAM prologue / epilogue from here
-RTL_DIR         = $(BASEDIR)/software/rtl
+RTL_DIR         = $(BASEDIR)/rtl
 
 # we use printf from here
 COMMON_DIR      = $(SWDIR)/common
