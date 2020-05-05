@@ -427,6 +427,10 @@ char *mystrconcat(const char *, const char *);
 double factorial(double);
 uint32_t app(uint32_t, uint32_t);
 
+// Global scope variables within the ZPUTA memory space.
+extern GLOBALS                  *G;
+extern SOC_CONFIG               *cfgSoC;
+
 #ifdef __cplusplus
 }
 #endif
