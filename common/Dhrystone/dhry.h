@@ -359,7 +359,9 @@
 
 #ifdef TIMES
 #include <sys/types.h>
+#if defined __K64F__
 #include <sys/times.h>
+#endif
                 /* for "times" */
 #endif
 

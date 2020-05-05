@@ -9,7 +9,7 @@
 # DESCRIPTION
 #
 # OPTIONS
-#     -C <CPU>      = Small, Medium, Flex, Evo, K64F - defaults to Evo.
+#     -C <CPU>      = Small, Medium, Flex, Evo, EvoMin, K64F - defaults to Evo.
 #     -I <iocp ver> = 0 - Full, 1 - Medium, 2 - Minimum, 3 - Tiny (bootstrap only)
 #     -O <os>       = zputa, zos
 #     -o <os ver>   = 0 - Standalone, 1 - As app with IOCP Bootloader,
@@ -44,6 +44,7 @@
 #                          CPU's, ie. small where the emulated mul and div arent working as they should.
 #          v1.2          : Added more zOS logic and the K64F processor target for the tranZPUter board.
 #          v1.21         : Additional changes to manage heap.
+#          v1.22         : Added code to build the libraries.
 #========================================================================================================
 # This source file is free software: you can redistribute it and#or modify
 # it under the terms of the GNU General Public License as published
@@ -240,7 +241,7 @@ IOCP_VERSION=3;
 BRAM_SIZE=0x10000;
 getHex 0x01000 OS_BASEADDR;
 getHex 0x0C000 APP_BASEADDR;
-APP_LEN=0x00000;
+APP_LEN=0x02000;
 APP_BOOTLEN=0x20;                 # Fixed size as this is the jump table to make calls within ZPUTA.
 APP_HEAP_SIZE=0x1000;
 APP_STACK_SIZE=0x400;
@@ -287,7 +288,7 @@ OSNAME=`echo ${OS} | tr 'A-Z' 'a-z'`
 
 #     -C <CPU>      = Small, Medium, Flex, Evo, K64F - defaults to Evo.
 # Check the CPU is correctly defined.
-if [ "${CPU}" != "SMALL" -a "${CPU}" != "MEDIUM" -a "${CPU}" != "FLEX" -a "${CPU}" != "EVO" -a "${CPU}" != "K64F" ]; then
+if [ "${CPU}" != "SMALL" -a "${CPU}" != "MEDIUM" -a "${CPU}" != "FLEX" -a "${CPU}" != "EVO" -a "${CPU}" != "EVOMIN" -a "${CPU}" != "K64F" ]; then
     FatalUsage "Given <cpu> is not valid, must be one of 'Small', 'Medium', 'Flex', 'Evo', 'K64F'"
 fi
 if [ ${CPU} = "K64F" ]; then
@@ -327,6 +328,13 @@ fi
 # Stack start address (at the moment) is top of BRAM less 8 bytes (2 words), standard for the ZPU. There is
 # no reason though why this cant be a fixed address determined by the developer in any memory location.
 subHex ${BRAM_SIZE} 8 STACK_STARTADDR
+
+# Build the libraries for this platform.
+cd ${BUILDPATH}/libraries
+make ${CPUTYPE}=1 all
+if [ $? != 0 ]; then
+    Fatal "Aborting, failed to build the libraries for the ${CPUTYPE} processor."
+fi
 
 # Setup the bootloader if the OS is not standalone.
 #
@@ -460,6 +468,7 @@ if [ "${CPUTYPE}" = "__ZPU__" ]; then
     # Stack start address for the APP. Normally this isnt used as the stack from zOS/ZPUTA is maintained, but available incase of
     # need for a local stack.
     addHex ${APP_STARTADDR} ${APP_LEN}            APP_ENDADDR
+    #subHex ${APP_ENDADDR} ${OS_STACK_SIZE}        APP_ENDADDR
     subHex ${APP_ENDADDR} 8                       APP_STACK_ENDADDR
     subHex ${APP_STACK_ENDADDR} ${APP_STACK_SIZE} APP_STACK_STARTADDR
 
@@ -530,6 +539,7 @@ if [ "${OS}" = "ZPUTA" ]; then
                           -e "s/OS_RAM_LEN/${OS_RAM_LEN}/g"              \
                           -e "s/HEAP_SIZE/${OS_HEAP_SIZE}/g"             \
                           -e "s/HEAP_STARTADDR/${OS_HEAP_STARTADDR}/g"   \
+                          -e "s/HEAP_ENDADDR/${OS_HEAP_ENDADDR}/g"   \
                           -e "s/STACK_SIZE/${OS_STACK_SIZE}/g"           \
                           -e "s/STACK_STARTADDR/${OS_STACK_STARTADDR}/g" \
                           -e "s/STACK_ENDADDR/${OS_STACK_ENDADDR}/g"     \
@@ -570,6 +580,7 @@ elif [ "${OS}" = "ZOS" ]; then
                           -e "s/OS_RAM_LEN/${OS_RAM_LEN}/g"              \
                           -e "s/HEAP_SIZE/${OS_HEAP_SIZE}/g"             \
                           -e "s/HEAP_STARTADDR/${OS_HEAP_STARTADDR}/g"   \
+                          -e "s/HEAP_ENDADDR/${OS_HEAP_ENDADDR}/g"   \
                           -e "s/STACK_SIZE/${OS_STACK_SIZE}/g"           \
                           -e "s/STACK_STARTADDR/${OS_STACK_STARTADDR}/g" \
                           -e "s/STACK_ENDADDR/${OS_STACK_ENDADDR}/g"     \
@@ -581,11 +592,11 @@ elif [ "${OS}" = "ZOS" ]; then
         Fatal "Aborting, failed to clean zOS build environment!"
     fi
     if [ "${CPUTYPE}" = "__ZPU__" ]; then
-        Log "make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU}"
-        make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU}
+        Log "make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE}"
+        make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE}
     else
-        Log "make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU}"
-        make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU}
+        Log "make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE}"
+        make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE}
     fi
     if [ $? != 0 ]; then
         Fatal "Aborting, failed to build zOS!"

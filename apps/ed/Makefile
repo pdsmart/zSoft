@@ -41,16 +41,27 @@ APP_COMMON_DIR = $(CURDIR)/../common
 BASEDIR        = ../../..
 
 # Override values given by parent make for this application as its memory usage differs from the standard app.
-override HEAPADDR  = 0x1FFF5000
-override HEAPSIZE  = 0x00033000
-override STACKADDR = 0x20028000
-override STACKSIZE = 0x00000000
+ifeq ($(__K64F__),1)
+  override HEAPADDR  = 0x1FFF5000
+  override HEAPSIZE  = 0x00033000
+  override STACKADDR = 0x20028000
+  override STACKSIZE = 0x00000000
 
-# Modules making up Kilo.
-APP_C_SRC      = $(APP_COMMON_DIR)/sysutils.c $(APP_COMMON_DIR)/ctypelocal.c
-CFLAGS         = 
-CPPFLAGS       = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
-LDFLAGS        = -nostdlib
+  # Modules making up Kilo.
+  APP_C_SRC    = $(APP_COMMON_DIR)/sysutils.c $(APP_COMMON_DIR)/ctypelocal.c
+  CFLAGS       = 
+  CPPFLAGS     = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
+  LDFLAGS      = -nostdlib
+  LIBS         =
+else
+  # Modules making up Kilo.
+  APP_C_SRC    = #$(APP_COMMON_DIR)/sysutils.c $(APP_COMMON_DIR)/ctypelocal.c
+  CFLAGS       = 
+  CPPFLAGS     = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
+  LDFLAGS      = -nostdlib
+  LIBS         = -lumansi-zpu -limath-zpu
+endif
+
 
 # Filter out the standard HEAP address and size, replacing with the ones required for this application.
 # Useful for sub-makes

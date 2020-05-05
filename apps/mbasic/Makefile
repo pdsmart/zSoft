@@ -18,8 +18,7 @@
 ##
 ## Notes:           Optional component enables:
 ##                  USELOADB              - The Byte write command is implemented in hw#sw so use it.
-##                  USE_BOOT_ROM          - The target is ROM so dont use initialised data.
-##                  MINIMUM_FUNTIONALITY  - Minimise functionality to limit code size.
+##                  USE_BOOT_ROM          - The target is ROM so dont use initialised data.  ##                  MINIMUM_FUNTIONALITY  - Minimise functionality to limit code size.
 ##
 #########################################################################################################
 ## This source file is free software: you can redistribute it and/or modify
@@ -43,15 +42,17 @@ COMMON_DIR     = $(CURDIR)../../common
 BASEDIR        = ../../..
 
 # Override values given by parent make for this application as its memory usage differs from the standard app.
+ifeq ($(__K64F__),1)
 override HEAPADDR  = 0x2000C000
 override HEAPSIZE  = 0x0001BC00
 override STACKADDR = 0x20027C00
 override STACKSIZE = 0x00000400
+endif
 
 # Modules making up Mbasic.
 APP_C_SRC      = basic.c ed.c $(APP_COMMON_DIR)/sbrk.c $(APP_COMMON_DIR)/sysutils.c $(COMMON_DIR)/readline.c
-UMM_C_SRC      = fail
-CFLAGS         = 
+UMM_C_SRC      =
+CFLAGS         = -Os
 CPPFLAGS       = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
 LDFLAGS        = 
 
@@ -64,7 +65,7 @@ NEWMAKEFLAGS   = $(FILTER2) HEAPADDR=$(HEADADDR) HEAPSIZE=$(HEAPSIZE)
 ifeq ($(__K64F__),1)
 include        $(APP_DIR)/Makefile.k64f
 else
-# Currently mbasic doesnt build on the ZPU due to missing maths libraries. Once I can source them it should build.
+# Mbasic needs 128K on the ZPU for some reason, 50% more than the Cortex-M4, so for small ZPU installations, we have to disable it!
 #include        $(APP_DIR)/Makefile.zpu
 clean:
 

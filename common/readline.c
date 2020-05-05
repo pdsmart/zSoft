@@ -57,9 +57,9 @@
     #define int16_t  __int16_t
     #define int8_t   __int8_t
 #else
-    #include <zpu-types.h>
+    #include <stdint.h>
 #endif
-#include "xprintf.h"
+
 #if defined __SD_CARD__
     #include <ff.h>
 #endif
@@ -521,7 +521,7 @@ uint8_t *readline (uint8_t *line, int lineSize, const char *histFile)
     char         buf[120];
     FRESULT      fr;
     int          bytes;
-    
+
     // If we havent opened the history file and read the contents AND file based history hasnt been disabled, open the history file and read
     // the contents.
     if(histFp == NULL && histDisabled == 0 && histFile != NULL)

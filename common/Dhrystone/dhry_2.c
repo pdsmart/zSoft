@@ -19,6 +19,7 @@
 #if defined __K64F__
     #include <stdlib.h>
     #include <string.h>
+    #include <WProgram.h>
     #define uint32_t __uint32_t
     #define uint16_t __uint16_t
     #define uint8_t  __uint8_t
@@ -27,11 +28,11 @@
     #define int8_t   __int8_t
     #include "k64f_soc.h"
 #else
-    #include <zpu-types.h>
+    #include <stdint.h>
     #include "zpu_soc.h"
 #endif
-#include "dhry.h"
 #include <string.h>
+#include "dhry.h"
 
 #ifndef REG
 #define REG

@@ -49,7 +49,6 @@
   #include <stdlib.h>
   #include <string.h>
   #include <unistd.h>
-  #include <ctypelocal.h>
   #include <stdarg.h>
   #include "k64f_soc.h"
   #define uint32_t __uint32_t
@@ -59,13 +58,14 @@
   #define int16_t  __int16_t
   #define int8_t   __int8_t
 #elif defined(__ZPU__)
-  #include <zstdio.h>
-  #include <zpu-types.h>
+  #include <stdint.h>
   #include "zpu_soc.h"
   #include <stdlib.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
+//#include <ctypelocal.h>
+#include <ctype.h>
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
 #include "diskio.h"

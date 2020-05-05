@@ -52,8 +52,7 @@
   #define int16_t  __int16_t
   #define int8_t   __int8_t
 #elif defined(__ZPU__)
-  #include <zstdio.h>
-  #include <zpu-types.h>
+  #include <stdint.h>
   #include "zpu_soc.h"
   #include <stdlib.h>
 #else
@@ -119,6 +118,13 @@ static t_basic_cmdstruct basicCmdTable[] = {
 
 // Define the number of commands in the array.
 #define NBASICCMDKEYS (sizeof(basicCmdTable)/sizeof(t_basic_cmdstruct))
+
+// Global scope variables within the ZPUTA memory space.
+GLOBALS                      *G;
+SOC_CONFIG                   *cfgSoC;
+
+// Global scope variables in the app memory space.
+volatile UINT                Timer;                                    /* Performance timer (100Hz increment) */
 
 extern struct editorConfig E;
 

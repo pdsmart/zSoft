@@ -131,7 +131,7 @@ SECTIONS
         /* __end__ = .; */
         /* PROVIDE(end = .); */
         __HeapBase = .;
-        . += 0x00002000;
+        . += 0x2000;
         __HeapLimit = .;
     } > RAM
     __heap_section_end__ = .;
@@ -140,12 +140,12 @@ SECTIONS
     .stack 0x2002F000 :
     {
       . = ALIGN(8);
-      . += 0x00001000;
+      . += 0x1000;
     } > RAM
     __stack_section_end__ = .;
 
     __StackTop   = .;
-    __StackLimit = __StackTop - 0x00001000;
+    __StackLimit = __StackTop - 0x1000;
     PROVIDE(__stack = __StackTop);
 	_estack = ORIGIN(RAM) + LENGTH(RAM) - 8;
 	_teensy_model_identifier = 0x1F;

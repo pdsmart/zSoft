@@ -40,14 +40,12 @@
   #define int16_t  __int16_t
   #define int8_t   __int8_t
 #elif defined(__ZPU__)
-  #include <zstdio.h>
-  #include <zpu-types.h>
+  #include <stdio.h>
   #include <stdlib.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #include <errno.h>
-
 
 extern unsigned long _stext;
 extern unsigned long _etext;
@@ -59,6 +57,18 @@ extern unsigned long _estack;
 
 #ifndef STACK_MARGIN
 #define STACK_MARGIN  8192
+#endif
+
+#if defined(__ZPU__)
+void outbyte(char c)
+{
+    (void)xputc(c);
+}
+
+char inbyte(void)
+{
+    return getserial();
+}
 #endif
 
 int strlen(const char* s) {

@@ -43,7 +43,8 @@
     #define int16_t  __int16_t
     #define int8_t   __int8_t
 #else
-    #include <zpu-types.h>
+    #include <stdint.h>
+    #include <string.h>
     #include "uart.h"
     #include "zpu_soc.h"
 #endif

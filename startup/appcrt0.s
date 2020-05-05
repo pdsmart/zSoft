@@ -234,7 +234,7 @@ _premain:
         ulessthanorequal    ; (bssptr<=__bss_end__?) bssptr
         impcrel .done       ; &.done (bssptr<=__bss_end__?) bssptr
         neqbranch           ; bssptr
-        im 0x55aa44bb       ; 0 bssptr                     - Load TOS with 0, the value to initialise memory with.
+        im 0                ; 0 bssptr                     - Load TOS with 0, the value to initialise memory with.
         loadsp 4            ; bssptr 0 bssptr              - Load the address pointer into TOS.
         loadsp 0            ; bssptr bssptr 0 bssptr       - And into NOS by loading again into TOS.
         im 4                ; 4 bssptr bssptr 0 bssptr     - Increment the address pointer by adding 4.

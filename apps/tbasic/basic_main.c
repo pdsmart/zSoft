@@ -65,6 +65,7 @@ void printToken(token* t) {
             outputChar('E');
             break;
     }
+    outputChar('\n');
 }
 
 void printTokens(token* t) {

@@ -49,8 +49,7 @@
   #define int16_t  __int16_t
   #define int8_t   __int8_t
 #elif defined(__ZPU__)
-  #include <zstdio.h>
-  #include <zpu-types.h>
+  #include <stdint.h>
   #include "zpu_soc.h"
   #include <stdlib.h>
 #else
@@ -96,31 +95,61 @@ uint32_t app(uint32_t param1, uint32_t param2)
     //uint32_t *pWordArray = malloc(2048);
     //uint16_t *pHwordArray = malloc(2048);
     //uint8_t  *pByteArray  = malloc(2048);
-    static uint32_t wordArray[2048];
-    static uint16_t hwordArray[2048];
-    static uint8_t  byteArray[2048];
-    static uint     idx;
+    static uint32_t wordArray[1024];
+    static uint16_t hwordArray[1024];
+    static uint8_t  byteArray[1024];
+    static uint16_t idx;
     static uint32_t sum;
+    long int        i, j, k, m;
+    int32_t         idx1;
+    uint32_t        idx2;
 
     xputs("This is a test.\n");
     xputs("Print another line.\n");
     xprintf("This is another test.\n");
     xputs("All done\n");
 
+    // Test the maths division.
+    for (i = -10000; i < 10000; i += 8)
+    {
+        for (j = -10000; j < 10000; j += 11)
+        {
+            k = i / j;
+            m = __divsi3 (i, j);
+            if (k != m)
+                xprintf ("fail %d %d %d %d\n", i, j, k, m);
+        }
+    }    
+
+    // Test the mod, div and mul.
+    for(idx1=-500; idx1 < 500; idx1++)
+    {
+	    xprintf("Result(%d)=%d %d,%u,%u:Mul=%d\n", idx1, (idx1/10), (idx1 % 10),((uint32_t)idx1/10), ((uint32_t)idx1 % 10), idx1 * 10);
+	    xprintf("%d, %d\n", __divsi3(idx1,10), __udivsi3(idx1,10));
+	    xprintf("%u, %u\n", __divsi3(idx1,10), __udivsi3(idx1,10));
+    }
+    for(idx2=0; idx2 < 500; idx2++)
+    {
+	    xprintf("Result(%d)=%d %d, Mul:%d\n", idx2, (int32_t)(idx2/10), (int32_t)(idx2 % 10), idx2 * 10);
+	    xprintf("      (%d)=%d %d\n", idx2, (uint32_t)(idx2/10), (uint32_t)(idx2 % 10));
+	    xprintf("%d, %d\n", __divsi3(idx2,10), __udivsi3(idx2,10));
+	    xprintf("%u, %u\n", __divsi3(idx2,10), __udivsi3(idx2,10));
+    }    
+
     // These are just memory tests, the main test is in premain where a closer knit write operation of BSS fails, thus trying to debug.
     for(idx=0, sum=0; idx < 2048; idx++)
     {
-	    sum += wordArray[idx];
+        sum += wordArray[idx];
     }
 
     for(idx=0, sum=0; idx < 2048; idx++)
     {
-	    sum += hwordArray[idx];
+        sum += hwordArray[idx];
     }
 
     for(idx=0, sum=0; idx < 2048; idx++)
     {
-	    sum += byteArray[idx];
+        sum += byteArray[idx];
     }
 
     return(0);

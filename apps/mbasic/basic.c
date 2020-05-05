@@ -31,6 +31,20 @@
   #include <zpu-types.h>
   #include "zpu_soc.h"
   #include <stdlib.h>
+
+#define assert(a)
+#define acos acosf
+#define floor floorf
+#define sin sinf
+#define cos cosf
+#define tan tanf
+#define log logf
+#define pow powf
+#define sqrt sqrtf
+#define asin asinf
+#define atan atanf
+#define fmod fmodf
+
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
@@ -2420,6 +2434,10 @@ char *stringliteral(void)
 */
 int integer(double x)
 {
+#if defined(__ZPU__)
+  #define INT_MIN -2147483648L
+  #define INT_MAX 2147483647L
+#endif
   if( x < INT_MIN || x > INT_MAX )
     seterror( ERR_BADVALUE );
   if( x != floor(x) )

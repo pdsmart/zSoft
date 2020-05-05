@@ -44,6 +44,7 @@ build/output_files/
 build/simulation/
 apps/*/build/
 apps/*/*_obj/
+libraries/build/
 zputa/build/
 zOS/build/
 iocp/iocp_obj/
@@ -56,3 +57,6 @@ iocp/test
 startup/*0x*.ld
 apps/*/*.zpu
 apps/*/*.k64
+common/old2
+include.bak
+libraries/umlibc/misc2

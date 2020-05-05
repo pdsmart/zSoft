@@ -41,6 +41,11 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if defined __ZPU__
+  #ifdef __cplusplus
+  extern "C" {
+  #endif
+#endif
 
 #if defined __K64F__
     #include <stdlib.h>
@@ -54,8 +59,10 @@
     #define int16_t  __int16_t
     #define int8_t   __int8_t
 #else
-    #include <zstdio.h>
-    #include <zpu-types.h>
+//    #include <zstdio.h>
+//    #include <zpu-types.h>
+    #include <stdint.h>
+    #include <string.h>
     #include "uart.h"
     #include "zpu_soc.h"
 #endif
@@ -79,8 +86,8 @@
 #endif
 
 // Version info.
-#define VERSION      "v1.51"
-#define VERSION_DATE "21/04/2020"
+#define VERSION      "v1.52"
+#define VERSION_DATE "02/05/2020"
 #define PROGRAM_NAME "ZPUTA"
 
 // Utility functions.
@@ -1356,3 +1363,9 @@ int main(int argc, char **argv)
     void *rbtptr = (void *)0x00000000;
     goto *rbtptr;
 }
+
+#if defined __ZPU__
+  #ifdef __cplusplus
+  }
+  #endif
+#endif

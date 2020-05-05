@@ -277,6 +277,7 @@ void calcArray(char letter) {
 
 numeric calcExpression(void) {
     while (1) {
+
         switch (curTok->type) {
             case TT_NONE:
             case TT_SEPARATOR:
@@ -590,4 +591,3 @@ void executeParsedRun(void) {
         progLine = next;
     }
 }
-

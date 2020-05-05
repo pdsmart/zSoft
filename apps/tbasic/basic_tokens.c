@@ -89,7 +89,7 @@ void setTokenError(char* pos, char code) {
 }
 
 token* nextToken(token* t) {
-    return (token*)(void*)((char*)(void*)t + tokenSize(t));
+    return (token*)(void*) ((char*)(void*)t + tokenSize(t));
 }
 
 void skipTokenInInput(char offset) {

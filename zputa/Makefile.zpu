@@ -66,11 +66,14 @@ RTL_DIR         = $(BASEDIR)/rtl
 
 # we use printf from here
 COMMON_DIR      = $(SWDIR)/common
+UMM_DIR         = $(SWDIR)/common/umm
 DHRY_DIR        = $(SWDIR)/common/Dhrystone
 CORE_DIR        = $(SWDIR)/common/CoreMark
 FATFS_DIR       = $(SWDIR)/common/FatFS
 PFS_DIR         = $(SWDIR)/common/PetitFS
 INCLUDE_DIR     = $(SWDIR)/include
+LIB_DIR         = $(SWDIR)/libraries/lib
+LIB_INCLUDE_DIR = $(SWDIR)/libraries/include
 
 # Linker mapping file spec file.
 LINKMAPBOOTSTANDALONE = $(STARTUP_DIR)/zputa_standalone_boot_in_bram.ld
@@ -87,24 +90,26 @@ RAMSTARTUP_OBJ  = $(patsubst $(STARTUP_DIR)/%.s,$(BUILD_DIR)/%.o,$(RAMSTARTUP_SR
 ROMSTARTUP_SRC  = $(STARTUP_DIR)/zputaromcrt0.s
 ROMSTARTUP_OBJ  = $(patsubst $(STARTUP_DIR)/%.s,$(BUILD_DIR)/%.o,$(ROMSTARTUP_SRC))
 
-COMMON_SRC      = $(COMMON_DIR)/utils.c $(COMMON_DIR)/uart.c $(COMMON_DIR)/zpu_soc.c $(COMMON_DIR)/interrupts.c $(COMMON_DIR)/ps2.c $(COMMON_DIR)/swap.c $(COMMON_DIR)/spi.c $(COMMON_DIR)/syscalls.c $(COMMON_DIR)/malloc.c $(COMMON_DIR)/xprintf.c $(COMMON_DIR)/readline.c
+# List of source files for the OS.
+COMMON_SRC      = $(COMMON_DIR)/utils.c $(COMMON_DIR)/uart.c $(COMMON_DIR)/zpu_soc.c $(COMMON_DIR)/interrupts.c $(COMMON_DIR)/ps2.c $(COMMON_DIR)/spi.c $(COMMON_DIR)/xprintf.c $(COMMON_DIR)/readline.c
+COMMON_SRC     += $(COMMON_DIR)/divsi3.c $(COMMON_DIR)/udivsi3.c $(COMMON_DIR)/modsi3.c $(COMMON_DIR)/umodsi3.c
+UMM_C_SRC       = $(UMM_DIR)/umm_malloc.c
 DHRY_SRC        = $(DHRY_DIR)/dhry_1.c $(DHRY_DIR)/dhry_2.c
 CORE_SRC        = $(CORE_DIR)/core_list_join.c $(CORE_DIR)/core_main_embedded.c $(CORE_DIR)/core_matrix.c $(CORE_DIR)/core_state.c $(CORE_DIR)/core_util.c $(CORE_DIR)/ee_printf.c $(CORE_DIR)/core_portme.c
 FATFS_SRC       = $(FATFS_DIR)/sdmmc_zpu.c $(FATFS_DIR)/ff.c
 PFS_SRC         = $(PFS_DIR)/sdmmc_zpu.c   $(PFS_DIR)/pff.c
+MAIN_SRC        = $(CURDIR)/src/zputa.cpp
 
-COMMON_OBJ      = $(patsubst $(COMMON_DIR)/%.c,$(BUILD_DIR)/%.o,$(COMMON_SRC))
-DHRY_OBJ        = $(patsubst $(DHRY_DIR)/%.c,$(BUILD_DIR)/%.o,$(DHRY_SRC))
-CORE_OBJ        = $(patsubst $(CORE_DIR)/%.c,$(BUILD_DIR)/%.o,$(CORE_SRC))
-FATFS_OBJ       = $(patsubst $(FATFS_DIR)/%.c,$(BUILD_DIR)/%.o,$(FATFS_SRC))
-PFS_OBJ         = $(patsubst $(PFS_DIR)/%.c,$(BUILD_DIR)/%.o,$(PFS_SRC))
+# Expand to targets.
+SOURCES        := $(MAIN_SRC:.cpp=.o) $(COMMON_SRC:.c=.o) $(UMM_C_SRC:.c=.o) $(FATFS_SRC:.c=.o) 
+OBJS           := $(foreach src,$(SOURCES), $(BUILD_DIR)/$(src))
 
+
+# Versions to build.
 MAIN_PRJ_TO_BOOT= zputa_standalone_boot_in_bram
 MAIN_PRJ_IN_BOOT= zputa_with_iocp_in_bram
 MAIN_PRJ_TINY_BOOT=zputa_with_tiny_iocp_in_bram
 MAIN_PRJ_RAM    = zputa_as_app_in_ram
-MAIN_SRC        = src/zputa.cpp
-MAIN_OBJ        = $(COMMON_OBJ) $(FATFS_OBJ) $(DHRY_OBJ) $(CORE_OBJ) $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(MAIN_SRC))
 
 # Commandline options for each tool.
 # To disable use of a given instruction, prefix it with no-
@@ -124,7 +129,7 @@ ZPUOPTS         = -mloadsp \
 	          	  -mcompare \
 	          	  -mpoppcrel \
 	          	  -mmemreg
-ifeq ($(CPU), $(filter $(CPU),SMALL MEDIUM FLEX))
+ifeq ($(CPU), $(filter $(CPU),SMALL MEDIUM FLEX EVOMIN))
 ZPUOPTS        += -mno-mult \
 				  -mno-div \
 				  -mno-mod \
@@ -137,10 +142,30 @@ ZPUOPTS        += -mmult \
 	          	  -mneg
 endif
 
-#CFLAGS         = -I. -I$(INCLUDE_DIR) -I$(COMMON_DIR)/.  -c -Os $(ZPUOPTS) -DPRINTF_HEX_ONLY -DDISABLE_PRINTF # -DDISABLE_UART_TX -DDISABLE_UART_RX
-CFLAGS          = -I. -I$(COMMON_DIR) -I$(FATFS_DIR) -I$(DHRY_DIR) -I$(CORE_DIR) -I$(INCLUDE_DIR)
-CFLAGS         += -c -Os -ffunction-sections -fdata-sections $(ZPUOPTS)
-CFLAGS         += -D__ZPU__ -D__ZPUTA__ -DOS_BASEADDR=$(OS_BASEADDR) -DOS_APPADDR=$(OS_APPADDR)
+CFLAGS          = -I. -I$(COMMON_DIR) -I$(FATFS_DIR) -I$(DHRY_DIR) -I$(CORE_DIR) -I$(INCLUDE_DIR) -I$(LIB_INCLUDE_DIR)
+CFLAGS         += -nostartfiles -nostdlib -c -Os -ffunction-sections -fdata-sections $(ZPUOPTS)
+CFLAGS         += -DOS_BASEADDR=$(OS_BASEADDR) -DOS_APPADDR=$(OS_APPADDR)
+CFLAGS         += -D__ZPU__ -D__ZPUTA__
+CFLAGS         += -DUMM_BEST_FIT -DUMM_INFO -DUMM_DBG_LOG_LEVEL=0
+#
+# Allow local overrides to the HEAPADDR for certain applications.
+ifeq (,$(findstring __HEAPADDR__,$(CFLAGS)))
+ifeq ($(HEAPADDR),)
+  CFLAGS      += -D__HEAPADDR__=0xE000
+else
+  CFLAGS      += -D__HEAPADDR__=$(HEAPADDR)
+endif
+endif
+
+# Allow local overrides to the HEAPSIZE for certain applications.
+ifeq (,$(findstring __HEAPSIZE__,$(CFLAGS)))
+ifeq ($(HEAPSIZE),)
+  CFLAGS      += -D__HEAPSIZE__=0x1000
+else
+  CFLAGS      += -D__HEAPSIZE__=$(HEAPSIZE)
+endif
+endif
+#
 # Enable debug output.
 OFLAGS         += -DDEBUG
 # Assume loadb as implemented in hardware or software (time penalty).
@@ -154,7 +179,8 @@ OFLAGS         += -DUSELOADB
 # Enable SD Card functionality
 OFLAGS         += -D__SD_CARD__
 FLAGS_STR       = -DFLAGS_STR="$(CFLAGS)"
-LFLAGS          = -nostartfiles -Wl,--gc-sections -Wl,--relax -Os
+LFLAGS          = -nostartfiles -nostdlib -Wl,--gc-sections -Wl,--relax -Os -L$(LIB_DIR)
+LIBS            = -lumansi-zpu
 
 # compiler options for C++ only
 CXXFLAGS      = -std=gnu++98 -felide-constructors -fno-exceptions -fno-rtti
@@ -174,7 +200,6 @@ $(MAIN_PRJ_IN_BOOT): $(BUILD_DIR) $(MAIN_PRJ_IN_BOOT).bin $(MAIN_PRJ_IN_BOOT).sr
 #
 $(MAIN_PRJ_TINY_BOOT): $(BUILD_DIR) $(MAIN_PRJ_TINY_BOOT).bin $(MAIN_PRJ_TINY_BOOT).rpt $(MAIN_PRJ_TINY_BOOT).lss $(MAIN_PRJ_TINY_BOOT).dmp
 #
-#$(MAIN_PRJ_RAM): $(BUILD_DIR) $(MAIN_PRJ_RAM).bin $(MAIN_PRJ_RAM).srec $(MAIN_PRJ_RAM).rpt $(MAIN_PRJ_RAM).lss $(MAIN_PRJ_RAM).dmp $(MAIN_PRJ_RAM)_APPRAM.vhd $(MAIN_PRJ_RAM)_COMBINEDAPPRAM.vhd
 $(MAIN_PRJ_RAM): $(BUILD_DIR) $(MAIN_PRJ_RAM).bin $(MAIN_PRJ_RAM).srec $(MAIN_PRJ_RAM).rpt $(MAIN_PRJ_RAM).lss $(MAIN_PRJ_RAM).dmp $(MAIN_PRJ_RAM)_COMBINEDAPPRAM.vhd
 
 clean:
@@ -234,7 +259,7 @@ clean:
 $(ROMGEN): $(SWDIR)/tools/src/zpugen.c
 	gcc -o $(SWDIR)/tools/zpugen $(SWDIR)/tools/src/zpugen.c
 
-# Put the boot code and app code into a ROM compatible with the Small, Medium and Flex CPUś
+# Put the boot code and app code into a ROM compatible with the Small, Medium and Flex CPU
 %_BOOTROM.vhd: %.bin $(ROMGEN)
 	@sed 's/dualportram/BootROM/' >ZPUTA_BootROM.vhd <$(RTL_DIR)/rom_prologue.vhd
 	@$(ROMGEN) 4 $*.bin 0 > ROMCODE.dat
@@ -297,16 +322,16 @@ $(ROMGEN): $(SWDIR)/tools/src/zpugen.c
 	@echo "IOCP_ZPUTA_SinglePortBRAM updated."
 
 # Link - this produces an ELF binary.
-$(MAIN_PRJ_TO_BOOT).elf: $(ROMSTARTUP_OBJ) $(MAIN_OBJ)
+$(MAIN_PRJ_TO_BOOT).elf: $(ROMSTARTUP_OBJ) $(OBJS)
 	$(LD) $(LFLAGS) -T $(LINKMAPBOOTSTANDALONE) -o $@ $+ $(LIBS)
 
-$(MAIN_PRJ_IN_BOOT).elf: $(RAMSTARTUP_OBJ) $(MAIN_OBJ)
+$(MAIN_PRJ_IN_BOOT).elf: $(RAMSTARTUP_OBJ) $(OBJS)
 	$(LD) $(LFLAGS) -T $(LINKMAPBOOTIOCP) -o $@ $+ $(LIBS)
 
-$(MAIN_PRJ_TINY_BOOT).elf: $(RAMSTARTUP_OBJ) $(MAIN_OBJ)
+$(MAIN_PRJ_TINY_BOOT).elf: $(RAMSTARTUP_OBJ) $(OBJS)
 	$(LD) $(LFLAGS) -T $(LINKMAPBOOTTINYIOCP) -o $@ $+ $(LIBS)
 
-$(MAIN_PRJ_RAM).elf: $(RAMSTARTUP_OBJ) $(MAIN_OBJ)
+$(MAIN_PRJ_RAM).elf: $(RAMSTARTUP_OBJ) $(OBJS)
 	$(LD) $(LFLAGS) -T $(LINKMAPRAM) -o $@ $+ $(LIBS)
 
 $(BUILD_DIR)/%.o: %.c Makefile
@@ -329,9 +354,9 @@ $(BUILD_DIR)/%.o: $(DHRY_DIR)/%.c Makefile
 	@mkdir -p "$(dir $@)"
 	$(CC) $(CFLAGS) $(OFLAGS) -o $@ -c $<
 
-$(BUILD_DIR)/%.o: $(CORE_DIR)/%.c Makefile
-	@mkdir -p "$(dir $@)"
-	$(CC) $(CFLAGS) $(OFLAGS) $(FLAGS_STR) -o $@ -c $<
+#$(BUILD_DIR)/%.o: $(CORE_DIR)/%.c Makefile
+#	@mkdir -p "$(dir $@)"
+#	$(CC) $(CFLAGS) $(OFLAGS) $(FLAGS_STR) -o $@ -c $<
 
 $(BUILD_DIR)/%.o: $(FATFS_DIR)/%.c Makefile
 	@mkdir -p "$(dir $@)"
@@ -350,7 +375,7 @@ $(BUILD_DIR)/%.o: $(STARTUP_DIR)/%.s
 	$(AS) $(ASFLAGS) -o $@ $<
 
 $(BUILD_DIR):
-	mkdir $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
 
 # compiler generated dependency info
 -include $(OBJS:.o=.d)

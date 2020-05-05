@@ -89,6 +89,8 @@ DHRY_DIR       = $(CURDIR)/../../common/Dhrystone
 COREMARK_DIR   = $(CURDIR)/../../common/CoreMark
 UMM_DIR        = $(CURDIR)/../../common/umm
 INCLUDE_DIR    = $(CURDIR)/../../include
+LIB_DIR        = $(CURDIR)/../../libraries/lib
+LIB_INCLUDE_DIR= $(CURDIR)/../../libraries/include
 APP_INCLUDE_DIR= $(CURDIR)/../include
 
 # Working directory to build object files.
@@ -109,7 +111,7 @@ endif
 
 # Common modules needed for this app.
 #COMMON_SRC    = $(COMMON_DIR)/syscalls.c $(COMMON_DIR)/malloc.c $(COMMON_DIR)/tools.c #$(COMMON_DIR)/utils.c
-COMMON_SRC     = $(COMMON_DIR)/syscalls.c # $(COMMON_DIR)/malloc.c
+COMMON_SRC     = #$(CURDIR)/../common/sysutils.c #$(COMMON_DIR)/syscalls.c # $(COMMON_DIR)/malloc.c
 
 MAIN_PRJ_APP   = $(APP_NAME)
 MAIN_SRC       = $(APP_NAME).c
@@ -136,7 +138,7 @@ ZPUOPTS         = -mloadsp \
 	          	  -mcompare \
 	          	  -mpoppcrel \
 	          	  -mmemreg
-ifeq ($(CPU), $(filter $(CPU),SMALL MEDIUM FLEX))
+ifeq ($(CPU), $(filter $(CPU),SMALL MEDIUM FLEX EVOMIN))
   ZPUOPTS      += -mno-mult \
 				  -mno-div \
 				  -mno-mod \
@@ -150,7 +152,8 @@ ifeq ($(CPU), $(filter $(CPU),EVO))
 endif
 
 #CFLAGS       += -I. -I$(INCLUDE_DIR) -I$(COMMON_DIR)/.  -c -Os $(ZPUOPTS) -DPRINTF_HEX_ONLY -DDISABLE_PRINTF # -DDISABLE_UART_TX -DDISABLE_UART_RX
-CFLAGS        += -I. -I$(COMMON_DIR) -I$(FATFS_DIR) -I$(OSDIR) -I$(INCLUDE_DIR) -I$(APP_INCLUDE_DIR) -I${UMM_DIR} -c -O3 -ffunction-sections -fdata-sections $(ZPUOPTS)
+CFLAGS        += -I. -I$(COMMON_DIR) -I$(FATFS_DIR) -I$(OSDIR) -I$(INCLUDE_DIR) -I$(APP_INCLUDE_DIR) -I${UMM_DIR} -I$(LIB_INCLUDE_DIR)
+CFLAGS        += -c -Os -ffunction-sections -fdata-sections $(ZPUOPTS)
 CFLAGS        += -D__ZPU__ -D__APP__ -DOS_BASEADDR=$(OS_BASEADDR) -DOS_APPADDR=$(OS_APPADDR)
 ifeq (-nostdlib,$(findstring -nostdlib,$(LDFLAGS)))
   CFLAGS      += -DUMM_BEST_FIT -DUMM_INFO -DUMM_DBG_LOG_LEVEL=0
@@ -192,7 +195,7 @@ OFLAGS        += -DUSELOADB
 # Enable SD Card functionality
 OFLAGS        += -D__SD_CARD__
 FLAGS_STR      = -DFLAGS_STR="$(CFLAGS)"
-LFLAGS         = -nostartfiles -Wl,--gc-sections -Wl,--relax -Os -Wl,--defsym=OS_BASEADDR=$(OS_BASEADDR) -Wl,--defsym=OS_APPADDR=$(OS_APPADDR)
+LDFLAGS       += -nostartfiles -Wl,--gc-sections -Wl,--relax -Os -Wl,--defsym=OS_BASEADDR=$(OS_BASEADDR) -Wl,--defsym=OS_APPADDR=$(OS_APPADDR) -L$(LIB_DIR)
 #
 # Assembler flags.
 ifeq ($(OS_BASEADDR),0x000000)
@@ -280,7 +283,7 @@ $(MAIN_PRJ_APP).elf: $(OBJS)
                       -e "s/APP_STACK_SIZE/$(STACKSIZE)/g"    \
                       -e "s/APP_STACK_STARTADDR/$(STACKADDR)/g"    \
                       -e "s/APP_STACK_ENDADDR/$(STACKENDADDR)/g" > $(LINKMAPAPP)
-	$(LD) $(LFLAGS) -T $(LINKMAPAPP) -o $@ $(OBJS) $(LIBS)
+	$(LD) $(LDFLAGS) -T $(LINKMAPAPP) -o $@ $(OBJS) $(LIBS)
 
 $(BUILD_DIR)/%.o: %.c Makefile
 	@mkdir -p "$(dir $@)"

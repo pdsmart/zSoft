@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 #if defined __ZPU__
+  #include <stdint.h>
   #include <string.h>
   #include "uart.h"
   #include "zpu_soc.h"

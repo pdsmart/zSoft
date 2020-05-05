@@ -34,7 +34,7 @@
 MEMORY
 {
   BOOT (rx) : ORIGIN = 0x000000,   LENGTH = 0x000600  /* Boot section which shouldnt exist in an app, so a link trap as warning */
-  CODE (rx) : ORIGIN = 0x00000600,   LENGTH = 0x0000BA00   /* Up to the end of the RAM first less stack space */
+  CODE (rx) : ORIGIN = 0x00000600,   LENGTH = 0x00008A00   /* Up to the end of the RAM first less stack space */
 }
 
 /* Section Definitions */
@@ -112,10 +112,10 @@ SECTIONS
   _dataend = . ;
 
   __HeapBase = .;
-  __HeapLimit = 0x0000DFF8 - 0x400;
+  __HeapLimit = 0x0000F7F8 - 0x400;
 
   /* Top of stack pointer, used for sbrk validation. */  
-  _stack = 0x0000DFF8;
+  _stack = 0x0000F7F8;
 
 	/* Debug information */
   .debug_loc 0 : { *(.debug_loc) }

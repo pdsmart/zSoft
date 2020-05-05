@@ -52,8 +52,7 @@
   #define int16_t  __int16_t
   #define int8_t   __int8_t
 #elif defined(__ZPU__)
-  #include <zstdio.h>
-  #include <zpu-types.h>
+  #include <stdint.h>
   #include "zpu_soc.h"
   #include <stdlib.h>
 #else
@@ -161,13 +160,13 @@ numeric sysMillis(numeric div)
     numeric milliSec;
 
   #if defined __ZPU__
-    milliSec = (numeric)RTC_MILLISECONDS;
+    milliSec = (numeric)TIMER_MILLISECONDS_UP;
   #elif defined __K64F__
     milliSec = (numeric)*G->millis;
   #else
     #error "Target CPU not defined, use __ZPU__ or __K64F__"
   #endif    
-    return milliSec;
+    return milliSec/div;
 }
 
 char translateInput(short c)
@@ -333,6 +332,11 @@ uint32_t app(uint32_t param1, uint32_t param2)
     // Initialisation.
     //
   //char      *ptr = (char *)param1;
+  //
+    // Initialise the ZPU timer.
+  #if defined __ZPU__
+    TIMER_MILLISECONDS_UP = 0;
+  #endif
 
     init(VARS_SPACE_SIZE, 80, sizeof(dataSpace) - VARS_SPACE_SIZE);
     while(doExit == 0)

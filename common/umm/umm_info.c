@@ -6,8 +6,7 @@
   #include <stdint.h>
   #include <stdbool.h>
 #elif defined(__ZPU__)
-  #include <zstdio.h>
-  #include <zpu-types.h>
+  #include <stdint.h>
   #include <stdlib.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"

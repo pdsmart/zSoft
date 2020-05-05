@@ -30,7 +30,8 @@
     extern "C" {
 #endif
 
-#include <zpu-types.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include "uart.h"
 #include "zpu_soc.h"
 #include "xprintf.h"

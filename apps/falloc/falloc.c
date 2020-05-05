@@ -49,10 +49,8 @@
   #define int16_t  __int16_t
   #define int8_t   __int8_t
 #elif defined(__ZPU__)
-  #include <zstdio.h>
-  #include <zpu-types.h>
+  #include <stdint.h>
   #include "zpu_soc.h"
-  #include <stdlib.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif

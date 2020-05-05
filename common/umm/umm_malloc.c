@@ -50,8 +50,7 @@
   #define int16_t  __int16_t
   #define int8_t   __int8_t
 #elif defined(__ZPU__)
-  #include <zstdio.h>
-  #include <zpu-types.h>
+  #include <stdint.h>
   #include <stdlib.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
@@ -641,6 +640,7 @@ void *umm_realloc( void *ptr, size_t size ) {
     if (blockSize >= blocks) {
         DBGLOG_DEBUG( "realloc the same or smaller size block - %x, do nothing\n", blocks );
         /* This space intentionally left blank */
+    DBGLOG_DEBUG("Returning  1 alloc address:%08lx#n", ptr);
 
     //  Case 2 - block + next block fits EXACTLY
     } else if ((blockSize + nextBlockSize) == blocks) {
@@ -688,6 +688,7 @@ void *umm_realloc( void *ptr, size_t size ) {
         blockSize = blocks;
     }
 
+    DBGLOG_DEBUG("Returning 2 alloc address:%08lx#n", ptr);
     /* Now all we need to do is figure out if the block fit exactly or if we
      * need to split and free ...
      */
@@ -698,9 +699,11 @@ void *umm_realloc( void *ptr, size_t size ) {
         umm_free_core( (void *)&UMM_DATA(c+blocks) );
     }
 
+    DBGLOG_DEBUG("Returning 3 alloc address:%08lx#n", ptr);
     /* Release the critical section... */
     UMM_CRITICAL_EXIT();
 
+    DBGLOG_DEBUG("Returning 4 alloc address:%08lx#n", ptr);
     return( ptr );
 }
 

@@ -41,26 +41,37 @@ APP_COMMON_DIR = $(CURDIR)/../common
 BASEDIR        = ../../..
 
 # Override values given by parent make for this application as its memory usage differs from the standard app.
-override HEAPADDR  = 0x1FFF5000
-override HEAPSIZE  = 0x00033000
-override STACKADDR = 0x20028000
-override STACKSIZE = 0x00000000
+ifeq ($(__K64F__),1)
+  override HEAPADDR  = 0x1FFF5000
+  override HEAPSIZE  = 0x00033000
+  override STACKADDR = 0x20028000
+  override STACKSIZE = 0x00000000
 
-# Modules making up Kilo.
-APP_C_SRC      = basic_main.c basic_editor.c basic_exectoks.c basic_expr.c basic_tokens.c basic_utils.c $(APP_COMMON_DIR)/sysutils.c
-CFLAGS         = 
-CPPFLAGS       = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
-LDFLAGS        = -nostdlib
+  # Modules making up BASIC.
+  APP_C_SRC    = basic_main.c basic_editor.c basic_exectoks.c basic_expr.c basic_tokens.c basic_utils.c $(APP_COMMON_DIR)/sysutils.c
+  CFLAGS       = -Wno-write-strings -Wno-char-subscripts
+  CPPFLAGS     = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
+  LDFLAGS      = -nostdlib
+  LIBS         =
+else
+  override HEAPADDR  = 0x0000E200
+  override HEAPSIZE  = 0x00000D00
+  override STACKADDR = 0x0000F000
+  override STACKSIZE = 0x00000000
+
+  # Modules making up BASIC.
+  APP_C_SRC    = basic_main.c basic_editor.c basic_exectoks.c basic_expr.c basic_tokens.c basic_utils.c #$(APP_COMMON_DIR)/sysutils.c
+  CFLAGS       = -Wno-write-strings -Wno-char-subscripts
+  CPPFLAGS     = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
+  LDFLAGS      = -nostdlib
+  LIBS         = -lumansi-zpu -limath-zpu
+endif
 
 # Filter out the standard HEAP address and size, replacing with the ones required for this application.
 # Useful for sub-makes
 FILTER1        = $(filter-out $(filter HEAPADDR=%,$(MAKEFLAGS)), $(MAKEFLAGS))
 FILTER2        = $(filter-out $(filter HEAPSIZE=%,$(FILTER1)),   $(FILTER1))
 NEWMAKEFLAGS   = $(FILTER2) HEAPADDR=$(HEADADDR) HEAPSIZE=$(HEAPSIZE)
-
-# Modules making up BASIC.
-CFLAGS         =
-CPPFLAGS       =
 
 ifeq ($(__K64F__),1)
 include        $(APP_DIR)/Makefile.k64f

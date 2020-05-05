@@ -29,14 +29,14 @@
     #include "k64f_soc.h"
     extern uint32_t milliseconds(void);
 #else
-    #include <zpu-types.h>
+    #include <stdint.h>
     #include "zpu_soc.h"
 #endif
 
-#include "dhry.h"
 #include <string.h>
 #include <stdarg.h>
 #include "xprintf.h"
+#include "dhry.h"
 
 /* Global Variables: */
 
@@ -341,9 +341,9 @@ int main_dhry ()
     Vax_Mips = (Number_Of_Runs*569) / User_Time;
 #endif 
     xprintf ("Microseconds for one run through Dhrystone: ");
-    xprintf ("%d \r\n", (int)Microseconds);
+    xprintf ("%d \r\n", (int32_t)Microseconds);
     xprintf ("Dhrystones per Second:                      ");
-    xprintf ("%d \r\n", (int)Dhrystones_Per_Second);
+    xprintf ("%d \r\n", (int32_t)Dhrystones_Per_Second);
     xprintf ("VAX MIPS rating * 1000 = %d \r\n",(int)Vax_Mips);
     xprintf ("\r\n");
   }
