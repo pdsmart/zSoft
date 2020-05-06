@@ -48,11 +48,11 @@ ifeq ($(__K64F__),1)
   override STACKSIZE = 0x00000000
 
   # Modules making up BASIC.
-  APP_C_SRC    = basic_main.c basic_editor.c basic_exectoks.c basic_expr.c basic_tokens.c basic_utils.c $(APP_COMMON_DIR)/sysutils.c
+  APP_C_SRC    = basic_main.c basic_editor.c basic_exectoks.c basic_expr.c basic_tokens.c basic_utils.c
   CFLAGS       = -Wno-write-strings -Wno-char-subscripts
   CPPFLAGS     = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
   LDFLAGS      = -nostdlib
-  LIBS         =
+  LIBS         = -lumansi-k64f -lumstdio-k64f
 else
   override HEAPADDR  = 0x0000E200
   override HEAPSIZE  = 0x00000D00
@@ -60,7 +60,7 @@ else
   override STACKSIZE = 0x00000000
 
   # Modules making up BASIC.
-  APP_C_SRC    = basic_main.c basic_editor.c basic_exectoks.c basic_expr.c basic_tokens.c basic_utils.c #$(APP_COMMON_DIR)/sysutils.c
+  APP_C_SRC    = basic_main.c basic_editor.c basic_exectoks.c basic_expr.c basic_tokens.c basic_utils.c
   CFLAGS       = -Wno-write-strings -Wno-char-subscripts
   CPPFLAGS     = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
   LDFLAGS      = -nostdlib

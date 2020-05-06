@@ -54,21 +54,16 @@
   #include <stdarg.h>
   #include <usb_serial.h>
   #include "k64f_soc.h"
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+  #include "../../libraries/include/ansi.h"
+  #include "../../libraries/include/ctype.h"
 #elif defined(__ZPU__)
   #include <stdint.h>
   #include "zpu_soc.h"
   #include <stdlib.h>
+  #include <ctype.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
-//#include <ctypelocal.h>
-#include <ctype.h>
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
 #include "diskio.h"

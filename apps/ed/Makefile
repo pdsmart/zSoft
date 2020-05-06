@@ -48,11 +48,11 @@ ifeq ($(__K64F__),1)
   override STACKSIZE = 0x00000000
 
   # Modules making up Kilo.
-  APP_C_SRC    = $(APP_COMMON_DIR)/sysutils.c $(APP_COMMON_DIR)/ctypelocal.c
+  APP_C_SRC    = #$(APP_COMMON_DIR)/sysutils.c $(APP_COMMON_DIR)/ctypelocal.c
   CFLAGS       = 
   CPPFLAGS     = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
   LDFLAGS      = -nostdlib
-  LIBS         =
+  LIBS         = -lumansi-k64f -lumstdio-k64f
 else
   # Modules making up Kilo.
   APP_C_SRC    = #$(APP_COMMON_DIR)/sysutils.c $(APP_COMMON_DIR)/ctypelocal.c
@@ -61,7 +61,6 @@ else
   LDFLAGS      = -nostdlib
   LIBS         = -lumansi-zpu -limath-zpu
 endif
-
 
 # Filter out the standard HEAP address and size, replacing with the ones required for this application.
 # Useful for sub-makes

@@ -43,12 +43,12 @@
   #include <stdio.h>
   #include <string.h>
 #include <ctype.h>
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+//  #define uint32_t __uint32_t
+//  #define uint16_t __uint16_t
+//  #define uint8_t  __uint8_t
+//  #define int32_t  __int32_t
+//  #define int16_t  __int16_t
+//  #define int8_t   __int8_t
 #elif defined(__ZPU__)
   #include <stdint.h>
   #include <stdlib.h>

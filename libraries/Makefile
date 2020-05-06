@@ -105,6 +105,7 @@ IMATH_OBJS            = $(foreach src,$(IMATH_SRC), $(BUILD_DIR)/$(src))
 CFLAGS                = -I. -I$(UMLIBC_DIR)/include -I$(COMMON_DIR) -I$(INCLUDE_DIR) -I$(TEENSY35_DIR)
 ifeq ($(__ZPU__),)
   CFLAGS             +=  -D__K64F__
+  CFLAGS             +=  -mlong-calls -mthumb -MMD -g -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
 else
   CFLAGS             +=  -D__ZPU__
 endif
