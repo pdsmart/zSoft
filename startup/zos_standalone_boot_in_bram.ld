@@ -35,8 +35,8 @@ MEMORY
 {
   BOOT (rx)  : ORIGIN = 0x000000,   LENGTH = 0x000600    /* Boot section which shouldnt exist in an app, so a link trap as warning */
   CODE (rx)  : ORIGIN = 0x00000600, LENGTH = 0x0000A200   /* Up to the end of the RAM first less stack space */
-  HEAP (rx)  : ORIGIN = 0x0000EFF4, LENGTH = 0x00000800  /* Allocated heap space for the OS. */
-  STACK (rx) : ORIGIN = 0x0000F7F8, LENGTH = 0x00000800  /* Allocated stack space for the OS. */
+  HEAP (rx)  : ORIGIN = 0x0000DFF4, LENGTH = 0x00001000  /* Allocated heap space for the OS. */
+  STACK (rx) : ORIGIN = 0x0000EFF8, LENGTH = 0x00001000  /* Allocated stack space for the OS. */
 }
 
 /* Section Definitions */
@@ -52,7 +52,7 @@ SECTIONS
         KEEP(*(.fixed_vectors)) /* Seed section - allows -gc-sections */
     }>BOOT
     __boot_end__ = . ;
-  
+
     /* Remaining code sections */
     . = ALIGN(4);
     __text_start__ = . ;
@@ -114,37 +114,37 @@ SECTIONS
     _dataend = . ;
 
     /* Variable expanded by build.sh */
-    .heap 0x0000EFF4:
+    .heap 0x0000DFF4:
     {
-        /* . = 0x0000EFF4; */
+        /* . = 0x0000DFF4; */
         . = ALIGN(4);
         __heap_section_start__ = .;
         __HeapBase = .;
         PROVIDE(end = .);
-        . += 0x00000800;
+        . += 0x00001000;
         __end__ = .;
         __HeapLimit = .;
         __heap_section_end__ = .;
     } > HEAP
     
     /* Variable expanded by build.sh */
-    .stack 0x0000F7F8 :
+    .stack 0x0000EFF8 :
     {
-        /* . = 0x0000F7F8; */
+        /* . = 0x0000EFF8; */
         . = ALIGN(4);
         __stack_section_start__ = .;
-        . += 0x00000800;
+        . += 0x00001000;
         __stack_section_end__ = .;
     } > STACK    
   
     /*
-    __HeapBase = 0x0000EFF4;
-    __HeapLimit = 0x0000F7F4;
+    __HeapBase = 0x0000DFF4;
+    __HeapLimit = 0x0000EFF4;
     */
   
     /* Top of stack pointer, used for sbrk validation. */  
     _stack = 0x0000FFF8;
-  
+
       /* Debug information */
     .debug_loc 0 : { *(.debug_loc) }
     .debug_abbrev 0 : { *(.debug_abbrev) }

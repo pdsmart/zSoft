@@ -50,8 +50,9 @@
   #include    <stdint.h>
   #include    <../libraries/include/stdmisc.h>
 #else
-  #include    <stdmisc.h>
+  #include    <stdio.h>
   #include    <stdint.h>
+  #include    <stdmisc.h>
 #endif
 
 #if defined __SD_CARD__
@@ -62,17 +63,20 @@
 #include      <stdbool.h>
 #include      <stddef.h>
 
-#if defined __APP__ && defined __K64F__
-  #undef      stdin
-  #undef      stdout
-  #undef      stderr
+#if defined __APP__
+  #if defined __K64F__
+    #undef      stdin
+    #undef      stdout
+    #undef      stderr
+    extern FILE *stdout;
+    extern FILE *stdin;
+    extern FILE *stderr;
+  #endif
+
   #define     malloc     sys_malloc
   #define     realloc    sys_realloc
   #define     calloc     sys_calloc
   #define     free       sys_free
-  extern FILE *stdout;
-  extern FILE *stdin;
-  extern FILE *stderr;
   void        *sys_malloc(size_t);            // Allocate memory managed by the OS.
   void        *sys_realloc(void *, size_t);   // Reallocate a block of memory managed by the OS.
   void        *sys_calloc(size_t, size_t);    // Allocate and zero a block of memory managed by the OS.

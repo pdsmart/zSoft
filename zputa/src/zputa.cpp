@@ -60,7 +60,7 @@
   #include <stdio.h>
   #include "zpu_soc.h"
   #include "uart.h"
-  #include "uart.h"
+  #include <stdmisc.h>
 #endif
 
 #include "interrupts.h"
@@ -1288,6 +1288,9 @@ int main(int argc, char **argv)
 {
     // Locals.
     //uint32_t   memAddr;
+  #if defined __ZPU__
+    FILE  osIO;
+  #endif
 
     // Initialisation.
     //

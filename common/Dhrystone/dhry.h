@@ -358,8 +358,11 @@
                 /* explicitly defined otherwise         */
 
 #ifdef TIMES
-#include <sys/types.h>
-#include <sys/times.h> /* for "times" */
+  #include <sys/types.h>
+
+  #if defined __K64F__
+    #include <sys/times.h> /* for "times" */
+  #endif
 #endif
 
 #define Mic_secs_Per_Second     1000000

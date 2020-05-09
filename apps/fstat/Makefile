@@ -39,7 +39,7 @@ APP_NAME       = fstat
 APP_DIR        = ..
 BASEDIR        = ../../..
 
-LIBS           = -lumansi-k64f
+LIBS           = 
 
 ifeq ($(__K64F__),1)
 include        $(APP_DIR)/Makefile.k64f

@@ -60,7 +60,7 @@
   #include <stdint.h>
   #include <string.h>
   #include <stdio.h>
-  #include <stdmisc.h >
+  #include <stdmisc.h>
   #include "zpu_soc.h"
   #include "uart.h"
 #endif
@@ -689,6 +689,9 @@ int cmdProcessor(void)
 int main(int argc, char **argv)
 {
     // Locals.
+  #if defined __ZPU__
+    FILE osIO;
+  #endif
 
     // Initialisation.
     //

@@ -91,7 +91,8 @@ ROMSTARTUP_SRC  = $(STARTUP_DIR)/zputaromcrt0.s
 ROMSTARTUP_OBJ  = $(patsubst $(STARTUP_DIR)/%.s,$(BUILD_DIR)/%.o,$(ROMSTARTUP_SRC))
 
 # List of source files for the OS.
-COMMON_SRC      = $(COMMON_DIR)/utils.c $(COMMON_DIR)/uart.c $(COMMON_DIR)/zpu_soc.c $(COMMON_DIR)/interrupts.c $(COMMON_DIR)/ps2.c $(COMMON_DIR)/spi.c $(COMMON_DIR)/readline.c
+COMMON_SRC      = $(COMMON_DIR)/utils.c $(COMMON_DIR)/uart.c $(COMMON_DIR)/zpu_soc.c $(COMMON_DIR)/interrupts.c $(COMMON_DIR)/ps2.c $(COMMON_DIR)/readline.c
+COMMON_SRC     += #$(COMMON_DIR)/xprintf.c $(COMMON_DIR)/spi.c
 #COMMON_SRC     += $(COMMON_DIR)/divsi3.c $(COMMON_DIR)/udivsi3.c $(COMMON_DIR)/modsi3.c $(COMMON_DIR)/umodsi3.c
 UMM_C_SRC       = $(UMM_DIR)/umm_malloc.c
 DHRY_SRC        = $(DHRY_DIR)/dhry_1.c $(DHRY_DIR)/dhry_2.c
@@ -180,7 +181,7 @@ OFLAGS         += -DUSELOADB
 OFLAGS         += -D__SD_CARD__
 FLAGS_STR       = -DFLAGS_STR="$(CFLAGS)"
 LFLAGS          = -nostartfiles -nostdlib -Wl,--gc-sections -Wl,--relax -Os -L$(LIB_DIR)
-LIBS            = -lumstdio-zpu -lumansi-zpu -limath-zpu
+LIBS            = -lumstdio-zpu -lumansi-zpu -limath-zpu -lummisc-zpu
 
 # compiler options for C++ only
 CXXFLAGS      = -std=gnu++98 -felide-constructors -fno-exceptions -fno-rtti
