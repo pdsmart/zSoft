@@ -43,26 +43,31 @@ BASEDIR        = ../../..
 
 # Override values given by parent make for this application as its memory usage differs from the standard app.
 ifeq ($(__K64F__),1)
-override HEAPADDR  = 0x2000C000
-override HEAPSIZE  = 0x0001BC00
-override STACKADDR = 0x20027C00
-override STACKSIZE = 0x00000400
+  #override HEAPADDR  = 0x2002f000
+  #override HEAPSIZE  = 0x00000000
+  #override STACKADDR = 0x2002f000
+  #override STACKSIZE = 0x00000000
 
-# Modules making up Mbasic.
-APP_C_SRC      = basic.c ed.c $(APP_COMMON_DIR)/sbrk.c $(COMMON_DIR)/readline.c $(APP_COMMON_DIR)/sysutils.c
-UMM_C_SRC      =
-CFLAGS         = -Os
-CPPFLAGS       = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
-LDFLAGS        =
-LIBS           = 
+  # Modules making up Mbasic.
+  APP_C_SRC    = basic.c ed.c $(COMMON_DIR)/readline.c $(APP_COMMON_DIR)/sysutils.c $(APP_COMMON_DIR)/sbrk.c
+  UMM_C_SRC    =
+  CFLAGS       = -Os
+  CPPFLAGS     = #-D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
+  LDFLAGS      =
+  LIBS         = 
 else
-# Modules making up Mbasic.
-APP_C_SRC      = basic.c ed.c $(APP_COMMON_DIR)/sbrk.c $(COMMON_DIR)/readline.c $(APP_COMMON_DIR)/sysutils.c
-UMM_C_SRC      =
-CFLAGS         = -Os
-CPPFLAGS       = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
-LDFLAGS        = 
-LIBS           =
+  #override HEAPADDR  = 0x2002f000
+  #override HEAPSIZE  = 0x00000000
+  #override STACKADDR = 0x2002f000
+  #override STACKSIZE = 0x00000000
+
+  # Modules making up Mbasic.
+  APP_C_SRC    = basic.c ed.c $(APP_COMMON_DIR)/sbrk.c $(COMMON_DIR)/readline.c $(APP_COMMON_DIR)/sysutils.c
+  UMM_C_SRC    =
+  CFLAGS       = -Os
+  CPPFLAGS     = #-D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
+  LDFLAGS      = 
+  LIBS         =
 endif
 
 # Filter out the standard HEAP address and size, replacing with the ones required for this application.

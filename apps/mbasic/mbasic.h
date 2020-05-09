@@ -47,68 +47,19 @@
 // Application execution constants.
 //
 
-// Components to be embedded in the program.
-//
-#define BUILTIN_DEFAULT             1
-// Disk low level components to be embedded in the program.
-#define BUILTIN_DISK_DUMP           0
-#define BUILTIN_DISK_STATUS         0
-// Disk buffer components to be embedded in the program.
-#define BUILTIN_BUFFER_DUMP         0
-#define BUILTIN_BUFFER_EDIT         0
-#define BUILTIN_BUFFER_READ         0
-#define BUILTIN_BUFFER_WRITE        0
-#define BUILTIN_BUFFER_FILL         0
-#define BUILTIN_BUFFER_LEN          0
-// Memory components to be embedded in the program.
-#define BUILTIN_MEM_CLEAR           0
-#define BUILTIN_MEM_COPY            0
-#define BUILTIN_MEM_DIFF            0
-#define BUILTIN_MEM_DUMP            0
-#define BUILTIN_MEM_PERF            0
-#define BUILTIN_MEM_SRCH            0
-#define BUILTIN_MEM_TEST            0
-#define BUILTIN_MEM_EDIT_BYTES      0
-#define BUILTIN_MEM_EDIT_HWORD      0
-#define BUILTIN_MEM_EDIT_WORD       0
-// Hardware components to be embedded in the program.
-#define BUILTIN_HW_SHOW_REGISTER    0
-#define BUILTIN_HW_TEST_TIMERS      0
-// Filesystem components to be embedded in the program.
-#define BUILTIN_FS_STATUS           0
-#define BUILTIN_FS_DIRLIST          1
-#define BUILTIN_FS_OPEN             0
-#define BUILTIN_FS_CLOSE            0
-#define BUILTIN_FS_SEEK             0
-#define BUILTIN_FS_READ             0
-#define BUILTIN_FS_CAT              0
-#define BUILTIN_FS_INSPECT          0
-#define BUILTIN_FS_WRITE            0
-#define BUILTIN_FS_TRUNC            0
-#define BUILTIN_FS_RENAME           0
-#define BUILTIN_FS_DELETE           0
-#define BUILTIN_FS_CREATEDIR        0
-#define BUILTIN_FS_ALLOCBLOCK       0
-#define BUILTIN_FS_CHANGEATTRIB     0
-#define BUILTIN_FS_CHANGETIME       0
-#define BUILTIN_FS_COPY             0
-#define BUILTIN_FS_CHANGEDIR        0
-#define BUILTIN_FS_CHANGEDRIVE      0
-#define BUILTIN_FS_SHOWDIR          0
-#define BUILTIN_FS_SETLABEL         0
-#define BUILTIN_FS_CREATEFS         0
-#define BUILTIN_FS_LOAD             0
-#define BUILTIN_FS_DUMP             0
-#define BUILTIN_FS_CONCAT           0
-#define BUILTIN_FS_XTRACT           0
-#define BUILTIN_FS_SAVE             0
-#define BUILTIN_FS_EXEC             0
-// Test components to be embedded in the program.
-#define BUILTIN_TST_DHRYSTONE       0
-#define BUILTIN_TST_COREMARK        0
-// Miscellaneous components to be embedded in this program.
-#define BUILTIN_MISC_HELP           0
-#define BUILTIN_MISC_SETTIME        0
+// Redefinitions.
+#ifndef assert
+  #define assert(a)
+#endif
+#ifndef malloc
+  #define malloc                    sys_malloc
+#endif
+#ifndef realloc
+  #define realloc                   sys_realloc
+#endif
+#ifndef calloc
+  #define calloc                    sys_calloc
+#endif
 
 // Main app configuration variables.
 //
@@ -340,96 +291,97 @@ typedef struct
 } FORLOOP;
 
 // Prototypes.
-uint32_t sysmillis(void);
-void syswait(uint32_t);
-int8_t getKey(uint32_t);
-int editorReadKey(void);
-int getCursorPosition(uint32_t *, uint32_t *);
-int getWindowSize(int *, int *);
-int editorInsertRow(int, char *, size_t);
-void editorFreeRow(erow *);
-void editorCleanup(void);
-void editorDelRow(int);
-int editorRowInsertChar(erow *, int, int);
-int editorRowAppendString(erow *, char *, size_t);
-int editorRowDelChar(erow *, int);
-void editorInsertChar(int);
-int editorInsertNewline(void);
-int editorDelChar(void);
-int editorOpen(char *);
-int editorSave(char *);
-void editorList(int, int);
-int editorBuildScript(void);
-void abAppend(const char *, int, int);
-int editorRefreshScreen(void);
-void editorFind(void) ;
-void editorMoveCursor(int);
-uint32_t editorProcessKeypress(void);
-int editorFileWasModified(void);
-int editorAddBasicLine(int, char *, size_t);
-uint32_t initEditor(void);
-int execBasicScript(void);
-void cleanup(void);
-void reporterror(int);
-int findline(int);
-int line(int);
-void doprint(int);
-void dolet(int);
-void dodim(int);
-int doif(int);
-int dogoto(int);
-int dofor(int);
-int donext(int);
-int doinput(int);
-void dorem(int);
-int dopoke(int);
-void lvalue(LVALUE *);
-int boolexpr(void);
-int boolfactor(void);
-int relop(void);
-double expr(void);
-double term(void);
-double factor(void);
-double instr(void);
-double variable(void);
-double dimvariable(void);
-VARIABLE *findvariable(const char *);
-DIMVAR *finddimvar(const char *);
-DIMVAR *dimension(const char *, int , ...);
-void *getdimvar(DIMVAR *, ...);
-VARIABLE *addfloat(const char *);
-VARIABLE *addstring(const char *);
-DIMVAR *adddimvar(const char *);
-char *stringexpr(void);
-char *chrstring(void);
-char *strstring(void);
-char *leftstring(void);
-char *rightstring(void);
-char *midstring(void);
-char *stringstring(void);
-char *stringdimvar(void);
-char *stringvar(void);
-char *stringliteral(void);
-int integer(double);
-void match(int);
-void seterror(int);
-int getnextline(int);
-int gettoken(const char *);
-int tokenlen(const char *, int);
-int isstring(int);
-double getvalue(const char *, int *);
-void getid(const char *, char *, int *);
-void mystrgrablit(char *, const char *);
-char *mystrend(const char *, char);
-int mystrcount(const char *, char);
-char *mystrdup(const char *);
-char *mystrconcat(const char *, const char *);
-double factorial(double);
-uint32_t app(uint32_t, uint32_t);
+uint32_t           sysmillis(void);
+void               syswait(uint32_t);
+int8_t             getKey(uint32_t);
+int                editorReadKey(void);
+int                getCursorPosition(uint32_t *, uint32_t *);
+int                getWindowSize(int *, int *);
+int                editorInsertRow(int, char *, size_t);
+void               editorFreeRow(erow *);
+void               editorCleanup(void);
+void               editorDelRow(int);
+int                editorRowInsertChar(erow *, int, int);
+int                editorRowAppendString(erow *, char *, size_t);
+int                editorRowDelChar(erow *, int);
+void               editorInsertChar(int);
+int                editorInsertNewline(void);
+int                editorDelChar(void);
+int                editorOpen(char *);
+int                editorSave(char *);
+void               editorList(int, int);
+int                editorBuildScript(void);
+void               abAppend(const char *, int, int);
+int                editorRefreshScreen(void);
+void               editorFind(void) ;
+void               editorMoveCursor(int);
+uint32_t           editorProcessKeypress(void);
+int                editorFileWasModified(void);
+int                editorAddBasicLine(int, char *, size_t);
+uint32_t           initEditor(void);
+int                execBasicScript(void);
+void               cleanup(void);
+void               reporterror(int);
+int                findline(int);
+int                line(int);
+void               doprint(int);
+void               dolet(int);
+void               dodim(int);
+int                doif(int);
+int                dogoto(int);
+int                dofor(int);
+int                donext(int);
+int                doinput(int);
+void               dorem(int);
+int                dopoke(int);
+void               lvalue(LVALUE *);
+int                boolexpr(void);
+int                boolfactor(void);
+int                relop(void);
+double             expr(void);
+double             term(void);
+double             factor(void);
+double             instr(void);
+double             variable(void);
+double             dimvariable(void);
+VARIABLE          *findvariable(const char *);
+DIMVAR            *finddimvar(const char *);
+DIMVAR            *dimension(const char *, int , ...);
+void              *getdimvar(DIMVAR *, ...);
+VARIABLE          *addfloat(const char *);
+VARIABLE          *addstring(const char *);
+DIMVAR            *adddimvar(const char *);
+char              *stringexpr(void);
+char              *chrstring(void);
+char              *strstring(void);
+char              *leftstring(void);
+char              *rightstring(void);
+char              *midstring(void);
+char              *stringstring(void);
+char              *stringdimvar(void);
+char              *stringvar(void);
+char              *stringliteral(void);
+int                integer(double);
+void               match(int);
+void               seterror(int);
+int                getnextline(int);
+int                gettoken(const char *);
+int                tokenlen(const char *, int);
+int                isstring(int);
+double             getvalue(const char *, int *);
+void               getid(const char *, char *, int *);
+void               mystrgrablit(char *, const char *);
+char              *mystrend(const char *, char);
+int                mystrcount(const char *, char);
+char              *mystrdup(const char *);
+char              *mystrconcat(const char *, const char *);
+double             factorial(double);
+uint32_t           app(uint32_t, uint32_t);
+void              *sys_malloc(size_t);            // Allocate memory managed by the OS.
+void              *sys_realloc(void *, size_t);   // Reallocate a block of memory managed by the OS.
+void              *sys_calloc(size_t, size_t);    // Allocate and zero a block of memory managed by the OS.
+void               sys_free(void *);               // Free memory managed by the OS.
 
-// Global scope variables within the ZPUTA memory space.
-extern GLOBALS                  *G;
-extern SOC_CONFIG               *cfgSoC;
 
 #ifdef __cplusplus
 }

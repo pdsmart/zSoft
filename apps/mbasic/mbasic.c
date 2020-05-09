@@ -42,29 +42,21 @@
 
 #if defined(__K64F__)
   #include <stdio.h>
-  #include <stdlib.h>
+  #include <stdint.h>
   #include <string.h>
   #include "k64f_soc.h"
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+  #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
   #include <stdint.h>
+  #include <stdio.h>	    
   #include "zpu_soc.h"
   #include <stdlib.h>
+  #include <stdmisc.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
-#include "diskio.h"
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "xprintf.h"
 #include "utils.h"
 #include <readline.h>
 #include "basic.h"
@@ -77,6 +69,7 @@
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
 //
+#include "app.h"
 #include "mbasic.h"
 
 // Utility functions.
@@ -132,15 +125,31 @@ extern struct editorConfig E;
 //
 void printBasicHelp(void)
 {
-    xprintf("\nMini-Basic %s Help\n", VERSION);
-    xprintf("RUN                     - Execute the basic code.\n");
-    xprintf("EDIT                    - Open the editor for editting the BASIC code.\n");
-    xprintf("LIST [<start>, [<end>]] - List the code.\n");
-    xprintf("NEW                     - Clear program from memory.\n");
-    xprintf("LOAD \"<file>\"           - Load program into memory.\n");
-    xprintf("SAVE \"<file>\"           - Save program to file.\n");
-    xprintf("HELP                    - This help screen.\n");
-    xprintf("QUIT                    - Exit BASIC and return to the OS.\n");
+    printf("\nMini-Basic %s Help\n", VERSION);
+    printf("RUN                     - Execute the basic code.\n");
+    printf("EDIT                    - Open the editor for editting the BASIC code.\n");
+    printf("LIST [<start>, [<end>]] - List the code.\n");
+    printf("NEW                     - Clear program from memory.\n");
+    printf("LOAD \"<file>\"           - Load program into memory.\n");
+    printf("SAVE \"<file>\"           - Save program to file.\n");
+    printf("HELP                    - This help screen.\n");
+    printf("QUIT                    - Exit BASIC and return to the OS.\n");
+}
+
+// A method to access the millisecond counter within the hardware or main OS.
+//
+uint32_t sysmillis(void)
+{
+    uint32_t milliSec;
+
+  #if defined __ZPU__
+    milliSec = (uint32_t)RTC_MILLISECONDS;
+  #elif defined __K64F__
+    milliSec = (uint32_t)*G->millis;
+  #else
+    #error "Target CPU not defined, use __ZPU__ or __K64F__"
+  #endif    
+    return milliSec;
 }
 
 // List out the basic source code, either the full test or from the optional Start and End parameters.
@@ -163,7 +172,7 @@ int listBasicSource(char *params)
     //
     if(endLine < startLine)
     {
-        xprintf("Illegal line range.\n");
+        printf("Illegal line range.\n");
     } else
     {
         // List out the source from the given lines.
@@ -191,7 +200,7 @@ int cmdProcessor()
     char      buf[132];
 
     // Signon.
-    xprintf("Mini-Basic %s\n", VERSION);
+    printf("Mini-Basic %s\n", VERSION);
 
     // Loop until a quit command is given.
     //
@@ -199,7 +208,7 @@ int cmdProcessor()
     {
         // Indicate we are waiting for a command as needed.
         if(ready)
-            xputs("Ready\n");
+            fputs("Ready\n", stdout);
 
         // Get command.
         //
@@ -224,7 +233,7 @@ int cmdProcessor()
                     // Edit the basic program.
                     //
                     case CMD_EDIT:
-                        xsprintf(E.statusmsg, "HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find");
+                        sprintf(E.statusmsg, "HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find");
                         E.statusmsg_time = sysmillis();
                         retCode = 0;
                         while(retCode == 0)
@@ -269,11 +278,11 @@ int cmdProcessor()
                                 editorOpen(fileName);
                             } else
                             {
-                                xprintf("Bad filename, use format \"<file>\" if name contains spaces or just <file> if it doesnt.\n");
+                                printf("Bad filename, use format \"<file>\" if name contains spaces or just <file> if it doesnt.\n");
                             }
                         } else
                         {
-                                xprintf("Current program hasnt been saved, use 'save' to use current filename, \n'save \"<file>\"' to store to <file> or 'new' to delete current program.\n");
+                                printf("Current program hasnt been saved, use 'save' to use current filename, \n'save \"<file>\"' to store to <file> or 'new' to delete current program.\n");
                         }
                         break;
 
@@ -284,7 +293,7 @@ int cmdProcessor()
                         fileName = getStrParam(&paramptr);
                         if(editorSave((fileName != NULL && strlen(fileName) > 0) ? fileName : NULL) == 1)
                         {
-                            xprintf("File save failed, check name, disk space and permissions.\n");
+                            printf("File save failed, check name, disk space and permissions.\n");
                         }
                         break;
 
@@ -304,7 +313,7 @@ int cmdProcessor()
                     // Default case is an error.
                     default:
                         ready=0;
-                        xprintf("Bad Command\n");
+                        printf("Bad Command\n");
                         break;
                 }
                 break;
@@ -325,7 +334,7 @@ int cmdProcessor()
             if(strlen(paramptr) > 0 && *paramptr > 0x1f)
             {
                 ready=0;
-                xprintf("Bad Command\n");
+                printf("Bad Command\n");
             }
         }
     }
@@ -362,10 +371,10 @@ uint32_t app(uint32_t param1, uint32_t param2)
             // Memory exhausted?
             if(retCode == 1)
             {
-                xprintf("Insufficient memory to process this file.\n", pathName);
+                printf("Insufficient memory to process this file.\n");
             } else
             {
-                xprintf("Failed to create or open file:%s\n", pathName);
+                printf("Failed to create or open file:%s\n", pathName);
             }
         }
     }

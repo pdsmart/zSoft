@@ -39,29 +39,21 @@
 
 #if defined(__K64F__)
   #include <stdio.h>
-  #include <stdlib.h>
+  #include <stdint.h>
   #include <string.h>
   #include "k64f_soc.h"
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+  #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
   #include <stdint.h>
+  #include <stdio.h>	    
   #include "zpu_soc.h"
   #include <stdlib.h>
+  #include <stdmisc.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
-#include "diskio.h"
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "xprintf.h"
 #include "utils.h"
 //
 #if defined __ZPUTA__
@@ -72,6 +64,7 @@
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
 //
+#include "app.h"
 #include "fseek.h"
 
 // Utility functions.
@@ -99,16 +92,16 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
     if(G->fileInUse == 0)
     {
-        xputs("No file open, cannot seek.\n");
+        puts("No file open, cannot seek.\n");
     } else
     {
         if (!xatoi(&ptr, &pos))
         {
-            xprintf("Illegal <pos> value.\n");
+            printf("Illegal <pos> value.\n");
         } else
         {
             fr = f_lseek(&G->File[0], pos);
-            if( fr == FR_OK ) { xprintf("fptr = %lu(0x%lX)\n", (DWORD)G->File[0].fptr, (DWORD)G->File[0].fptr); }
+            if( fr == FR_OK ) { printf("fptr = %lu(0x%lX)\n", (DWORD)G->File[0].fptr, (DWORD)G->File[0].fptr); }
         }
     }
 

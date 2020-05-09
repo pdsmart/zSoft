@@ -28,11 +28,13 @@
  * SOFTWARE.
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h> // for memcpy()
 #include "usb_dev.h"
 #include "usb_serial.h"
 #include "core_pins.h" // for yield()
 //#include "HardwareSerial.h"
-#include <string.h> // for memcpy()
 
 // defined by usb_dev.h -> usb_desc.h
 #if defined(CDC_STATUS_INTERFACE) && defined(CDC_DATA_INTERFACE)
@@ -48,6 +50,27 @@ static usb_packet_t *tx_packet=NULL;
 static volatile uint8_t tx_noautoflush=0;
 
 #define TRANSMIT_FLUSH_TIMEOUT	5   /* in milliseconds */
+
+// Stream version of putchar for stdio.
+//
+int usb_uart_putchar(char c, FILE *stream)
+{
+    // Add CR when NL detected.
+    if (c == '\n')
+        usb_uart_putchar('\r', stream);
+
+    // Write out 1 char.
+	usb_serial_write(&c, 1);
+
+    return(0);
+}
+
+// Stream version of getchar for stdio.
+//
+int usb_uart_getchar(FILE *stream)
+{
+    return(usb_serial_getchar());
+}
 
 // get the next character, or -1 if nothing received
 int usb_serial_getchar(void)

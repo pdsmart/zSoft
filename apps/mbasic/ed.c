@@ -43,36 +43,31 @@
 #endif
 
 #if defined(__K64F__)
-  #include <stdio.h>
-  #include <stdlib.h>
-  #include <string.h>
-  #include <unistd.h>
-  #include <ctype.h>
-  #include <stdarg.h>
-  #include <usb_serial.h>
-  #include "k64f_soc.h"
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+  #include    <stdio.h>
+  #include    <string.h>
+  #include    <unistd.h>
+  #include    <stdarg.h>
+  #include    <usb_serial.h>
+  #include    "k64f_soc.h"
+  #include    <ctype.h>
+  #include    <../../libraries/include/stdmisc.h>
+  #undef      stdout
+  #undef      stdin
+  #undef      stderr
+  extern FILE *stdout;
+  extern FILE *stdin;
+  extern FILE *stderr;
 #elif defined(__ZPU__)
-  #include <zstdio.h>
-  #include <zpu-types.h>
-  #include "zpu_soc.h"
-  #include <stdlib.h>
+  #include    <stdint.h>
+  #include    <stdio.h>
+  #include    "zpu_soc.h"
+  #include    <stdlib.h>
 #else
-  #error "Target CPU not defined, use __ZPU__ or __K64F__"
+  #error      "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
-#include "diskio.h"
 #include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "xprintf.h"
-#include <umm_malloc.h>
 #include "utils.h"
 //
 #if defined __ZPUTA__
@@ -85,29 +80,14 @@
 //
 #include "mbasic.h"
 
+
+
 // Globals needed by ed.
 struct editorConfig E;
 
 // Externals from the BASIC interpreter module.
 extern LINE *lines;
 extern int  nlines;
-
-
-// A method to access the millisecond counter within the hardware or main OS.
-//
-uint32_t sysmillis(void)
-{
-    uint32_t milliSec;
-
-  #if defined __ZPU__
-    milliSec = (uint32_t)RTC_MILLISECONDS;
-  #elif defined __K64F__
-    milliSec = (uint32_t)*G->millis;
-  #else
-    #error "Target CPU not defined, use __ZPU__ or __K64F__"
-  #endif    
-    return milliSec;
-}
 
 // Simple method to create a local delay timer not dependent on system libraries.
 //
@@ -217,15 +197,15 @@ int getCursorPosition(uint32_t *rows, uint32_t *cols)
 
     // Save cursor position.
     //
-    xprintf("%c%c", 0x1b, '7');
+    printf("%c%c", 0x1b, '7');
 
     // Cursor to maximum X/Y location, report cursor location
     //
-    xputs("\x1b[0;0H");
+    fputs("\x1b[0;0H", stdout);
     syswait(10);
-    xputs("\x1b[999;999H");
+    fputs("\x1b[999;999H", stdout);
     syswait(10);
-    xputs("\x1b[6n");
+    fputs("\x1b[6n", stdout);
 
     // Read the response: ESC [ rows ; cols R
     //
@@ -250,7 +230,7 @@ int getCursorPosition(uint32_t *rows, uint32_t *cols)
 
     // Restore cursor.
     //
-    xprintf("%c%c", 0x1b, '8');
+    printf("%c%c", 0x1b, '8');
     return 0;
 }
 
@@ -284,8 +264,8 @@ int editorInsertRow(int at, char *s, size_t len)
 
     if (at > E.numrows) return 0;
 
-    E.row = realloc(E.row,sizeof(erow)*(E.numrows+1));
-    if(E.row == NULL) { xprintf("editorInsertRow: Memory exhausted\n"); return 1; }
+    E.row = sys_realloc(E.row,sizeof(erow)*(E.numrows+1));
+    if(E.row == NULL) { printf("editorInsertRow: Memory exhausted\n"); return 1; }
 
     if (at != E.numrows)
     {
@@ -294,8 +274,8 @@ int editorInsertRow(int at, char *s, size_t len)
     }
 
     E.row[at].size = len;
-    E.row[at].chars = malloc(len+1);
-    if(E.row[at].chars == NULL) { xprintf("editorInsertRow: Memory exhausted\n"); return 1; }
+    E.row[at].chars = sys_malloc(len+1);
+    if(E.row[at].chars == NULL) { printf("editorInsertRow: Memory exhausted\n"); return 1; }
     memcpy(E.row[at].chars,s,len+1);
     E.row[at].idx = at;
     E.numrows++;
@@ -308,7 +288,7 @@ void editorFreeRow(erow *row)
 {
     if(row->chars != NULL)
     {
-        free(row->chars);
+        sys_free(row->chars);
         row->chars = NULL;
     }
 }
@@ -325,18 +305,18 @@ void editorCleanup(void)
     {
         if(E.row[idx].chars != NULL)
         {
-            free(E.row[idx].chars);
+            sys_free(E.row[idx].chars);
         }
     }
 
     // Free the editor config structure.
     if(E.row)
-        free(E.row);
+        sys_free(E.row);
 
     // Free the BASIC script memory if used.
     //
     if(lines)
-        free(lines);
+        sys_free(lines);
 
     // Reset necessary variables.
     E.cx = 0;
@@ -380,8 +360,8 @@ int editorRowInsertChar(erow *row, int at, int c)
 
         /* In the next line +2 means: new char and null term.
         */
-        row->chars = realloc(row->chars,row->size+padlen+2);
-        if(row->chars == NULL) { xprintf("editorRowInsertChar: Memory exhausted\n"); return 1; }
+        row->chars = sys_realloc(row->chars,row->size+padlen+2);
+        if(row->chars == NULL) { printf("editorRowInsertChar: Memory exhausted\n"); return 1; }
         memset(row->chars+row->size,' ',padlen);
         row->chars[row->size+padlen+1] = '\0';
         row->size += padlen+1;
@@ -389,8 +369,8 @@ int editorRowInsertChar(erow *row, int at, int c)
         /* If we are in the middle of the string just make space for 1 new
          * char plus the (already existing) null term.
         */
-        row->chars = realloc(row->chars,row->size+2);
-        if(row->chars == NULL) { xprintf("editorRowInsertChar: Memory exhausted\n"); return 1; }
+        row->chars = sys_realloc(row->chars,row->size+2);
+        if(row->chars == NULL) { printf("editorRowInsertChar: Memory exhausted\n"); return 1; }
         memmove(row->chars+at+1,row->chars+at,row->size-at+1);
         row->size++;
     }
@@ -403,8 +383,8 @@ int editorRowInsertChar(erow *row, int at, int c)
 /* Append the string 's' at the end of a row */
 int editorRowAppendString(erow *row, char *s, size_t len)
 {
-    row->chars = realloc(row->chars,row->size+len+1);
-    if(row->chars == NULL) { xprintf("editorRowAppendString: Memory exhausted\n"); return 1; }
+    row->chars = sys_realloc(row->chars,row->size+len+1);
+    if(row->chars == NULL) { printf("editorRowAppendString: Memory exhausted\n"); return 1; }
     memcpy(row->chars+row->size,s,len);
 
     row->size += len;
@@ -551,7 +531,7 @@ int editorOpen(char *filename)
     fr = f_open(&fp, filename, FA_OPEN_ALWAYS | FA_READ);
     if(fr)
     {
-        xprintf("Failed to open file:%s\n", filename);
+        printf("Failed to open file:%s\n", filename);
         return 2;
     }
 
@@ -565,7 +545,7 @@ int editorOpen(char *filename)
     fr = f_lseek(&fp, 0);
     if(fr)
     {
-        xprintf("Failed to rewind file:%s\n", filename);
+        printf("Failed to rewind file:%s\n", filename);
         return 3;
     }
 
@@ -575,8 +555,9 @@ int editorOpen(char *filename)
     {
         // Allocate memory for the row array.
         //
-        E.row = realloc(E.row,sizeof(erow)*(E.numrows));
-        if(E.row == NULL) { xprintf("editorOpen: Memory exhausted\n"); return 1; }
+        E.row = sys_malloc(sizeof(erow)*(E.numrows));
+        if(E.row == NULL) { printf("editorOpen: Memory exhausted\n"); return 1; }
+	memset(E.row, '\0', sizeof(erow)*(E.numrows));
 
         // Now go through the file again and populate each row with the data.
         //
@@ -588,8 +569,8 @@ int editorOpen(char *filename)
                 buf[--linelen] = '\0';
 
             E.row[rowNo].size = linelen;
-            E.row[rowNo].chars = malloc(linelen+1);
-            if(E.row[rowNo].chars == NULL) { xprintf("editorOpen: Memory exhausted\n"); return 1; }
+            E.row[rowNo].chars = sys_malloc(linelen+1);
+            if(E.row[rowNo].chars == NULL) { printf("editorOpen: Memory exhausted\n"); return 1; }
             memcpy(E.row[rowNo].chars, buf, linelen+1);
             E.row[rowNo].idx = rowNo;
             rowNo++;
@@ -614,7 +595,7 @@ int editorSave(char *newFileName)
     fr = f_open(&fp, (newFileName == NULL ? E.filename : newFileName), FA_OPEN_ALWAYS | FA_WRITE | FA_READ);
     if(fr)
     {
-        xsprintf(E.statusmsg, "Failed to open file:%s\n", (newFileName == NULL ? E.filename : newFileName));
+        sprintf(E.statusmsg, "Failed to open file:%s\n", (newFileName == NULL ? E.filename : newFileName));
         E.statusmsg_time = sysmillis();
         return 1;
     }
@@ -638,13 +619,13 @@ int editorSave(char *newFileName)
     f_close(&fp);
 
     E.dirty = 0;
-    xsprintf(E.statusmsg, "%d bytes written on disk", totlen);
+    sprintf(E.statusmsg, "%d bytes written on disk", totlen);
     E.statusmsg_time = sysmillis();
     return 0;
 
 writeerr:
     f_close(&fp);
-    xsprintf(E.statusmsg, "Can't save! I/O error");
+    sprintf(E.statusmsg, "Can't save! I/O error");
     E.statusmsg_time = sysmillis();
     return 1;
 }
@@ -708,8 +689,8 @@ void editorList(int startLine, int endLine)
     {
         if((startLine == -1 || (startLine != -1 && lines[idx].no >= startLine)) && (endLine == -1 || (endLine != -1 && lines[idx].no <= endLine)))
         {
-            xputs(lines[idx].str);
-            xputc('\n');
+            fputs(lines[idx].str, stdout);
+            fputc('\n', stdout);
         }
     }
     return;
@@ -733,10 +714,10 @@ int editorBuildScript(void)
 
     // Allocate memory for the basic lines array.
     //
-    lines = realloc(lines, E.numrows * sizeof(LINE));
+    lines = sys_realloc(lines, E.numrows * sizeof(LINE));
     if(lines == NULL)
     {
-        xprintf("Out of memory converting editor buffer to BASIC script.\n");
+        printf("Out of memory converting editor buffer to BASIC script.\n");
         return(1);
     }
 
@@ -759,7 +740,7 @@ int editorBuildScript(void)
             nlines++;
         } else if(strlen(paramptr) > 0)
         {
-            xprintf("Syntax error on line:%s\n", E.row[idx].chars);
+            printf("Syntax error on line:%s\n", E.row[idx].chars);
             return(3);
         }
     }
@@ -770,7 +751,7 @@ int editorBuildScript(void)
     {
         if(lines[idx].no <= lines[idx-1].no)
         {
-          xprintf("Program lines %d and %d not in order\n", lines[idx-1].no, lines[idx].no);
+          printf("Program lines %d and %d not in order\n", lines[idx-1].no, lines[idx].no);
           return(4);
         }
     }
@@ -800,10 +781,10 @@ void abAppend(const char *s, int len, int flush)
     // First call, allocate memory for the buffer.
     if(ab == NULL)
     {
-        ab = malloc(sizeof(struct abuf));
-        if(ab == NULL) { xprintf("abAppend: Memory exhausted\n"); return; }
-        ab->b = malloc(MAX_APPEND_BUFSIZE);
-        if(ab->b == NULL) { xprintf("abAppend: Memory exhausted\n"); return; }
+        ab = sys_malloc(sizeof(struct abuf));
+        if(ab == NULL) { printf("abAppend: Memory exhausted\n"); return; }
+        ab->b = sys_malloc(MAX_APPEND_BUFSIZE);
+        if(ab->b == NULL) { printf("abAppend: Memory exhausted\n"); return; }
         ab->len = 0;
     }
 
@@ -812,14 +793,14 @@ void abAppend(const char *s, int len, int flush)
     {
         const char *ptr = ab->b;
         for(ptr=ab->b; ptr < ab->b+ab->len; ptr++)
-            xputc(*ptr);
+            fputc(*ptr, stdout);
 
         // If we are flushing then write out the additional data passed in to the method.
         //
         if(flush)
         {
             for(ptr=s; ptr < s+len; ptr++)
-            xputc(*ptr);
+            fputc(*ptr, stdout);
 
         }
         ab->len = 0;
@@ -835,8 +816,8 @@ void abAppend(const char *s, int len, int flush)
     {
         // On flush we free up the memory, extra cycles in alloc and free but keeps the heap balanced and no memory leaks when we exit.
         //
-        free(ab->b);
-        free(ab);
+        sys_free(ab->b);
+        sys_free(ab);
         ab = NULL;
     }
 }
@@ -861,7 +842,7 @@ int editorRefreshScreen(void)
             if (E.numrows == 0 && y == E.screenrows/3)
             {
                 char welcome[80];
-                xsprintf(welcome, "Ed(itor) -- version %s\x1b[0K\r\n", ED_VERSION);
+                sprintf(welcome, "Ed(itor) -- version %s\x1b[0K\r\n", ED_VERSION);
                 int welcomelen = strlen(welcome);
                 int padding = (E.screencols-welcomelen)/2;
                 if (padding)
@@ -918,9 +899,9 @@ int editorRefreshScreen(void)
     abAppend("\x1b[0K",4, 0);
     abAppend("\x1b[7m",4, 0);
     char status[80], rstatus[80];
-    xsprintf(status, "%-20s - %d lines %s", E.filename, E.numrows, E.dirty > 0  ? "(modified)" : "");
+    sprintf(status, "%-20s - %d lines %s", E.filename, E.numrows, E.dirty > 0  ? "(modified)" : "");
     int len = strlen(status);
-    xsprintf(rstatus, "%d/%d",E.rowoff+E.cy+1,E.numrows);
+    sprintf(rstatus, "%d/%d",E.rowoff+E.cy+1,E.numrows);
     int rlen = strlen(rstatus);
     if (len > E.screencols) len = E.screencols;
     abAppend(status,len, 0);
@@ -957,7 +938,7 @@ int editorRefreshScreen(void)
             cx++;
         }
     }
-    xsprintf(buf,"\x1b[%d;%dH",E.cy+1,cx);
+    sprintf(buf,"\x1b[%d;%dH",E.cy+1,cx);
     abAppend(buf,strlen(buf), 0);
 
     /* Show cursor and Flush to complete.
@@ -981,7 +962,7 @@ void editorFind(void) {
 
     while(1)
     {
-        xsprintf(E.statusmsg, "Search: %s (Use ESC/Arrows/Enter)", query);
+        sprintf(E.statusmsg, "Search: %s (Use ESC/Arrows/Enter)", query);
         E.statusmsg_time = sysmillis();
         editorRefreshScreen();
 
@@ -994,7 +975,7 @@ void editorFind(void) {
                 E.cx = saved_cx; E.cy = saved_cy;
                 E.coloff = saved_coloff; E.rowoff = saved_rowoff;
             }
-            xsprintf(E.statusmsg, "");
+	    E.statusmsg[0] = '\0';
             E.statusmsg_time = sysmillis();
             return;
         } else if (c == ARROW_RIGHT || c == ARROW_DOWN) {
@@ -1179,7 +1160,7 @@ uint32_t editorProcessKeypress(void)
             */
             if (E.dirty > 0 && quit_times > 0)
             {
-                xsprintf(E.statusmsg, "WARNING!!! File has unsaved changes. Press Ctrl-Q %d more times to quit.", quit_times);
+                sprintf(E.statusmsg, "WARNING!!! File has unsaved changes. Press Ctrl-Q %d more times to quit.", quit_times);
                 E.statusmsg_time = sysmillis();
                 quit_times--;
             }
@@ -1189,8 +1170,8 @@ uint32_t editorProcessKeypress(void)
                 cySave = E.cy;
                 E.cy = E.screenrows-1;
                 lastLine = editorRefreshScreen();
-                xprintf("\x1b[%03d;%03dH", (lastLine == -1 ? E.screenrows-1 : lastLine+1), 1);
-                xputs("\x1b[0J");
+                printf("\x1b[%03d;%03dH", (lastLine == -1 ? E.screenrows-1 : lastLine+1), 1);
+                fputs("\x1b[0J", stdout);
 
                 // Restore the cursor so it opens in the same place when edit is restarted.
                 E.cx = cxSave;
@@ -1271,7 +1252,7 @@ uint32_t initEditor(void)
     E.filename = NULL;
     if (getWindowSize(&E.screenrows,&E.screencols) == -1)
     {
-        xprintf("Unable to query the screen for size (columns / rows)");
+        printf("Unable to query the screen for size (columns / rows)");
         return(1);
     }
     E.screenrows -= 2; /* Get room for status bar. */

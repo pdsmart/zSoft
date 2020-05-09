@@ -39,13 +39,14 @@ APP_NAME       = help
 APP_DIR        = ..
 BASEDIR        = ../../..
 
-# Enable CoreMark Test
-OFLAGS        += -DCOREMARK_TEST
-# Enable Dhrystone Test
-OFLAGS        += -DDHRYSTONE_TEST
+ifeq ($(__K64F__),1)
+  LIBS         = -lumansi-k64f
+else
+  LIBS         =
+endif
 
 ifeq ($(__K64F__),1)
-include        $(APP_DIR)/Makefile.k64f
+  include      $(APP_DIR)/Makefile.k64f
 else
-include        $(APP_DIR)/Makefile.zpu
+  include      $(APP_DIR)/Makefile.zpu
 endif

@@ -39,29 +39,21 @@
 
 #if defined(__K64F__)
   #include <stdio.h>
-  #include <stdlib.h>
+  #include <stdint.h>
   #include <string.h>
   #include "k64f_soc.h"
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+  #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
   #include <stdint.h>
+  #include <stdio.h>	    
   #include "zpu_soc.h"
   #include <stdlib.h>
+  #include <stdmisc.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
-#include "diskio.h"
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "xprintf.h"
 #include "utils.h"
 //
 #if defined __ZPUTA__
@@ -72,6 +64,7 @@
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
 //
+#include "app.h"
 #include "ht.h"
 
 // Utility functions.
@@ -95,38 +88,38 @@ uint32_t app(uint32_t param1, uint32_t param2)
   #if defined __ZPU__
     char      *ptr = (char *)param1;
 
-    xputs("Testing RTC & Up/Down Timers\n");
+    puts("Testing RTC & Up/Down Timers\n");
     TIMER_MILLISECONDS_UP = 60000;
-xputs("Timer Set\n");
+puts("Timer Set\n");
     while(getserial_nonblocking() == -1)
     {
-xputs("While loop\n");
+puts("While loop\n");
         if(TIMER_MICROSECONDS_DOWN == 0)
         {
             TIMER_MICROSECONDS_DOWN = 10000000;
-            xputs("\r\nuSec down counter expired.\n");
+            puts("\r\nuSec down counter expired.\n");
         }
         if(TIMER_MILLISECONDS_DOWN == 0)
         {
             TIMER_MILLISECONDS_DOWN = 60000;
-            xputs("\r\nmSec down counter expired.\n");
+            puts("\r\nmSec down counter expired.\n");
         }
         if(TIMER_SECONDS_DOWN == 0)
         {
             TIMER_SECONDS_DOWN = 60;
-            xputs("\r\nSecond down counter expired.\n");
+            puts("\r\nSecond down counter expired.\n");
         }
         if(TIMER_MILLISECONDS_UP == 60000)
         {
             TIMER_MILLISECONDS_UP = 0;
-            xputs("\r\nmSec up counter expired.\n");
+            puts("\r\nmSec up counter expired.\n");
         }
 
-        xprintf("%02d/%02d/%02d %02d:%02d:%02d.%03d%03d %10lu %10lu %10lu %10lu\r", RTC_YEAR, RTC_MONTH, RTC_DAY, RTC_HOUR, RTC_MINUTE, RTC_SECOND, RTC_MILLISECONDS, RTC_MICROSECONDS, TIMER_MICROSECONDS_DOWN, TIMER_MILLISECONDS_DOWN, TIMER_SECONDS_DOWN, TIMER_MILLISECONDS_UP);
+        printf("%02d/%02d/%02d %02d:%02d:%02d.%03d%03d %10lu %10lu %10lu %10lu\r", RTC_YEAR, RTC_MONTH, RTC_DAY, RTC_HOUR, RTC_MINUTE, RTC_SECOND, RTC_MILLISECONDS, RTC_MICROSECONDS, TIMER_MICROSECONDS_DOWN, TIMER_MILLISECONDS_DOWN, TIMER_SECONDS_DOWN, TIMER_MILLISECONDS_UP);
     }
-    xputs("\n");
+    puts("\n");
  #elif defined __K64F__
-    xputs("This application only works on the ZPU processor.\n");
+    puts("This application only works on the ZPU processor.\n");
   #else
     #error "Target CPU not defined, use __ZPU__ or __K64F__"
   #endif

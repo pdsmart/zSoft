@@ -245,7 +245,7 @@ APP_LEN=0x02000;
 APP_BOOTLEN=0x20;                 # Fixed size as this is the jump table to make calls within ZPUTA.
 APP_HEAP_SIZE=0x1000;
 APP_STACK_SIZE=0x400;
-OS_HEAP_SIZE=0x2000;
+OS_HEAP_SIZE=0x4000;
 OS_STACK_SIZE=0x1000;
 OSVER=2;
 
@@ -482,7 +482,7 @@ else
 
     # Calculate the heap, stack and RAM start address vars.
     OS_RAM_ENDADDR=0x20030000
-    OS_RAM_MASK=0x2002F000
+    OS_RAM_MASK=0x3FFFF000
     OS_RAM_OSMEM=0x004000
     subHex ${OS_RAM_ENDADDR} 8                    OS_STACK_ENDADDR
     subHex ${OS_RAM_ENDADDR} ${OS_STACK_SIZE}     OS_STACK_STARTADDR

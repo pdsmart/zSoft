@@ -10,15 +10,20 @@ extern "C" {
 // Method to direct output to stdout or stddebug.
 void set_serial_output(uint8_t);
 
-int    putchar(int);
-void   _putchar(unsigned char);
+int    _putchar(unsigned char);
 int    dbgputchar(int);
 void   _dbgputchar(unsigned char);
-int    puts(const char *);
+int    uart_puts(const char *);
 char   getserial();
 char   getdbgserial();
 int8_t getserial_nonblocking();
 int8_t getdbgserial_nonblocking();
+
+// Only bring in stream functions for stdio.h
+#if !defined(FUNCTIONALITY)
+int    uart_putchar(char, FILE *);
+int    uart_getchar(FILE *);
+#endif
 
 // Macros to put breadcrumbs out to the screen, for reference and debugging purposes.
 #define breadcrumb(x)     UART_DATA(UART0)=x;
@@ -38,7 +43,7 @@ int8_t getdbgserial_nonblocking();
                })
     #define dbg_puts(a) ({\
                 set_serial_output(1);\
-                puts(a);\
+                uart_puts(a);\
                 set_serial_output(0);\
                })
     #define dbg_breadcrumb(x) UART_DATA(UART1)=x;

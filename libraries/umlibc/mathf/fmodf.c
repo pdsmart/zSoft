@@ -1,6 +1,9 @@
 #include "math.h"
 #include "errno.h"
 
+#define isnan(__x) (__builtin_isnan (__x))
+extern int finite(double);
+
 double fmodf(double x, double y)
 {
 	int ir,iy;

@@ -37,16 +37,17 @@
 
 
 #if defined __K64F__
-    #include <stdlib.h>
-    #include <string.h>
-    #define uint32_t __uint32_t
-    #define uint16_t __uint16_t
-    #define uint8_t  __uint8_t
-    #define int32_t  __int32_t
-    #define int16_t  __int16_t
-    #define int8_t   __int8_t
+  #include <stdlib.h>
+  #include <string.h>
+  #define uint32_t __uint32_t
+  #define uint16_t __uint16_t
+  #define uint8_t  __uint8_t
+  #define int32_t  __int32_t
+  #define int16_t  __int16_t
+  #define int8_t   __int8_t
 #else
-    #include <zpu-types.h>
+  #include <stdint.h>
+  #include <stdio.h>
 #endif
 
 #include "zpu_soc.h"

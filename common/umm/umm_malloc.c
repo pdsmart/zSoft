@@ -42,20 +42,13 @@
   #include <stdint.h>
   #include <stdio.h>
   #include <string.h>
-#include <ctype.h>
-//  #define uint32_t __uint32_t
-//  #define uint16_t __uint16_t
-//  #define uint8_t  __uint8_t
-//  #define int32_t  __int32_t
-//  #define int16_t  __int16_t
-//  #define int8_t   __int8_t
+  #include <ctype.h>
 #elif defined(__ZPU__)
   #include <stdint.h>
   #include <stdlib.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
-#include <xprintf.h>
 
 #include "umm_malloc_cfg.h"   /* user-dependent */
 #include "umm_malloc.h"
@@ -70,6 +63,7 @@
 #define umm_free    free
 #define umm_malloc  malloc
 #define umm_realloc realloc
+#define umm_calloc  calloc
 /* ------------------------------------------------------------------------- */
 
 UMM_H_ATTPACKPRE typedef struct umm_ptr_t {

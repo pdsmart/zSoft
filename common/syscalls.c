@@ -12,7 +12,7 @@
 #define SYS_ftruncate 3000
 #define SYS_isatty 3001
 
-#define outbyte  xputc
+#define outbyte  putchar
 #define inbyte   getserial
 
 /* Set to 1 if we are running on hardware. The config instruction is 
@@ -69,7 +69,7 @@ void __attribute__ ((weak)) _premain()
     ctors=&__ctors_start__;
     while(ctors<&__ctors_end__)
     {
-        xprintf(".");
+        printf(".");
         void (*fp)();
         fp=(void (*)())(*ctors);
         fp();

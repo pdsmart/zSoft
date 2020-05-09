@@ -49,6 +49,9 @@ Boston, MA 02111-1307, USA.  */
 # offset 0x0000 0000
         .global _start
 _start:
+        im  _stack                  ; Set stack address.
+        popsp
+        ;
         jmp _premain
 
         .balign 32,0
@@ -803,18 +806,18 @@ _callpcrel:
         ; putc and xprint calls
         ;
         jmp     __putchar
-        jmp     _xputc
-        jmp     _xfputc
-        jmp     _xputs
-        jmp     _xgets
-        jmp     _xfgets
-        jmp     _xfputs
+       ;jmp     _putc
+        jmp     _fputc
+        jmp     _puts
+        jmp     _gets
+        jmp     _fgets
+        jmp     _fputs
         jmp     _xatoi
         jmp     _uxatoi
-        jmp     _xprintf
-        jmp     _xvprintf
-        jmp     _xsprintf
-        jmp     _xfprintf
+        jmp     _printf
+       ;jmp     _xvprintf
+        jmp     _sprintf
+        jmp     _fprintf
         ;
         ; getc calls
         ;
@@ -879,6 +882,13 @@ _callpcrel:
         jmp     _set_serial_output
        ;jmp     _printBytesPerSec
         jmp     _printFSCode
+        ;
+        ; Memory management under OS control.
+        ;
+        jmp     _malloc
+        jmp     _realloc
+        jmp     _calloc
+        jmp     _free
 
         ;--------------------------------
         ; End of ZPUTA API
@@ -905,18 +915,18 @@ _break:
         ; putc and xprint calls
         ;
         defapi  _putchar
-        defapi  xputc
-        defapi  xfputc
-        defapi  xputs
-        defapi  xgets
-        defapi  xfgets
-        defapi  xfputs
+       ;defapi  putc
+        defapi  fputc
+        defapi  puts
+        defapi  gets
+        defapi  fgets
+        defapi  fputs
         defapi  xatoi
         defapi  uxatoi
-        defapi  xprintf
-        defapi  xvprintf
-        defapi  xsprintf
-        defapi  xfprintf
+        defapi  printf
+       ;defapi  xvprintf
+        defapi  sprintf
+        defapi  fprintf
         ;
         ; getc calls
         ;
@@ -981,6 +991,13 @@ _break:
         defapi  set_serial_output
        ;defapi  printBytesPerSec
         defapi  printFSCode
+        ;
+        ; Memory management by OS.
+        ;
+        defapi  malloc
+        defapi  realloc
+        defapi  calloc
+        defapi  free
 
 ;       .global _boot
 ;_boot:
@@ -1065,27 +1082,27 @@ _restart:
 _premain:
         ;    clear BSS data, then call main.
 
-        im __bss_start__    ; bssptr
+        im __bss_start__                          ; bssptr
 .clearloop:
-        loadsp 0            ; bssptr bssptr 
-        im __bss_end__        ; __bss_end__  bssptr bssptr
-        ulessthanorequal    ; (bssptr<=__bss_end__?) bssptr
-        impcrel .done        ; &.done (bssptr<=__bss_end__?) bssptr
-        neqbranch            ; bssptr
-        im 0                ; 0 bssptr
-        loadsp 4            ; bssptr 0 bssptr
-        loadsp 0            ; bssptr bssptr 0 bssptr
-        im 4                ; 4 bssptr bssptr 0 bssptr
-        add                    ; bssptr+4 bssptr 0 bssptr
-        storesp 12            ; bssptr 0 bssptr+4
-        store                ; (write 0->bssptr)  bssptr+4
-        im .clearloop        ; &.clearloop bssptr+4
-        poppc                ; bssptr+4
+        loadsp 0                                  ; bssptr bssptr 
+        im __bss_end__                            ; __bss_end__  bssptr bssptr
+        ulessthanorequal                          ; (bssptr<=__bss_end__?) bssptr
+        impcrel .done                             ; &.done (bssptr<=__bss_end__?) bssptr
+        neqbranch                                 ; bssptr
+        im 0                                      ; 0 bssptr
+        loadsp 4                                  ; bssptr 0 bssptr
+        loadsp 0                                  ; bssptr bssptr 0 bssptr
+        im 4                                      ; 4 bssptr bssptr 0 bssptr
+        add                                       ; bssptr+4 bssptr 0 bssptr
+        storesp 12                                ; bssptr 0 bssptr+4
+        store                                     ; (write 0->bssptr)  bssptr+4
+        im .clearloop                             ; &.clearloop bssptr+4
+        poppc                                     ; bssptr+4
 .done:
-        im _break            ; &_break bssptr+4
-        storesp 4            ; &_break
-        im main                ; &main &break
-        poppc                ; &break
+        im _break                                 ; &_break bssptr+4
+        storesp 4                                 ; &_break
+        im main                                   ; &main &break
+        poppc                                     ; &break
 
         
         .section ".rodata"
@@ -1103,4 +1120,4 @@ _memreg:
         .long 0
         .long 0
         .long 0
-        .long 0    
+        .long 0

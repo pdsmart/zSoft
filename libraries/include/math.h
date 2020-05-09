@@ -28,6 +28,9 @@
 #define iPI         0.3183098862
 #define iTWO_PI     0.1591549431
 #define TWO_O_PI    0.6366197724
+#ifndef RAND_MAX
+#define	RAND_MAX 0x7FFF
+#endif
 
 // EPS=B**(-t/2), where B is the radix of the floating-point representation
 // and there are t base-B digits in the significand.  Therefore, for floats
@@ -93,6 +96,7 @@ float ldexpf(const float x, const int pw2);
 float ceilf(float x) _FLOAT_FUNC_REENTRANT;
 float floorf(float x) _FLOAT_FUNC_REENTRANT;
 float modff(float x, float * y);
+
 
 long random( void );
 

@@ -45,28 +45,39 @@
 #endif
 
 #if defined __K64F__
-    #include <stdlib.h>
-    #include <string.h>
-    #include <stdint.h>
-    #include <WProgram.h>
-    #include <usb_serial.h>
-    #define uint32_t __uint32_t
-    #define uint16_t __uint16_t
-    #define uint8_t  __uint8_t
-    #define int32_t  __int32_t
-    #define int16_t  __int16_t
-    #define int8_t   __int8_t
+  #include    <stdio.h>
+  #include    <string.h>
+  #include    <stdint.h>
+  #include    <../libraries/include/stdmisc.h>
 #else
-    #include <stdint.h>
+  #include    <stdmisc.h>
+  #include    <stdint.h>
 #endif
 
 #if defined __SD_CARD__
-    #include <ff.h>
+  #include    <ff.h>
 #endif
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <xprintf.h>
+#include      <stdlib.h>
+#include      <stdbool.h>
+#include      <stddef.h>
+
+#if defined __APP__ && defined __K64F__
+  #undef      stdin
+  #undef      stdout
+  #undef      stderr
+  #define     malloc     sys_malloc
+  #define     realloc    sys_realloc
+  #define     calloc     sys_calloc
+  #define     free       sys_free
+  extern FILE *stdout;
+  extern FILE *stdin;
+  extern FILE *stderr;
+  void        *sys_malloc(size_t);            // Allocate memory managed by the OS.
+  void        *sys_realloc(void *, size_t);   // Reallocate a block of memory managed by the OS.
+  void        *sys_calloc(size_t, size_t);    // Allocate and zero a block of memory managed by the OS.
+  void        sys_free(void *);               // Free memory managed by the OS.
+#endif
 
 // List of local commands processed by readline.
 #define CMD_HISTORY        0x01
@@ -254,6 +265,7 @@ static bool next_char (enum keytype *type, uint8_t *val)
     // Process all available bytes from the serial port.
     do {
      #if defined __K64F__
+	 int usb_serial_getchar(void);
          keyIn = usb_serial_getchar();
      #elif defined __ZPU__
          keyIn = getserial_nonblocking();
@@ -296,12 +308,12 @@ void refreshLine(uint8_t *line, uint8_t llen, uint8_t *lpos)
 {
     while (*lpos)
     {
-        xputc('\b');
-        xputc(' ');
-        xputc('\b');
+        fputc('\b', stdout);
+        fputc(' ',  stdout);
+        fputc('\b', stdout);
         (*lpos)--;
     }
-    xputs((char *)line);
+    printf((char *)line);
     *lpos = llen;
     return;
 }
@@ -401,7 +413,7 @@ void cmdPrintHistory(void)
                     buf[bytes]  = 0x0;
 
                     // Print it out.
-                    xprintf("%04d  %s\n", lineCnt++, buf);
+                    printf("%04lu  %s\n", lineCnt++, buf);
                 }
             }
         } while(bytes != -1);
@@ -443,7 +455,7 @@ uint8_t cmdRecallHistory(uint8_t *line, uint8_t *llen, uint32_t lineNo)
         fr = f_lseek(histFp, f_size(histFp));
         if(fr)
         {
-            xputs("Failed to reset the history file to EOF.\n");
+            printf("Failed to reset the history file to EOF.");
         }
 
         if(lineNo == lineCnt)
@@ -534,7 +546,7 @@ uint8_t *readline (uint8_t *line, int lineSize, const char *histFile)
             fr = f_open(histFp, histFile, FA_OPEN_ALWAYS | FA_WRITE | FA_READ);
             if(fr != FR_OK)
             {
-                xprintf("Cannot open/create history file, disabling.\n");
+                printf("Cannot open/create history file, disabling.\n");
             } else
             {
                 // Simply loop from start to end adding to buffer, if the file history is larger than the memory buffer we just loop round.
@@ -598,11 +610,11 @@ uint8_t *readline (uint8_t *line, int lineSize, const char *histFile)
     
                 // Paint new string:
                 for (i = lpos - 1; i < llen; i++)
-                    xputc(line[i]);
+                    fputc(line[i], stdout);
     
                 // Backtrack to current position:
                 for (i = lpos; i < llen; i++)
-                    xputc('\b');
+                    fputc('\b', stdout);
     
                 break;
 
@@ -626,25 +638,25 @@ uint8_t *readline (uint8_t *line, int lineSize, const char *histFile)
                 llen--;
                 lpos--;
     
-                xputc('\b');
+                fputc('\b', stdout);
     
                 // Move characters one over to the left:
                 for (i = lpos; i < llen; i++) {
                     line[i] = line[i + 1];
-                    xputc(line[i]);
+                    fputc(line[i], stdout);
                 }
-                xputc(' ');
+                fputc(' ', stdout);
     
                 // Backtrack to current position:
                 for (i = lpos; i <= llen; i++)
-                    xputc('\b');
+                    fputc('\b', stdout);
     
                 break;
     
             case KEY_ENTER:
                 // Null-terminate the line and return pointer:
                 line[llen] = '\0';
-                xputc('\n');
+                fputc('\n', stdout);
     
                 // See if this is a local readline command, if so process otherwise return buffer to caller.
                 if(localCommand(line, &llen) == 0)
@@ -666,7 +678,7 @@ uint8_t *readline (uint8_t *line, int lineSize, const char *histFile)
             case KEY_CTRL_A:
             case KEY_HOME:
                 while (lpos) {
-                    xputc('\b');
+                    fputc('\b', stdout);
                     lpos--;
                 }
                 break;
@@ -681,13 +693,13 @@ uint8_t *readline (uint8_t *line, int lineSize, const char *histFile)
                 // Move characters one over to the left:
                 for (i = lpos; i < llen; i++) {
                     line[i] = line[i + 1];
-                    xputc(line[i]);
+                    fputc(line[i], stdout);
                 }
-                xputc(' ');
+                fputc(' ', stdout);
     
                 // Backtrack to current position:
                 for (i = lpos; i <= llen; i++)
-                    xputc('\b');
+                    fputc('\b', stdout);
     
                 break;
 
@@ -697,7 +709,7 @@ uint8_t *readline (uint8_t *line, int lineSize, const char *histFile)
             case KEY_CTRL_E:
             case KEY_END:
                 while (lpos < llen)
-                    xputc(line[lpos++]);
+                    fputc(line[lpos++], stdout);
                 break;
     
             case KEY_PGUP:
@@ -766,7 +778,7 @@ uint8_t *readline (uint8_t *line, int lineSize, const char *histFile)
             case KEY_CTRL_F:
             case KEY_ARROWRT:
                 if (lpos < llen)
-                    xputc(line[lpos++]);
+                    fputc(line[lpos++], stdout);
                 break;
     
             case KEY_CTRL_B:
@@ -774,7 +786,7 @@ uint8_t *readline (uint8_t *line, int lineSize, const char *histFile)
                 if (lpos == 0)
                     break;
     
-                xputc('\b');
+                fputc('\b', stdout);
                 lpos--;
                 break;
         }

@@ -38,18 +38,55 @@
 APP_NAME       = dhry
 APP_DIR        = ..
 BASEDIR        = ../../..
-SWDIR          = $(BASEDIR)/software
+COMMON_DIR     = $(CURDIR)/../../common
+DHRY_DIR       = $(COMMON_DIR)/Dhrystone
 
-# Dhrystone specific settings.
-DHRY_DIR       = $(SWDIR)/common/Dhrystone
-DHRY_SRC       = $(DHRY_DIR)/dhry_1.c $(DHRY_DIR)/dhry_2.c
-DHRY_OBJ       = $(patsubst $(DHRY_DIR)/%.c,$(BUILD_DIR)/%.o,$(DHRY_SRC))
+# Override values given by parent make for this application as its memory usage differs from the standard app.
+ifeq ($(__K64F__),1)
+  override HEAPADDR  = 0x2002f000
+  override HEAPSIZE  = 0x00000000
+  override STACKADDR = 0x2002f000
+  override STACKSIZE = 0x00000000
 
-MAIN_OBJ       = $(DHRY_OBJ)
+  # Modules making up Kilo.
+  APP_C_SRC    = #$(APP_COMMON_DIR)/sysutils.c $(APP_COMMON_DIR)/ctypelocal.c
+  CFLAGS      += -I$(DHRY_DIR)
+  # Enable Dhrystone Test
+  OFLAGS      += -DDHRYSTONE_TEST
+  CPPFLAGS     = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
+  LDFLAGS      = -nostdlib
+  LIBS         = -lumansi-k64f -lumstdio-k64f
+  DHRY_SRC     = $(DHRY_DIR)/dhry_1.c $(DHRY_DIR)/dhry_2.c
+  DHRY_OBJ     = $(patsubst $(DHRY_DIR)/%.c,$(BUILD_DIR)/%.o,$(DHRY_SRC))
+  MAIN_OBJ     = $(DHRY_OBJ)
+else
+  override HEAPADDR  = 0x0000dc00
+  override HEAPSIZE  = 0x00001000
+  override STACKADDR = 0x0000ec00
+  override STACKSIZE = 0x00000000
 
-CFLAGS        += -I$(DHRY_DIR)
-# Enable Dhrystone Test
-OFLAGS        += -DDHRYSTONE_TEST
+  # Modules making up Kilo.
+  # Modules making up Kilo.
+  APP_C_SRC    = #$(APP_COMMON_DIR)/sysutils.c $(APP_COMMON_DIR)/ctypelocal.c
+  CFLAGS      += -I$(DHRY_DIR)
+  # Enable Dhrystone Test
+  OFLAGS      += -DDHRYSTONE_TEST
+  CPPFLAGS     = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
+  LDFLAGS      = -nostdlib
+  LIBS         = -lumansi-zpu -limath-zpu
+  DHRY_SRC     = $(DHRY_DIR)/dhry_1.c $(DHRY_DIR)/dhry_2.c
+  DHRY_OBJ     = $(patsubst $(DHRY_DIR)/%.c,$(BUILD_DIR)/%.o,$(DHRY_SRC))
+  MAIN_OBJ     = $(DHRY_OBJ)
+endif
+
+# Filter out the standard HEAP address and size, replacing with the ones required for this application.
+# Useful for sub-makes
+FILTER1        = $(filter-out $(filter HEAPADDR=%,$(MAKEFLAGS)), $(MAKEFLAGS))
+FILTER2        = $(filter-out $(filter HEAPSIZE=%,$(FILTER1)),   $(FILTER1))
+NEWMAKEFLAGS   = $(FILTER2) HEAPADDR=$(HEADADDR) HEAPSIZE=$(HEAPSIZE)
+
+
+
 
 ifeq ($(__K64F__),1)
 include        $(APP_DIR)/Makefile.k64f

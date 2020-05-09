@@ -3,7 +3,7 @@
 
 #ifndef NO_STDLIB
 
-#include <stdlib.h>
+//#include <stdlib.h>
 #include <string.h>
 
 #else

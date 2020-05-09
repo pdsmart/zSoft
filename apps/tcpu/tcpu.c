@@ -39,29 +39,21 @@
 
 #if defined(__K64F__)
   #include <stdio.h>
-  #include <stdlib.h>
+  #include <stdint.h>
   #include <string.h>
   #include "k64f_soc.h"
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+  #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
   #include <stdint.h>
+  #include <stdio.h>	    
   #include "zpu_soc.h"
   #include <stdlib.h>
+  #include <stdmisc.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
-#include "diskio.h"
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "xprintf.h"
 #include "utils.h"
 //
 #if defined __ZPUTA__
@@ -72,6 +64,7 @@
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
 //
+#include "app.h"
 #include "tcpu.h"
 
 // Utility functions.
@@ -102,7 +95,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
     uint32_t  addr;
     uint32_t  data;
 
-    xputs("TCPU Test Program\n");
+    puts("TCPU Test Program\n");
 
     while(getserial_nonblocking() == -1)
     {
@@ -110,7 +103,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
         data = TCPU_DATA;
 
 
-        xprintf("BUSRQI:%01x BUSACKI:%01x WAITI:%01x INTI:%01x NMII:%01x CLKI:%01x BUSRQO:%01x BUSACKO:%01x CTLCLRO:%01x CTLSET:%01x DATA:%04x, STATUS:%08lx\r",
+        printf("BUSRQI:%01x BUSACKI:%01x WAITI:%01x INTI:%01x NMII:%01x CLKI:%01x BUSRQO:%01x BUSACKO:%01x CTLCLRO:%01x CTLSET:%01x DATA:%04x, STATUS:%08lx\r",
                 (addr >> 25) & 0x1, (addr >> 24) & 0x1, (addr >> 23) & 0x1, (addr >> 22) & 0x1, (addr >>21) & 0x1, (addr >> 20) & 0x1, (addr >> 19) & 0x1, (addr >> 18) & 0x1, (addr >> 17) & 0x1, (addr >> 16) & 0x1,
                 (addr & 0xffff), data);
 
@@ -121,10 +114,10 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
 //    if (!xatoi(&ptr, &startAddr))
 //    {
-//        xprintf("Illegal <start addr> value.\n");
+//        printf("Illegal <start addr> value.\n");
 //    } else if (!xatoi(&ptr,  &endAddr))
 //    {
-//        xprintf("Illegal <end addr> value.\n");
+//        printf("Illegal <end addr> value.\n");
 //    } else
 //    {
 //        if (!xatoi(&ptr, &value))
@@ -138,7 +131,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
 //        }
 //        bitWidth /= 8;
 //
-//        xputs("Clearing Memory\n");
+//        puts("Clearing Memory\n");
 //        for(memAddr=startAddr; memAddr < endAddr; memAddr+=bitWidth)
 //        {
 //            switch(bitWidth)
@@ -157,7 +150,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
 //        }
 //    }
   #elif defined __K64F__
-    xputs("This application needs completion for the Teensy 3.5 version of the tranZPUter.\n");
+    puts("This application needs completion for the Teensy 3.5 version of the tranZPUter.\n");
   #else
     #error "Target CPU not defined, use __ZPU__ or __K64F__"
   #endif

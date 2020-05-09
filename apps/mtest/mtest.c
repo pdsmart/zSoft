@@ -39,29 +39,21 @@
 
 #if defined(__K64F__)
   #include <stdio.h>
-  #include <stdlib.h>
+  #include <stdint.h>
   #include <string.h>
   #include "k64f_soc.h"
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+  #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
   #include <stdint.h>
+  #include <stdio.h>	    
   #include "zpu_soc.h"
   #include <stdlib.h>
+  #include <stdmisc.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
-#include "diskio.h"
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "xprintf.h"
 #include "utils.h"
 //
 #if defined __ZPUTA__
@@ -72,6 +64,7 @@
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
 //
+#include "app.h"
 #include "mtest.h"
 
 // Utility functions.
@@ -107,7 +100,7 @@ void test8bit(uint32_t start, uint32_t end, uint32_t testsToDo)
 
     if(testsToDo & 0x00000001)
     {
-        xprintf( "\rR/W 8bit ascending test pattern...    " );
+        printf( "\rR/W 8bit ascending test pattern...    " );
         memPtr = (unsigned char*)( start );
         data   = 0x00;
         count  = end - start;
@@ -116,9 +109,9 @@ void test8bit(uint32_t start, uint32_t end, uint32_t testsToDo)
             *memPtr = data;
             if( *memPtr != data )
             {
-                xprintf( "\rError (8bit rwap) at 0x%08lX (%02x:%02x)\n", memPtr, *memPtr, data );
+                printf( "\rError (8bit rwap) at 0x%08lX (%02x:%02x)\n", (uint32_t)memPtr, *memPtr, data );
                 if(errCnt++ == 20)
-                    xprintf( "\rError count (8bit rwap) > 20, stopping test.\n");
+                    printf( "\rError count (8bit rwap) > 20, stopping test.\n");
             }
             memPtr++;
             data++;
@@ -129,7 +122,7 @@ void test8bit(uint32_t start, uint32_t end, uint32_t testsToDo)
 
     if(testsToDo & 0x00000002)
     {
-        xprintf( "\rR/W 8bit walking test pattern...    " );
+        printf( "\rR/W 8bit walking test pattern...    " );
         memPtr = (unsigned char*)( start );
         data   = 0x55;
         count  = end - start;
@@ -139,9 +132,9 @@ void test8bit(uint32_t start, uint32_t end, uint32_t testsToDo)
             *memPtr = data;
             if( *memPtr != data )
             {
-                xprintf( "\rError (8bit rwwp) at 0x%08lX (%02x:%02x)\n", memPtr, *memPtr, data );
+                printf( "\rError (8bit rwwp) at 0x%08lX (%02x:%02x)\n", (uint32_t)memPtr, *memPtr, data );
                 if(errCnt++ == 20)
-                    xprintf( "\rError count (8bit rwwp) > 20, stopping test.\n");
+                    printf( "\rError count (8bit rwwp) > 20, stopping test.\n");
             }
             memPtr++;
             if( data == 0x55 )
@@ -153,7 +146,7 @@ void test8bit(uint32_t start, uint32_t end, uint32_t testsToDo)
 
     if(testsToDo & 0x00000004)
     {
-        xprintf( "\rWrite 8bit ascending test pattern...    " );
+        printf( "\rWrite 8bit ascending test pattern...    " );
         memPtr = (unsigned char*)( start );
         data   = 0x00;
         count  = end - start;
@@ -162,9 +155,9 @@ void test8bit(uint32_t start, uint32_t end, uint32_t testsToDo)
             *memPtr = data;
             if( *memPtr != data )
             {
-                xprintf( "\rError (8bit wap) at 0x%08lX (%02x:%02x)\n", memPtr, *memPtr, data );
+                printf( "\rError (8bit wap) at 0x%08lX (%02x:%02x)\n", (uint32_t)memPtr, *memPtr, data );
                 if(errCnt++ == 20)
-                    xprintf( "\rError count (8bit rwwp) > 20, stopping test.\n");
+                    printf( "\rError count (8bit rwwp) > 20, stopping test.\n");
             }
             memPtr++;
             data++;
@@ -172,7 +165,7 @@ void test8bit(uint32_t start, uint32_t end, uint32_t testsToDo)
                 data = 0x00;
         }
 
-        xprintf( "\rRead 8bit ascending test pattern...     " );
+        printf( "\rRead 8bit ascending test pattern...     " );
         memPtr = (unsigned char*)( start );
         data   = 0x00;
         count  = end - start;
@@ -181,9 +174,9 @@ void test8bit(uint32_t start, uint32_t end, uint32_t testsToDo)
         {
             if( *memPtr != data )
             {
-                xprintf( "\rError (8bit ap) at 0x%08lX (%02x:%02x)\n", memPtr, *memPtr, data );
+                printf( "\rError (8bit ap) at 0x%08lX (%02x:%02x)\n", (uint32_t)memPtr, *memPtr, data );
                 if(errCnt++ == 20)
-                    xprintf( "\rError count (8bit ap) > 20, stopping test.\n");
+                    printf( "\rError count (8bit ap) > 20, stopping test.\n");
             } 
             memPtr++;
             data++;
@@ -194,7 +187,7 @@ void test8bit(uint32_t start, uint32_t end, uint32_t testsToDo)
 
     if(testsToDo & 0x00000008)
     {
-        xprintf( "\rWrite 8bit walking test pattern...    " );
+        printf( "\rWrite 8bit walking test pattern...    " );
         memPtr = (unsigned char*)( start );
         data   = 0x55;
         count  = end - start;
@@ -208,7 +201,7 @@ void test8bit(uint32_t start, uint32_t end, uint32_t testsToDo)
             memPtr++;
         }
 
-        xprintf( "\rRead 8bit walking test pattern...     " );
+        printf( "\rRead 8bit walking test pattern...     " );
         memPtr = (unsigned char*)( start );
         data   = 0x55;
         count  = end - start;
@@ -217,9 +210,9 @@ void test8bit(uint32_t start, uint32_t end, uint32_t testsToDo)
         {
             if( *memPtr != data )
             {
-                xprintf( "\rError (8bit wp) at 0x%08lX (%02x:%02x)\n", memPtr, *memPtr, data );
+                printf( "\rError (8bit wp) at 0x%08lX (%02x:%02x)\n", (uint32_t)memPtr, *memPtr, data );
                 if(errCnt++ == 20)
-                    xprintf( "\rError count (8bit wp) > 20, stopping test.\n");
+                    printf( "\rError count (8bit wp) > 20, stopping test.\n");
             }
             memPtr++;
             if( data == 0x55 )
@@ -231,7 +224,7 @@ void test8bit(uint32_t start, uint32_t end, uint32_t testsToDo)
 
     if(testsToDo & 0x00000010)
     {
-        xprintf( "\r8bit echo and sticky bit test...     " );
+        printf( "\r8bit echo and sticky bit test...     " );
         memPtr = (unsigned char*)( start );
         count  = end - start;
         errCnt = 0;
@@ -246,10 +239,10 @@ void test8bit(uint32_t start, uint32_t end, uint32_t testsToDo)
             {
                 if( *memPtr2 != 0x00 && *memPtr2 != *memPtr)
                 {
-                    xprintf( "\rError (8bit es) at 0x%08lx:0x%08lX (%02x:%02x)\n", memPtr, memPtr2, *memPtr2, 0x00 );
+                    printf( "\rError (8bit es) at 0x%08lx:0x%08lX (%02x:%02x)\n", (uint32_t)memPtr, (uint32_t)memPtr2, *memPtr2, 0x00 );
                     *memPtr2 = 0x00;
                     if(errCnt++ == 20)
-                        xprintf( "\rError count (8bit es) > 20, stopping test.\n");
+                        printf( "\rError count (8bit es) > 20, stopping test.\n");
                 }
                 memPtr2++;
             }
@@ -272,7 +265,7 @@ void test16bit(uint32_t start, uint32_t end, uint32_t testsToDo)
 
     if(testsToDo & 0x00000004)
     {
-        xprintf( "\rWrite 16bit ascending test pattern...    " );
+        printf( "\rWrite 16bit ascending test pattern...    " );
         memPtr = (uint16_t*)( start );
         data   = 0x00;
         count  = end - start;
@@ -285,7 +278,7 @@ void test16bit(uint32_t start, uint32_t end, uint32_t testsToDo)
             count = count > 2 ? count - 2 : 0;
         }
 
-        xprintf( "\rRead 16bit ascending test pattern...     " );
+        printf( "\rRead 16bit ascending test pattern...     " );
         memPtr = (uint16_t*)( start );
         data   = 0x00;
         count  = end - start;
@@ -293,9 +286,9 @@ void test16bit(uint32_t start, uint32_t end, uint32_t testsToDo)
         {
             if( *memPtr != data )
             {
-                xprintf( "\rError (16bit ap) at 0x%08lX (%04x:%04x)\n", memPtr, *memPtr, data );
+                printf( "\rError (16bit ap) at 0x%08lX (%04x:%04x)\n", (uint32_t)memPtr, *memPtr, data );
                 if(errCnt++ == 20)
-                    xprintf( "\rError count (16bit wp) > 20, stopping test.\n");
+                    printf( "\rError count (16bit wp) > 20, stopping test.\n");
             }
             memPtr++;
             data++;
@@ -307,7 +300,7 @@ void test16bit(uint32_t start, uint32_t end, uint32_t testsToDo)
 
     if(testsToDo & 0x00000008)
     {
-        xprintf( "\rWrite 16bit walking test pattern...    " );
+        printf( "\rWrite 16bit walking test pattern...    " );
         memPtr = (uint16_t*)( start );
         data   = 0xAA55;
         count  = end - start;
@@ -322,7 +315,7 @@ void test16bit(uint32_t start, uint32_t end, uint32_t testsToDo)
             count = count > 2 ? count - 2 : 0;
         }
 
-        xprintf( "\rRead 16bit walking test pattern...     " );
+        printf( "\rRead 16bit walking test pattern...     " );
         memPtr = (uint16_t*)( start );
         data   = 0xAA55;
         count  = end - start;
@@ -331,9 +324,9 @@ void test16bit(uint32_t start, uint32_t end, uint32_t testsToDo)
         {
             if( *memPtr != data )
             {
-                xprintf( "\rError (16bit wp) at 0x%08lX (%04x:%04x)\n", memPtr, *memPtr, data );
+                printf( "\rError (16bit wp) at 0x%08lX (%04x:%04x)\n", (uint32_t)memPtr, *memPtr, data );
                 if(errCnt++ == 20)
-                    xprintf( "\rError count (16bit wp) > 20, stopping test.\n");
+                    printf( "\rError count (16bit wp) > 20, stopping test.\n");
             }
             memPtr++;
             if( data == 0xAA55 )
@@ -346,7 +339,7 @@ void test16bit(uint32_t start, uint32_t end, uint32_t testsToDo)
 
     if(testsToDo & 0x00000010)
     {
-        xprintf( "\r16bit echo and sticky bit test...     " );
+        printf( "\r16bit echo and sticky bit test...     " );
         memPtr = (uint16_t *)( start );
         count  = end - start;
         errCnt = 0;
@@ -361,10 +354,10 @@ void test16bit(uint32_t start, uint32_t end, uint32_t testsToDo)
             {
                 if( *memPtr2 != 0x0000 && *memPtr2 != *memPtr)
                 {
-                    xprintf( "\rError (16bit es) at 0x%08lx:0x%08lX (%04x:%04x)\n", memPtr, memPtr2, *memPtr2, 0x0000 );
+                    printf( "\rError (16bit es) at 0x%08lx:0x%08lX (%04x:%04x)\n", (uint32_t)memPtr, (uint32_t)memPtr2, *memPtr2, 0x0000 );
                     *memPtr2 = 0x0000;
                     if(errCnt++ == 20)
-                        xprintf( "\rError count (16bit es) > 20, stopping test.\n");
+                        printf( "\rError count (16bit es) > 20, stopping test.\n");
                 }
                 memPtr2++;
                 count2 = count2 > 2 ? count2 - 2 : 0;
@@ -389,7 +382,7 @@ void test32bit(uint32_t start, uint32_t end, uint32_t testsToDo)
 
     if(testsToDo & 0x00000004)
     {
-        xprintf( "\rWrite 32bit ascending test pattern...    " );
+        printf( "\rWrite 32bit ascending test pattern...    " );
         memPtr = (uint32_t*)( start );
         data   = 0x00;
         count  = end - start;
@@ -402,7 +395,7 @@ void test32bit(uint32_t start, uint32_t end, uint32_t testsToDo)
             count = count > 4 ? count - 4 : 0;
         }
 
-        xprintf( "\rRead 32bit ascending test pattern...     " );
+        printf( "\rRead 32bit ascending test pattern...     " );
         memPtr = (uint32_t*)( start );
         data   = 0x00;
         count  = end - start;
@@ -410,9 +403,9 @@ void test32bit(uint32_t start, uint32_t end, uint32_t testsToDo)
         {
             if( *memPtr != data )
             {
-                xprintf( "\rError (32bit ap) at 0x%08lX (%08lx:%08lx)\n", memPtr, *memPtr, data );
+                printf( "\rError (32bit ap) at 0x%08lX (%08lx:%08lx)\n", (uint32_t)memPtr, *memPtr, data );
                 if(errCnt++ == 20)
-                    xprintf( "\rError count (32bit wp) > 20, stopping test.\n");
+                    printf( "\rError count (32bit wp) > 20, stopping test.\n");
             }
             memPtr++;
             data++;
@@ -424,7 +417,7 @@ void test32bit(uint32_t start, uint32_t end, uint32_t testsToDo)
 
     if(testsToDo & 0x00000008)
     {
-        xprintf( "\rWrite 32bit walking test pattern...    " );
+        printf( "\rWrite 32bit walking test pattern...    " );
         memPtr = (uint32_t*)( start );
         data   = 0xAA55AA55;
         count  = end - start;
@@ -439,7 +432,7 @@ void test32bit(uint32_t start, uint32_t end, uint32_t testsToDo)
             count = count > 4 ? count - 4 : 0;
         }
 
-        xprintf( "\rRead 32bit walking test pattern...     " );
+        printf( "\rRead 32bit walking test pattern...     " );
         memPtr = (uint32_t*)( start );
         data   = 0x00;
         data   = 0xAA55AA55;
@@ -449,9 +442,9 @@ void test32bit(uint32_t start, uint32_t end, uint32_t testsToDo)
         {
             if( *memPtr != data )
             {
-                xprintf( "\rError (32bit wp) at 0x%08lX (%08lx:%08lx)\n", memPtr, *memPtr, data );
+                printf( "\rError (32bit wp) at 0x%08lX (%08lx:%08lx)\n", (uint32_t)memPtr, *memPtr, data );
                 if(errCnt++ == 20)
-                    xprintf( "\rError count (32bit wp) > 20, stopping test.\n");
+                    printf( "\rError count (32bit wp) > 20, stopping test.\n");
             }
             memPtr++;
             if( data == 0xAA55AA55 )
@@ -464,7 +457,7 @@ void test32bit(uint32_t start, uint32_t end, uint32_t testsToDo)
 
     if(testsToDo & 0x00000010)
     {
-        xprintf( "\r32bit echo and sticky bit test...     " );
+        printf( "\r32bit echo and sticky bit test...     " );
         memPtr = (uint32_t *)( start );
         count  = end - start;
         errCnt = 0;
@@ -479,10 +472,10 @@ void test32bit(uint32_t start, uint32_t end, uint32_t testsToDo)
             {
                 if( *memPtr2 != 0x00000000 && *memPtr2 != *memPtr)
                 {
-                    xprintf( "\rError (32bit es) at 0x%08lx:0x%08lX (%08x:%08x)\n", memPtr, memPtr2, *memPtr2, 0x00000000 );
+                    printf( "\rError (32bit es) at 0x%08lx:0x%08lX (%08lx:%08lx)\n", (uint32_t)memPtr, (uint32_t)memPtr2, (uint32_t)(*memPtr2), 0L );
                     *memPtr2 = 0x00000000;
                     if(errCnt++ == 20)
-                        xprintf( "\rError count (32bit es) > 20, stopping test.\n");
+                        printf( "\rError count (32bit es) > 20, stopping test.\n");
                 }
                 memPtr2++;
                 count2 = count2 > 4 ? count2 - 4 : 0;
@@ -561,7 +554,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
     }
 
     // A very simple test, this needs to be updated with a thorough bit pattern and location test.
-    xprintf( "Check memory addr 0x%08X to 0x%08X for %d iterations.\n", startAddr, endAddr, iterations );
+    printf( "Check memory addr 0x%08lX to 0x%08lX for %ld iterations.\n", startAddr, endAddr, iterations );
     for(idx=0; idx < iterations; idx++)
     {
         if(testsToDo & 0x00001000)
@@ -577,7 +570,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
             test32bit(startAddr, endAddr, testsToDo);
         }
     }
-    xputs("\n");
+    puts("\n");
 
     return(0);
 }

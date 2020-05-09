@@ -35,7 +35,7 @@
 #define ZOS_APP_H
 
 // Constants.
-#define MAX_FILE_HANDLE             3              // Maximum number of file handles to open per logical drive.
+#define MAX_FILE_HANDLE             3                                  // Maximum number of file handles to open per logical drive.
 
 // Global parameters accessible in applications.
 typedef struct {
@@ -45,7 +45,7 @@ typedef struct {
     BYTE                     Buff[512];                                /* Working buffer */
     DWORD                    Sector;                                   /* Sector to read */
   #if defined __K64F__
-	uint32_t volatile        *millis;                                  /* Pointer to the K64F millisecond tick */
+	uint32_t volatile    *millis;                                  /* Pointer to the K64F millisecond tick */
   #endif
 } GLOBALS;
 

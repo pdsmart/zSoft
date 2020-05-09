@@ -38,15 +38,22 @@
 APP_NAME       = test
 APP_DIR        = ..
 BASEDIR        = ../../..
+
 ifeq ($(__K64F__),1)
-include        $(APP_DIR)/Makefile.k64f
+  LIBS         = -limath2-k64f
 else
-include        $(APP_DIR)/Makefile.zpu
+  LIBS         = 
+endif
+
+ifeq ($(__K64F__),1)
+  include      $(APP_DIR)/Makefile.k64f
+else
+  include      $(APP_DIR)/Makefile.zpu
 endif
 
 # Ensure no optimisation is made by GCC as testing memory performance may seem redundant writing and reading the same location so can get optimised away.
 ifeq ($(__K64F__),1)
-CFLAGS         = -c -O0
+  CFLAGS       = -c -O0
 else
-CFLAGS        += -c -O0 -ffunction-sections -fdata-sections -fomit-frame-pointer $(ZPUOPTS)
+  CFLAGS      += -c -O0 -ffunction-sections -fdata-sections -fomit-frame-pointer $(ZPUOPTS)
 endif

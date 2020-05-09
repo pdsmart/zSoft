@@ -39,28 +39,20 @@
 
 #if defined(__K64F__)
   #include <stdio.h>
-  #include <stdlib.h>
+  #include <stdint.h>
   #include <string.h>
   #include "k64f_soc.h"
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+  #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
   #include <stdint.h>
+  #include <stdio.h>
   #include "zpu_soc.h"
+  #include <stdmisc.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
-#include "diskio.h"
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "xprintf.h"
 #include "utils.h"
 //
 #if defined __ZPUTA__
@@ -71,6 +63,7 @@
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
 //
+#include "app.h"
 #include "falloc.h"
 
 // Utility functions.
@@ -99,12 +92,12 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
     if(G->fileInUse == 0)
     {
-        xputs("No file open, cannot allocate block.\n");
+        puts("No file open, cannot allocate block.\n");
     } else
     {
         if (!xatoi(&ptr, &size) || !xatoi(&ptr, &option))
         {
-            xputs("Illegal <size> or <option> value.\n");
+            puts("Illegal <size> or <option> value.\n");
         } else
         {
             fr = f_expand(&G->File[0], (DWORD)size, (BYTE)option);

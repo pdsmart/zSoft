@@ -38,18 +38,39 @@
 APP_NAME       = coremark
 APP_DIR        = ..
 BASEDIR        = ../../..
-SWDIR          = $(BASEDIR)/software
+COMMON_DIR     = $(CURDIR)../../common
+COREMARK_DIR   = $(COMMON_DIR)/CoreMark
 
-# Coremark specific settings.
-COREMARK_DIR   = $(SWDIR)/common/CoreMark
-COREMARK_SRC   = $(COREMARK_DIR)/core_list_join.c $(COREMARK_DIR)/core_main_embedded.c $(COREMARK_DIR)/core_matrix.c $(COREMARK_DIR)/core_state.c $(COREMARK_DIR)/core_util.c $(COREMARK_DIR)/ee_printf.c $(COREMARK_DIR)/core_portme.c
-COREMARK_OBJ   = $(patsubst $(COREMARK_DIR)/%.c,$(BUILD_DIR)/%.o,$(COREMARK_SRC))
+# Override values given by parent make for this application as its memory usage differs from the standard app.
+ifeq ($(__K64F__),1)
+  #override HEAPADDR  = 0x2002f000
+  #override HEAPSIZE  = 0x00000000
+  #override STACKADDR = 0x2002f000
+  #override STACKSIZE = 0x00000000
 
-MAIN_OBJ       = $(COREMARK_OBJ)
+  # Coremark specific settings.
+  COREMARK_SRC = $(COREMARK_DIR)/core_list_join.c $(COREMARK_DIR)/core_main_embedded.c $(COREMARK_DIR)/core_matrix.c $(COREMARK_DIR)/core_state.c $(COREMARK_DIR)/core_util.c $(COREMARK_DIR)/ee_printf.c $(COREMARK_DIR)/core_portme.c
+  COREMARK_OBJ = $(patsubst $(COREMARK_DIR)/%.c,$(BUILD_DIR)/%.o,$(COREMARK_SRC))
+  MAIN_OBJ       = $(COREMARK_OBJ)
 
-CFLAGS        += -I$(COREMARK_DIR)
-# Enable CoreMark Test
-OFLAGS        += -DCOREMARK_TEST
+  CFLAGS        += -I$(COREMARK_DIR)
+  # Enable CoreMark Test
+  OFLAGS        += -DCOREMARK_TEST
+else
+  #override HEAPADDR  = 0x0000D000
+  #override HEAPSIZE  = 0x00002000
+  #override STACKADDR = 0x0000F000
+  #override STACKSIZE = 0x00000000	
+
+  # Coremark specific settings.
+  COREMARK_SRC = $(COREMARK_DIR)/core_list_join.c $(COREMARK_DIR)/core_main_embedded.c $(COREMARK_DIR)/core_matrix.c $(COREMARK_DIR)/core_state.c $(COREMARK_DIR)/core_util.c $(COREMARK_DIR)/ee_printf.c $(COREMARK_DIR)/core_portme.c
+  COREMARK_OBJ = $(patsubst $(COREMARK_DIR)/%.c,$(BUILD_DIR)/%.o,$(COREMARK_SRC))
+  MAIN_OBJ       = $(COREMARK_OBJ)
+
+  CFLAGS        += -I$(COREMARK_DIR)
+  # Enable CoreMark Test
+  OFLAGS        += -DCOREMARK_TEST
+endif
 
 ifeq ($(__K64F__),1)
 include        $(APP_DIR)/Makefile.k64f

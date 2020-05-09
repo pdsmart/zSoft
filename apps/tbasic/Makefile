@@ -42,27 +42,27 @@ BASEDIR        = ../../..
 
 # Override values given by parent make for this application as its memory usage differs from the standard app.
 ifeq ($(__K64F__),1)
-  override HEAPADDR  = 0x1FFF5000
-  override HEAPSIZE  = 0x00033000
-  override STACKADDR = 0x20028000
-  override STACKSIZE = 0x00000000
+  #override HEAPADDR  = 0x2002f000
+  #override HEAPSIZE  = 0x00000000
+  #override STACKADDR = 0x2002f000
+  #override STACKSIZE = 0x00000000
 
   # Modules making up BASIC.
   APP_C_SRC    = basic_main.c basic_editor.c basic_exectoks.c basic_expr.c basic_tokens.c basic_utils.c
   CFLAGS       = -Wno-write-strings -Wno-char-subscripts
-  CPPFLAGS     = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
-  LDFLAGS      = -nostdlib
-  LIBS         = -lumansi-k64f -lumstdio-k64f
+  CPPFLAGS     = #-D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
+  LDFLAGS      = 
+  LIBS         = 
 else
-  override HEAPADDR  = 0x0000E200
-  override HEAPSIZE  = 0x00000D00
-  override STACKADDR = 0x0000F000
-  override STACKSIZE = 0x00000000
+  #override HEAPADDR  = 0x0000FC00
+  #override HEAPSIZE  = 0x00000100
+  #override STACKADDR = 0x0000FF00
+  #override STACKSIZE = 0x00000000
 
   # Modules making up BASIC.
   APP_C_SRC    = basic_main.c basic_editor.c basic_exectoks.c basic_expr.c basic_tokens.c basic_utils.c
   CFLAGS       = -Wno-write-strings -Wno-char-subscripts
-  CPPFLAGS     = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
+  CPPFLAGS     = #-D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
   LDFLAGS      = -nostdlib
   LIBS         = -lumansi-zpu -limath-zpu
 endif
@@ -76,5 +76,10 @@ NEWMAKEFLAGS   = $(FILTER2) HEAPADDR=$(HEADADDR) HEAPSIZE=$(HEAPSIZE)
 ifeq ($(__K64F__),1)
 include        $(APP_DIR)/Makefile.k64f
 else
-include        $(APP_DIR)/Makefile.zpu
+#include        $(APP_DIR)/Makefile.zpu
+all:
+
+install:
+
+clean:
 endif

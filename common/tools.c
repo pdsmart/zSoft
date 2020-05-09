@@ -32,11 +32,14 @@ extern "C" {
 
 #if defined __ZPU__
   #include <stdint.h>
+  #include <stdio.h>
   #include <string.h>
   #include "uart.h"
   #include "zpu_soc.h"
 #elif defined __K64F__
-  #include <WProgram.h>
+  #if ! defined __APP__
+    #include <WProgram.h>
+  #endif
   #include <usb_serial.h>
   #include "k64f_soc.h"
 #endif
@@ -107,87 +110,87 @@ void printFSCode(FRESULT result)
     switch(result)
     {
         case FR_DISK_ERR:
-            xputs("Disk Error\n");
+            puts("Disk Error");
             break;
 
         case FR_INT_ERR:
-            xputs("Internal error.\n");
+            puts("Internal error.");
             break;
 
         case FR_NOT_READY:
-            xputs("Disk not ready.\n");
+            puts("Disk not ready.");
             break;
 
         case FR_NO_FILE:
-            xputs("No file found.\n");
+            puts("No file found.");
             break;
 
         case FR_NO_PATH:
-            xputs("No path found.\n");
+            puts("No path found.");
             break;
 
         case FR_INVALID_NAME:
-            xputs("Invalid filename.\n");
+            puts("Invalid filename.");
             break;
 
         case FR_DENIED:
-            xputs("Access denied.\n");
+            puts("Access denied.");
             break;
 
         case FR_EXIST:
-            xputs("File already exists.\n");
+            puts("File already exists.");
             break;
 
         case FR_INVALID_OBJECT:
-            xputs("File handle invalid.\n");
+            puts("File handle invalid.");
             break;
 
         case FR_WRITE_PROTECTED:
-            xputs("SD is write protected.\n");
+            puts("SD is write protected.");
             break;
 
         case FR_INVALID_DRIVE:
-            xputs("Drive number is invalid.\n");
+            puts("Drive number is invalid.");
             break;
 
         case FR_NOT_ENABLED:
-            xputs("Disk not enabled.\n");
+            puts("Disk not enabled.");
             break;
 
         case FR_NO_FILESYSTEM:
-            xputs("No compatible filesystem found on disk.\n");
+            puts("No compatible filesystem found on disk.");
             break;
 
         case FR_MKFS_ABORTED:
-            xputs("Format aborted.\n");
+            puts("Format aborted.");
             break;
 
         case FR_TIMEOUT:
-            xputs("Timeout, operation cancelled.\n");
+            puts("Timeout, operation cancelled.");
             break;
 
         case FR_LOCKED:
-            xputs("File is locked.\n");
+            puts("File is locked.");
             break;
 
         case FR_NOT_ENOUGH_CORE:
-            xputs("Insufficient memory.\n");
+            puts("Insufficient memory.");
             break;
 
         case FR_TOO_MANY_OPEN_FILES:
-            xputs("Too many open files.\n");
+            puts("Too many open files.");
             break;
 
         case FR_INVALID_PARAMETER:
-            xputs("Parameters incorrect.\n");
+            puts("Parameters incorrect.");
             break;
 
         case FR_OK:
-            xputs("Success.\n");
+            puts("Success.");
             break;
 
         default:
-            xputs("Unknown error.\n");
+            puts("Unknown error.");
             break;
     }
 }
@@ -206,7 +209,7 @@ void printBytesPerSec(uint32_t bytes, uint32_t mSec, const char *action)
     {
         bytesPerSec = bytes / (mSec / 1000);
     }
-    xprintf("\n%lu bytes %s at %lu bytes/sec.\n", bytes, action, bytesPerSec);
+    printf("\n%lu bytes %s at %lu bytes/sec.\n", bytes, action, bytesPerSec);
 }
 
 // Method to scan a directory and return the list of filenames present therein.
@@ -254,12 +257,12 @@ FRESULT printFatFSStatus(char *path)
 
     if(!fr0)
     {
-        xprintf("FAT type = %s\nBytes/Cluster = %lu\nNumber of FATs = %u\n"
-                "Root DIR entries = %u\nSectors/FAT = %lu\nNumber of clusters = %lu\n"
-                "Volume start (lba) = %lu\nFAT start (lba) = %lu\nDIR start (lba,clustor) = %lu\nData start (lba) = %lu\n\n",
-                fileSystemTypeTable[fsPtr->fs_type], (DWORD)fsPtr->csize * SECTOR_SIZE, fsPtr->n_fats,
-                fsPtr->n_rootdir, fsPtr->fsize, fsPtr->n_fatent - 2,
-                fsPtr->volbase, fsPtr->fatbase, fsPtr->dirbase, fsPtr->database);
+        printf("FAT type = %s\nBytes/Cluster = %lu\nNumber of FATs = %u\n"
+               "Root DIR entries = %u\nSectors/FAT = %lu\nNumber of clusters = %lu\n"
+               "Volume start (lba) = %lu\nFAT start (lba) = %lu\nDIR start (lba,clustor) = %lu\nData start (lba) = %lu\n\n",
+               fileSystemTypeTable[fsPtr->fs_type], (DWORD)fsPtr->csize * SECTOR_SIZE, fsPtr->n_fats,
+               fsPtr->n_rootdir, fsPtr->fsize, fsPtr->n_fatent - 2,
+               fsPtr->volbase, fsPtr->fatbase, fsPtr->dirbase, fsPtr->database);
 
         #if FF_USE_LABEL
         // Get disk label information.
@@ -267,12 +270,12 @@ FRESULT printFatFSStatus(char *path)
 
         if(!fr0)
         {
-            xprintf(fsBuff[0] ? "Volume name is %s\n" : "No volume label\n", fsBuff);
-            xprintf("Volume S/N is %04X-%04X\n", (WORD)((DWORD)labelPtr >> 16), (WORD)(labelPtr & 0xFFFF));
+            printf(fsBuff[0] ? "Volume name is %s\n" : "No volume label\n", fsBuff);
+            printf("Volume S/N is %04X-%04X\n", (WORD)((DWORD)labelPtr >> 16), (WORD)(labelPtr & 0xFFFF));
         }
         #endif
 
-        xputs("...");
+        printf("...");
 
         // Get number of files, directories and space used.
         AccSize = AccFiles = AccDirs = 0;
@@ -282,10 +285,10 @@ FRESULT printFatFSStatus(char *path)
 
     if(!fr0 && !fr1)
     {
-        xprintf("%u files, %lu bytes.\n%u folders.\n"
-                "%lu KB total disk space.\n%lu KB available.\n",
-                AccFiles, AccSize, AccDirs,
-                (fsPtr->n_fatent - 2) * fsPtr->csize / 2, dspacePtr * fsPtr->csize / 2);
+        printf("%u files, %lu bytes.\n%u folders.\n"
+               "%lu KB total disk space.\n%lu KB available.\n",
+               AccFiles, AccSize, AccDirs,
+               (fsPtr->n_fatent - 2) * fsPtr->csize / 2, dspacePtr * fsPtr->csize / 2);
     }
 
     return(fr0 ? fr0 : (fr1 ?  fr1 : FR_OK));
@@ -323,25 +326,25 @@ FRESULT printDirectoryListing(char *path)
                 } else {
                     fileCount++; totalSize += fInfo.fsize;
                 }
-                xprintf("%c%c%c%c%c %u/%02u/%02u %02u:%02u %9lu  %s\n", 
-                            (fInfo.fattrib & AM_DIR) ? 'D' : '-',
-                            (fInfo.fattrib & AM_RDO) ? 'R' : '-',
-                            (fInfo.fattrib & AM_HID) ? 'H' : '-',
-                            (fInfo.fattrib & AM_SYS) ? 'S' : '-',
-                            (fInfo.fattrib & AM_ARC) ? 'A' : '-',
-                            (fInfo.fdate >> 9) + 1980, (fInfo.fdate >> 5) & 15, fInfo.fdate & 31,
-                            (fInfo.ftime >> 11), (fInfo.ftime >> 5) & 63,
-                            (DWORD)fInfo.fsize, 
-                            fInfo.fname);
+                printf("%c%c%c%c%c %u/%02u/%02u %02u:%02u %9lu  %s\n", 
+                           (fInfo.fattrib & AM_DIR) ? 'D' : '-',
+                           (fInfo.fattrib & AM_RDO) ? 'R' : '-',
+                           (fInfo.fattrib & AM_HID) ? 'H' : '-',
+                           (fInfo.fattrib & AM_SYS) ? 'S' : '-',
+                           (fInfo.fattrib & AM_ARC) ? 'A' : '-',
+                           (fInfo.fdate >> 9) + 1980, (fInfo.fdate >> 5) & 15, fInfo.fdate & 31,
+                           (fInfo.ftime >> 11), (fInfo.ftime >> 5) & 63,
+                           (DWORD)fInfo.fsize, 
+                           fInfo.fname);
             }
         } while(!fr0 && fInfo.fname[0]);
 
         if(!fr0)
         {
-            xprintf("%4u File(s),%10lu bytes total\n%4u Dir(s)", fileCount, totalSize, dirCount);
+            printf("%4lu File(s),%10lu bytes total\n%4lu Dir(s)", fileCount, totalSize, dirCount);
             if (f_getfree(path, (DWORD*)&totalSize, &fsPtr) == FR_OK)
             {
-                xprintf(", %10luKiB free\n", totalSize * fsPtr->csize / 2);
+                printf(", %10luKiB free\n", totalSize * fsPtr->csize / 2);
             }
         }
     }
@@ -587,7 +590,7 @@ FRESULT fileCat(char *src)
     
     // Try and open the source file.
     fr0 = f_open(&File[0], src, FA_OPEN_EXISTING | FA_READ);
-   
+
     // If no errors in opening the files, proceed with reading.
     if(!fr0)
     {
@@ -597,11 +600,11 @@ FRESULT fileCat(char *src)
 			idx=0;
 			while(idx++ < readSize)
 			{
-				xputc(fsBuff[idx]);
+				fputc(fsBuff[idx], stdout);
 			}
             if (f_eof(&File[0])) break;
         }
-        xputs("\n");
+        fputc('\n', stdout);
     }
 
     // Close to sync files.
@@ -815,9 +818,9 @@ uint32_t fileExec(char *src, uint32_t addr, uint32_t execAddr, uint8_t execMode,
     // Need to set bit 0 of the vector to ensure T(humb) flag is set otherwise an invalid state fault will occur. The compiler should do this but the declaration of the
     // function based on an address seems to confuse it.
     execAddr += 1;
-    uint32_t   (*func)(uint32_t, uint32_t, uint32_t, uint32_t) = (uint32_t (*)(uint32_t, uint32_t, uint32_t, uint32_t))execAddr;
+    uint32_t   (*func)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) = (uint32_t (*)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t))execAddr;
   #elif defined __ZPU__
-    uint32_t   (*func)(uint32_t, uint32_t, uint32_t *, uint32_t, uint32_t) = (uint32_t (*)(uint32_t, uint32_t, uint32_t *, uint32_t, uint32_t))execAddr;
+    uint32_t   (*func)(uint32_t, uint32_t, uint32_t *, uint32_t, uint32_t, uint32_t) = (uint32_t (*)(uint32_t, uint32_t, uint32_t *, uint32_t, uint32_t, uint32_t))execAddr;
   #else
     #error "Target CPU not defined, use __ZPU__ or __K64F__"
   #endif
@@ -835,9 +838,9 @@ uint32_t fileExec(char *src, uint32_t addr, uint32_t execAddr, uint8_t execMode,
             // Call the loaded program entry address, return expected.
             case EXEC_MODE_CALL:
               #if defined __ZPU__
-                retCode = func(param1, param2, &_memreg, G, cfg);
+                retCode = func(param1, param2, &_memreg, G, cfg, (uint32_t *)__iob);
               #elif defined __K64F__
-                retCode = func(param1, param2, G, cfg);
+                retCode = func(param1, param2, G, cfg, (uint32_t)stdin, (uint32_t)stdout, (uint32_t)stderr);
               #else
                 #error "Target CPU not defined, use __ZPU__ or __K64F__"
               #endif
@@ -1019,8 +1022,8 @@ int memoryDump(uint32_t memaddr, uint32_t memsize, uint32_t memwidth, uint32_t d
 
     while (1)
     {
-        xprintf("%08X", addr); // print address
-        xputs(":  ");
+        printf("%08lX", addr); // print address
+        printf(":  ");
 
         // print hexadecimal data
         for (i=0; i < dispwidth; )
@@ -1029,47 +1032,47 @@ int memoryDump(uint32_t memaddr, uint32_t memsize, uint32_t memwidth, uint32_t d
             {
                 case 16:
                     if(pnt+i < endAddr)
-                        xprintf("%04X", *(uint16_t *)(pnt+i));
+                        printf("%04X", *(uint16_t *)(pnt+i));
                     else
-                        xputs("    ");
-                        //puts("    ");
+                        printf("    ");
+                        //printf("    ");
                     i+=2;
                     break;
 
                 case 32:
                     if(pnt+i < endAddr)
-                        xprintf("%08X", *(uint32_t *)(pnt+i));
+                        printf("%08lX", *(uint32_t *)(pnt+i));
                     else
-                        xputs("        ");
+                        printf("        ");
                     i+=4;
                     break;
 
                 case 8:
                 default:
                     if(pnt+i < endAddr)
-                        xprintf("%02X", *(uint8_t *)(pnt+i));
+                        printf("%02X", *(uint8_t *)(pnt+i));
                     else
-                        xputs("  ");
+                        printf("  ");
                     i++;
                     break;
             }
-            xputc((char)' ');
+            fputc((char)' ', stdout);
         }
 
         // print ascii data
-        xputs(" |");
+        printf(" |");
 
         // print single ascii char
         for (i=0; i < dispwidth; i++)
         {
             c = (char)*(uint8_t *)(pnt+i);
             if ((pnt+i < endAddr) && (c >= ' ') && (c <= '~'))
-                xputc((char)c);
+                fputc((char)c, stdout);
             else
-                xputc((char)' ');
+                fputc((char)' ', stdout);
         }
 
-        xputs("|\r\n");
+        puts("|");
 
         // Move on one row.
         pnt  += dispwidth;
@@ -1143,7 +1146,7 @@ void displayHelp(char *cmd)
         // Any matches on Group filter?
         matchGroup = strstr(grpsym->name, cmd) != NULL ? 1 : 0;
 
-        if(noParam || (!noParam && matchGroup)) xprintf("[%s]\n", grpsym->name);
+        if(noParam || (!noParam && matchGroup)) printf("[%s]\n", grpsym->name);
         for (cidx=0; cidx < NCMDKEYS; cidx++)
         {
             // Match on group key.
@@ -1163,22 +1166,22 @@ void displayHelp(char *cmd)
                     strcpy(cmdSynopsis, cmdsym->cmd);
                     strcat(cmdSynopsis, " ");
                     strcat(cmdSynopsis, helpsym->params);
-                    xprintf("%-40s %c %-40s", cmdSynopsis, cmdsym->builtin == 1 ? '-' : '*', helpsym->description);
+                    printf("%-40s %c %-40s", cmdSynopsis, cmdsym->builtin == 1 ? '-' : '*', helpsym->description);
                 } else
                 {
                     strcpy(cmdSynopsis, cmdsym->cmd);
                     strcat(cmdSynopsis, " No help available.");
-                    xprintf("%-40s %c %-40s", cmdSynopsis, cmdsym->builtin == 1 ? '-' : '*', " No help available.");
+                    printf("%-40s %c %-40s", cmdSynopsis, cmdsym->builtin == 1 ? '-' : '*', " No help available.");
                 }
                 if(dispColumn++ == 1)
                 {
                     dispColumn = 0;
-                    xputs("\n");
+                    fputc('\n', stdout);
                 }
             }
         }
-        if(dispColumn == 1) { xputs("\n"); }
-        if(noParam || (!noParam && matchGroup)) { xputs("\n"); }
+        if(dispColumn == 1) { fputc('\n', stdout); }
+        if(noParam || (!noParam && matchGroup)) { fputc('\n', stdout); }
     }
 }
 #endif
@@ -1192,13 +1195,13 @@ void printVersion(uint8_t showConfig)
   #if !defined(__APP__)
 
     #if defined __ZPU__
-      xprintf("\n** %s (", PROGRAM_NAME);
+      printf("\n** %s (", PROGRAM_NAME);
       printZPUId(cfgSoC.zpuId);
-      xprintf(" ZPU, rev %02x) %s %s **\n\n", (uint8_t)cfgSoC.zpuId,  VERSION, VERSION_DATE);
+      printf(" ZPU, rev %02x) %s %s **\n\n", (uint8_t)cfgSoC.zpuId,  VERSION, VERSION_DATE);
     #elif defined __K64F__
-      xprintf("\n** %s (", PROGRAM_NAME);
+      printf("\n** %s (", PROGRAM_NAME);
       printCPU();
-      xprintf(" CPU) %s %s **\n\n", VERSION, VERSION_DATE);
+      printf(" CPU) %s %s **\n\n", VERSION, VERSION_DATE);
     #else
       #error "Target CPU not defined, use __ZPU__ or __K64F__"
     #endif
@@ -1210,7 +1213,7 @@ void printVersion(uint8_t showConfig)
     }
 
   #else
-    xprintf("\n** %s %s %s **\n\n", APP_NAME, VERSION, VERSION_DATE);
+    printf("\n** %s %s %s **\n\n", APP_NAME, VERSION, VERSION_DATE);
   #endif
 }
 #endif

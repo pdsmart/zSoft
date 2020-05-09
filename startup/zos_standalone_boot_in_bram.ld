@@ -34,7 +34,7 @@
 MEMORY
 {
   BOOT (rx)  : ORIGIN = 0x000000,   LENGTH = 0x000600    /* Boot section which shouldnt exist in an app, so a link trap as warning */
-  CODE (rx)  : ORIGIN = 0x00000600, LENGTH = 0x00008A00   /* Up to the end of the RAM first less stack space */
+  CODE (rx)  : ORIGIN = 0x00000600, LENGTH = 0x0000A200   /* Up to the end of the RAM first less stack space */
   HEAP (rx)  : ORIGIN = 0x0000EFF4, LENGTH = 0x00000800  /* Allocated heap space for the OS. */
   STACK (rx) : ORIGIN = 0x0000F7F8, LENGTH = 0x00000800  /* Allocated stack space for the OS. */
 }

@@ -9,53 +9,44 @@
 #endif
 
 #if defined(__K64F__)
-  #include <stdio.h>
-  #include <stdlib.h>
-  #include <string.h>
-  #include <unistd.h>
-  #include <math.h>
-  #include <limits.h>
-  #include <ctype.h>
-  #include <stdarg.h>
-  #include <assert.h>
-  #include <usb_serial.h>
-  #include "k64f_soc.h"
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+  #include    <stdio.h>
+  #include    <unistd.h>
+  #include    <math.h>
+  #include    <limits.h>
+  #include    <stdlib.h>
+  #include    <stdarg.h>
+  #include    "k64f_soc.h"
+  #include    <ctype.h>
+  #include    <../../libraries/include/stdmisc.h>	    
+  #undef      stdout
+  #undef      stdin
+  #undef      stderr
+  extern FILE *stdout;
+  extern FILE *stdin;
+  extern FILE *stderr;
 #elif defined(__ZPU__)
-  #include <zstdio.h>
-  #include <zpu-types.h>
-  #include "zpu_soc.h"
-  #include <stdlib.h>
+  #include    <stdint.h>
+  #include    <stdio.h>
+  #include    "zpu_soc.h"
 
-#define assert(a)
-#define acos acosf
-#define floor floorf
-#define sin sinf
-#define cos cosf
-#define tan tanf
-#define log logf
-#define pow powf
-#define sqrt sqrtf
-#define asin asinf
-#define atan atanf
-#define fmod fmodf
-
+  #define acos    acosf
+  #define floor   floorf
+  #define sin     sinf
+  #define cos     cosf
+  #define tan     tanf
+  #define log     logf
+  #define pow     powf
+  #define sqrt    sqrtf
+  #define asin    asinf
+  #define atan    atanf
+  #define fmod    fmodf
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
+
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
-#include "diskio.h"
 #include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "xprintf.h"
-#include <umm_malloc.h>
 #include <readline.h>
 #include "utils.h"
 //
@@ -196,6 +187,7 @@ int execBasicScript(void)
 
         // Check to see if user is requesting an action.
       #if defined __K64F__
+	int usb_serial_getchar(void);
         keyIn = usb_serial_getchar();
       #elif defined __ZPU__
         keyIn = getserial_nonblocking();
@@ -204,7 +196,7 @@ int execBasicScript(void)
       #endif
         if(nextline == -1 || keyIn == CTRL_C)
         {
-            xprintf("\nExecution stopped, user request.\n");
+            printf("\nExecution stopped, user request.\n");
             break;
         }
 
@@ -219,7 +211,7 @@ int execBasicScript(void)
             curline = findline(nextline);
             if(curline == -1)
             {
-                xprintf("line %d not found\n", nextline);
+                printf("line %d not found\n", nextline);
                 answer = 1;
                 break;
             }
@@ -241,9 +233,9 @@ void cleanup(void)
 
   for(i=0;i<nvariables;i++)
     if(variables[i].sval)
-      free(variables[i].sval);
+      sys_free(variables[i].sval);
   if(variables)
-      free(variables);
+      sys_free(variables);
   variables = 0;
   nvariables = 0;
 
@@ -258,23 +250,23 @@ void cleanup(void)
           size *= dimvariables[i].dim[ii];
         for(ii=0;ii<size;ii++)
           if(dimvariables[i].str[ii])
-            free(dimvariables[i].str[ii]);
-        free(dimvariables[i].str);
+            sys_free(dimvariables[i].str[ii]);
+        sys_free(dimvariables[i].str);
       }
     }
     else
       if(dimvariables[i].dval)
-        free(dimvariables[i].dval);
+        sys_free(dimvariables[i].dval);
   }
 
   if(dimvariables)
-    free(dimvariables);
+    sys_free(dimvariables);
  
   dimvariables = 0;
   ndimvariables = 0;
 
   if(lines)
-    free(lines);
+    sys_free(lines);
 
   lines = 0;
   nlines = 0;
@@ -294,70 +286,70 @@ void reporterror(int lineno)
       assert(0);
       break;
     case ERR_SYNTAX:
-      xprintf("Syntax error line %d\n", lineno);
+      printf("Syntax error line %d\n", lineno);
       break;
     case ERR_OUTOFMEMORY:
-      xprintf("Out of memory line %d\n", lineno);
+      printf("Out of memory line %d\n", lineno);
       break;
     case ERR_IDTOOLONG:
-      xprintf("Identifier too long line %d\n", lineno);
+      printf("Identifier too long line %d\n", lineno);
       break;
     case ERR_NOSUCHVARIABLE:
-      xprintf("No such variable line %d\n", lineno);
+      printf("No such variable line %d\n", lineno);
       break;
     case ERR_BADSUBSCRIPT:
-      xprintf("Bad subscript line %d\n", lineno);
+      printf("Bad subscript line %d\n", lineno);
       break;
     case ERR_TOOMANYDIMS:
-      xprintf("Too many dimensions line %d\n", lineno);
+      printf("Too many dimensions line %d\n", lineno);
       break;
     case ERR_TOOMANYINITS:
-      xprintf("Too many initialisers line %d\n", lineno);
+      printf("Too many initialisers line %d\n", lineno);
       break;
     case ERR_BADTYPE:
-      xprintf("Illegal type line %d\n", lineno);
+      printf("Illegal type line %d\n", lineno);
       break;
     case ERR_TOOMANYFORS:
-      xprintf("Too many nested fors line %d\n", lineno);
+      printf("Too many nested fors line %d\n", lineno);
       break;
     case ERR_NONEXT:
-      xprintf("For without matching next line %d\n", lineno);
+      printf("For without matching next line %d\n", lineno);
       break;
     case ERR_NOFOR:
-      xprintf("Next without matching for line %d\n", lineno);
+      printf("Next without matching for line %d\n", lineno);
       break;
     case ERR_DIVIDEBYZERO:
-      xprintf("Divide by zero lne %d\n", lineno);
+      printf("Divide by zero lne %d\n", lineno);
       break;
     case ERR_NEGLOG:
-      xprintf("Negative logarithm line %d\n", lineno);
+      printf("Negative logarithm line %d\n", lineno);
       break;
     case ERR_NEGSQRT:
-      xprintf("Negative square root line %d\n", lineno);
+      printf("Negative square root line %d\n", lineno);
       break;
     case ERR_BADSINCOS:
-      xprintf("Sine or cosine out of range line %d\n", lineno);
+      printf("Sine or cosine out of range line %d\n", lineno);
       break;
     case ERR_EOF:
-      xprintf("End of input file %d\n", lineno);
+      printf("End of input file %d\n", lineno);
       break;
     case ERR_ILLEGALOFFSET:
-      xprintf("Illegal offset line %d\n", lineno);
+      printf("Illegal offset line %d\n", lineno);
       break;
     case ERR_TYPEMISMATCH:
-      xprintf("Type mismatch line %d\n", lineno);
+      printf("Type mismatch line %d\n", lineno);
       break;
     case ERR_INPUTTOOLONG:
-      xprintf("Input too long line %d\n", lineno);
+      printf("Input too long line %d\n", lineno);
       break;
     case ERR_BADVALUE:
-      xprintf("Bad value at line %d\n", lineno);
+      printf("Bad value at line %d\n", lineno);
       break;
     case ERR_NOTINT:
-      xprintf("Not an integer at line %d\n", lineno);
+      printf("Not an integer at line %d\n", lineno);
       break;
     default:
-      xprintf("ERROR line %d\n", lineno);
+      printf("ERROR line %d\n", lineno);
       break;
   }
 }
@@ -485,20 +477,20 @@ void doprint(int curline)
       str = stringexpr();
       if(str)
       {
-        xprintf("%s", str);
-        free(str);
+        printf("%s", str);
+        sys_free(str);
       }
     }
     else
     {
       x = expr();
       sprintf(output, "%g", x);
-      //xprintf("%g", x);
-      xputs(output);
+      //printf("%g", x);
+      fputs(output, stdout);
     }
     if(token == COMMA)
     {
-      xprintf(" ");
+      printf(" ");
       match(COMMA);
     }
     else
@@ -509,7 +501,7 @@ void doprint(int curline)
     match(SEMICOLON);
   }
   else
-    xprintf("\n");
+    printf("\r\n");
 }
 
 /*
@@ -532,7 +524,7 @@ void dolet(int curline)
       temp = *lv.sval;
       *lv.sval = stringexpr();
       if(temp)
-        free(temp);
+        sys_free(temp);
       break;
     default:
       break;
@@ -636,14 +628,14 @@ void dodim(int curline)
       case STRID:
         i = 0;
         if(dimvar->str[i])
-          free(dimvar->str[i]);
+          sys_free(dimvar->str[i]);
         dimvar->str[i++] = stringexpr();
 
         while(token == COMMA && i < size)
         {
           match(COMMA);
           if(dimvar->str[i])
-            free(dimvar->str[i]);
+            sys_free(dimvar->str[i]);
           dimvar->str[i++] = stringexpr();
           if(errorflag)
             break;
@@ -846,7 +838,7 @@ int doinput(int curline)
         case STRID:
             if(*lv.sval)
             {
-                free(*lv.sval);
+                sys_free(*lv.sval);
                 *lv.sval = 0;
             }
 
@@ -1107,9 +1099,9 @@ int boolfactor(void)
         if(!strleft || !strright)
         {
           if(strleft)
-            free(strleft);
+            sys_free(strleft);
           if(strright)
-            free(strright);
+            sys_free(strright);
           return 0;
         }
         cmp = strcmp(strleft, strright);
@@ -1136,8 +1128,8 @@ int boolfactor(void)
           default:
             answer = 0;
         }
-        free(strleft);
-        free(strright);
+        sys_free(strleft);
+        sys_free(strright);
       }
       else
       {
@@ -1388,7 +1380,7 @@ double factor(void)
         if(str)
         {
           answer = strlen(str);
-          free(str);
+          sys_free(str);
         }
         else
           answer = 0;
@@ -1401,7 +1393,7 @@ double factor(void)
         if(str)
         {
           answer = *str;
-          free(str);
+          sys_free(str);
         }
         else
           answer = 0;
@@ -1465,7 +1457,7 @@ double factor(void)
         if(str)
         {
           answer = strtod(str, 0);
-          free(str);
+          sys_free(str);
         }
         else
           answer = 0;
@@ -1479,7 +1471,7 @@ double factor(void)
         {
           strtod(str, &end);
           answer = end - str;
-          free(str);
+          sys_free(str);
         }
         else
           answer = 0.0;
@@ -1556,9 +1548,9 @@ double instr(void)
   if(!str || ! substr)
   {
     if(str)
-      free(str);
+      sys_free(str);
     if(substr)
-      free(substr);
+      sys_free(substr);
     return 0;
   }
 
@@ -1569,8 +1561,8 @@ double instr(void)
       answer = end - str + 1.0;
   }
 
-  free(str);
-  free(substr);
+  sys_free(str);
+  sys_free(substr);
 
   return answer;
 }
@@ -1754,7 +1746,7 @@ DIMVAR *dimension(const char *id, int ndims, ...)
   switch(dv->type)
   {
     case FLTID:
-      dtemp = realloc(dv->dval, size * sizeof(double));
+      dtemp = sys_realloc(dv->dval, size * sizeof(double));
       if(dtemp)
         dv->dval = dtemp;
       else
@@ -1769,11 +1761,11 @@ DIMVAR *dimension(const char *id, int ndims, ...)
         for(i=size;i<oldsize;i++)
           if(dv->str[i])
           {
-            free(dv->str[i]);
+            sys_free(dv->str[i]);
             dv->str[i] = 0;
           }
       }
-      stemp = realloc(dv->str, size * sizeof(char *));
+      stemp = sys_realloc(dv->str, size * sizeof(char *));
       if(stemp)
       {
         dv->str = stemp;
@@ -1785,7 +1777,7 @@ DIMVAR *dimension(const char *id, int ndims, ...)
         for(i=0;i<oldsize;i++)
           if(dv->str[i])
           {
-            free(dv->str[i]);
+            sys_free(dv->str[i]);
             dv->str[i] = 0;
           }
         seterror(ERR_OUTOFMEMORY);
@@ -1905,7 +1897,7 @@ VARIABLE *addfloat(const char *id)
 {
    VARIABLE *vars;
 
-  vars = realloc(variables, (nvariables + 1) * sizeof(VARIABLE));
+  vars = sys_realloc(variables, (nvariables + 1) * sizeof(VARIABLE));
   if(vars)
   {
     variables = vars;
@@ -1930,7 +1922,7 @@ VARIABLE *addstring(const char *id)
 {
   VARIABLE *vars;
 
-  vars = realloc(variables, (nvariables + 1) * sizeof(VARIABLE));
+  vars = sys_realloc(variables, (nvariables + 1) * sizeof(VARIABLE));
   if(vars)
   {
     variables = vars;
@@ -1955,7 +1947,7 @@ DIMVAR *adddimvar(const char *id)
 {
   DIMVAR *vars;
 
-  vars = realloc(dimvariables, (ndimvariables + 1) * sizeof(DIMVAR));
+  vars = sys_realloc(dimvariables, (ndimvariables + 1) * sizeof(DIMVAR));
   if(vars)
   {
     dimvariables = vars;
@@ -2035,10 +2027,10 @@ char *stringexpr(void)
       if(right)
       {
         temp = mystrconcat(left, right);
-        free(right);
+        sys_free(right);
         if(temp)
         {
-          free(left);
+          sys_free(left);
           left = temp;
         }
         else
@@ -2126,7 +2118,7 @@ char *leftstring(void)
   }
   str[x] = 0;
   answer = mystrdup(str);
-  free(str);
+  sys_free(str);
   if(!answer)
     seterror(ERR_OUTOFMEMORY);
   return answer;
@@ -2160,7 +2152,7 @@ char *rightstring(void)
   }
   
   answer = mystrdup( &str[strlen(str) - x] );
-  free(str);
+  sys_free(str);
   if(!answer)
     seterror(ERR_OUTOFMEMORY);
   return answer;
@@ -2194,7 +2186,7 @@ char *midstring(void)
 
   if( x > (int) strlen(str) || len < 1)
   {
-    free(str);
+    sys_free(str);
     answer = mystrdup("");
     if(!answer)
       seterror(ERR_OUTOFMEMORY);
@@ -2209,7 +2201,7 @@ char *midstring(void)
 
   temp = &str[x-1];
 
-  answer = malloc(len + 1);
+  answer = sys_malloc(len + 1);
   if(!answer)
   {
     seterror(ERR_OUTOFMEMORY);
@@ -2217,7 +2209,7 @@ char *midstring(void)
   }
   strncpy(answer, temp, len);
   answer[len] = 0;
-  free(str);
+  sys_free(str);
 
   return answer;
 }
@@ -2248,7 +2240,7 @@ char *stringstring(void)
 
   if(N < 1)
   {
-    free(str);
+    sys_free(str);
     answer = mystrdup("");
     if(!answer)
       seterror(ERR_OUTOFMEMORY);
@@ -2256,10 +2248,10 @@ char *stringstring(void)
   }
 
   len = strlen(str);
-  answer = malloc( N * len + 1 );
+  answer = sys_malloc( N * len + 1 );
   if(!answer)
   {
-    free(str);
+    sys_free(str);
     seterror(ERR_OUTOFMEMORY);
     return 0;
   }
@@ -2267,7 +2259,7 @@ char *stringstring(void)
   {
     strcpy(answer + len * i, str);
   }
-  free(str);
+  sys_free(str);
 
   return answer;
 }
@@ -2394,7 +2386,7 @@ char *stringliteral(void)
     if(end)
     {
       len = end - string;
-      substr = malloc(len);
+      substr = sys_malloc(len);
       if(!substr)
       {
         seterror(ERR_OUTOFMEMORY);
@@ -2404,8 +2396,8 @@ char *stringliteral(void)
       if(answer)
       {
         temp = mystrconcat(answer, substr);
-        free(substr);
-        free(answer);
+        sys_free(substr);
+        sys_free(answer);
         answer = temp;
         if(!answer)
         {
@@ -2968,7 +2960,7 @@ char *mystrdup(const char *str)
 {
   char *answer;
 
-  answer = malloc(strlen(str) + 1);
+  answer = sys_malloc(strlen(str) + 1);
   if(answer)
     strcpy(answer, str);
 
@@ -2987,7 +2979,7 @@ char *mystrconcat(const char *str, const char *cat)
   char *answer;
 
   len = strlen(str) + strlen(cat);
-  answer = malloc(len + 1);
+  answer = sys_malloc(len + 1);
   if(answer)
   {
     strcpy(answer, str);

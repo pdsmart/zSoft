@@ -14,23 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#include <coremark.h>
-#include <stdarg.h>
+#include       <coremark.h>
+#include       <stdarg.h>
 
 #if defined __K64F__
-    #include <stdlib.h>
-    //#include <string.h>
-    #define uint32_t __uint32_t
-    #define uint16_t __uint16_t
-    #define uint8_t  __uint8_t
-    #define int32_t  __int32_t
-    #define int16_t  __int16_t
-    #define int8_t   __int8_t
+  #include     <stdio.h>
+  #include     <stdint.h>
+  #undef       stdout
+  #undef       stdin
+  #undef       stderr
+  extern FILE *stdout;
+  extern FILE *stdin;
+  extern FILE *stderr;
 #else
-    #include <zpu-types.h>
-//  #include "uart.h"
+  #include     <stdint.h>
+  #include     <stdio.h>
 #endif
-#include <xprintf.h>
 
 #define ZEROPAD  	(1<<0)	/* Pad with zero */
 #define SIGN    	(1<<1)	/* Unsigned/signed long */
@@ -576,7 +575,7 @@ repeat:
 }
 
 void uart_send_char(char c) {
-    xputc(c);
+    fputc(c, stdout);
 }
 
 int ee_printf(const char *fmt, ...)

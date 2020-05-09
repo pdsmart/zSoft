@@ -114,6 +114,7 @@ uint32_t app(uint32_t, uint32_t);
 // Global scope variables within the ZPUTA memory space.
 GLOBALS                      *G;
 SOC_CONFIG                   *cfgSoC;
+struct __file                *__iob[3];
 
 // Global scope variables in the app memory space.
 volatile UINT                Timer;                                    /* Performance timer (100Hz increment) */

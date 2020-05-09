@@ -38,6 +38,13 @@
 APP_NAME       = bfill
 APP_DIR        = ..
 BASEDIR        = ../../..
+
+ifeq ($(__K64F__),1)
+LIBS           = -lumansi-k64f
+else
+LIBS           =
+endif
+
 ifeq ($(__K64F__),1)
 include        $(APP_DIR)/Makefile.k64f
 else

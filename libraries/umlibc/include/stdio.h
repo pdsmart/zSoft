@@ -818,7 +818,7 @@ extern char	*fgets(char *__str, int __size, FILE *__stream);
    and the trailing newline (if any) will not be stored in the string.
    It is the caller's responsibility to provide enough storage to hold
    the characters read.  */
-extern char	*gets(char *__str);
+extern char	*gets(char *__str, int __size);
 
 /**
    Read \c nmemb objects, \c size bytes each, from \c stream,

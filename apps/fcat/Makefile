@@ -38,6 +38,7 @@
 APP_NAME       = fcat
 APP_DIR        = ..
 BASEDIR        = ../../..
+
 ifeq ($(__K64F__),1)
 include        $(APP_DIR)/Makefile.k64f
 else

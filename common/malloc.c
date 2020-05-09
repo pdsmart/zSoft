@@ -178,7 +178,7 @@ void *malloc(size_t size)
 	struct free_arena_header *pah;
 	size_t fsize;
 
-	//xprintf("Custom malloc asking for 0x%x bytes\n",size);
+	//printf("Custom malloc asking for 0x%x bytes\n",size);
 
 	if (size == 0)
 		return NULL;

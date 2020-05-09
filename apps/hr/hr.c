@@ -39,29 +39,21 @@
 
 #if defined(__K64F__)
   #include <stdio.h>
-  #include <stdlib.h>
+  #include <stdint.h>
   #include <string.h>
   #include "k64f_soc.h"
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+  #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
   #include <stdint.h>
+  #include <stdio.h>	    
   #include "zpu_soc.h"
   #include <stdlib.h>
+  #include <stdmisc.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
-#include "diskio.h"
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "xprintf.h"
 #include "utils.h"
 //
 #if defined __ZPUTA__
@@ -72,6 +64,7 @@
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
 //
+#include "app.h"
 #include "hr.h"
 
 // Utility functions.
@@ -96,17 +89,17 @@ uint32_t app(uint32_t param1, uint32_t param2)
     char      *ptr = (char *)param1;
     uint32_t  memAddr;
 
-    xputs("Register information\n");
-    xputs("Interrupt: ");
-    xprintf("%08X %08X\n", INTERRUPT_STATUS(INTR0), INTERRUPT_CTRL(INTR0));
+    puts("Register information\n");
+    puts("Interrupt: ");
+    printf("%08X %08X\n", INTERRUPT_STATUS(INTR0), INTERRUPT_CTRL(INTR0));
     while(getserial_nonblocking() == -1)
     {
-        xprintf("UART 0/1: %08X %08X %08X %08X %08X %08X\r", UART_STATUS(UART0), UART_FIFO_STATUS(UART0), UART_BRGEN(UART0), UART_STATUS(UART1), UART_FIFO_STATUS(UART1), UART_BRGEN(UART1));
+        printf("UART 0/1: %08X %08X %08X %08X %08X %08X\r", UART_STATUS(UART0), UART_FIFO_STATUS(UART0), UART_BRGEN(UART0), UART_STATUS(UART1), UART_FIFO_STATUS(UART1), UART_BRGEN(UART1));
         memAddr = INTERRUPT_STATUS(INTR0);
     }
-    xputs("\n");
+    puts("\n");
   #elif defined __K64F__
-    xputs("This application only works on the ZPU processor.\n");
+    puts("This application only works on the ZPU processor.\n");
   #else
     #error "Target CPU not defined, use __ZPU__ or __K64F__"
   #endif

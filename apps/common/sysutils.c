@@ -236,7 +236,8 @@ char *strstr (const char *s1, const char *s2)
 __attribute__((weak)) 
 int _read(int file, char *ptr, int len)
 {
-	return 0;
+	strcpy(ptr, "HEREHERE\n");
+	return 9;
 }
 
 __attribute__((weak)) 

@@ -46,15 +46,17 @@
             .extern    __data_section_end__
             .extern    __text_section_begin__
             .extern    __text_section_end__
-            .extern    app
-            .extern    G
-            .extern    cfgSoC
+            .extern    app                                 // Main app entry point.
+            .extern    G                                   // Global shared variables with OS.
+            .extern    cfgSoC                              // Configuration structure to define CPU and hardware.
+            .extern    stdin                               // Standard input file stream.
+            .extern    stdout                              // Standard output file stream.
+            .extern    stderr                              // Standard error file stream.
 
             .global    _start
            // Save registers normally preserved in a C call.
-_start:    stmdb       sp!, {r4, r5, r6, r7, r8, r9, sl, lr}
-           stmdb       sp!, {r0, r1, r2, r3};
-
+_start:     stmdb       sp!, {r4, r5, r6, r7, r8, r9, sl, lr}
+            stmdb       sp!, {r0, r1, r2, r3};
 
             // Copy initialized data from text area to working RAM (data) area.
             ldr        r1, DATA_BEGIN
@@ -79,10 +81,45 @@ clearbss:   strb       r2, [r1], #1                        // Store zero
             subs       r3, r3, #1                          // Decrement counter
             bgt        clearbss                            // Repeat until done
 
+            // Reminder, ARM calling convention in C allocation table.
+            //
+            // Register  Synonym  Contents?    Purpose
+            //   r0                   N    argument/results
+            //   r1                   N    argument/results
+            //   r2                   N    argument/results
+            //   r3                   N    argument/results
+            //   r4                   Y    local variable
+            //   r5                   Y    local variable
+            //   r6                   Y    local variable
+            //   r7                   Y    local variable
+            //   r8                   Y    local variable
+            //   r9                   Y    depends on platform standard
+            //   r10                  Y    local variable
+            //   r11      fp          Y    frame pointer/local variable
+            //   r12      ip          N    intra-procedure-call scratch
+            //   r13      sp          Y    stack pointer
+            //   r14      lr          N    link register
+            //   r15      pc          N    program counter
+            // 4-> parameters are passed on the stack starting at sp. If values are pushed prior to accessing the parameters, they need to be read at the correct stack
+            // offset. ie. In this routine, 12 registers are pushed, 48 bytes in total, so any access to parameter 4 (first parameter on stack) is at #48.
+            //
+            // NB: To force a hard fault to see stack trace, issue instruction .word 0xffffffff inline.
+
             // Call app(uint32_t param1, uint32_t param2)
-exec_app:   ldmia.w    sp!, {r0, r1, r2, r3}               // Get back the parameters ready to pass to app()
+exec_app:   ldr.w      r6, [sp, #48]                       // Get stdin, stdout, stderr file descriptors passed on stack.
+            ldr        r4, =stdin                          // Setup the pointer for stdin in the app to stdin in zOS/ZPUTA.
+            str        r6, [r4]
+
+            ldr.w      r6, [sp, #52]
+            ldr        r4, =stdout                         // Setup the pointer for stdout in the app to stdout in zOS/ZPUTA.
+            str        r6, [r4]
+
+            ldr.w      r6, [sp, #56]
+            ldr        r4, =stderr                         // Setup the pointer for stderr in the app to stderr in zOS/ZPUTA.
+            str        r6, [r4]
 
             // Setup the G and cfgSoC variables using passed parameters.
+            ldmia.w    sp!, {r0, r1, r2, r3}               // Get back the parameters ready to pass to app()
             ldr        r4, =G                              // Setup the pointer for G in the app to G in zOS/ZPUTA.
             str        r2, [r4]
             ldr        r4, =cfgSoC                         // Setup the pointer for cfgSoC in the app to cfgSoC in zOS/ZPUTA.
@@ -104,7 +141,8 @@ DATA_BEGIN: .word      __data_section_begin__
 DATA_END:   .word      __data_section_end__
 BSS_BEGIN:  .word      __bss_section_begin__ 
 BSS_END:    .word      __bss_section_end__
-#
+
+
             #-----------------------------------------------
             # zOS/ZPUTA API Function Entry Points
             #-----------------------------------------------
@@ -125,43 +163,39 @@ BSS_END:    .word      __bss_section_end__
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      putchar funcAddr
             .equ funcAddr,  funcAddr+funcNext;
-            defapifunc      xputc funcAddr
+            defapifunc      putc funcAddr
             .equ funcAddr,  funcAddr+funcNext;
-            defapifunc      xfputc funcAddr
+            defapifunc      fputc funcAddr
             .equ funcAddr,  funcAddr+funcNext;
-            defapifunc      xputs funcAddr
+            defapifunc      puts funcAddr
             .equ funcAddr,  funcAddr+funcNext;
-            defapifunc      xgets funcAddr
+            defapifunc      gets funcAddr
             .equ funcAddr,  funcAddr+funcNext;
-            defapifunc      xfgets funcAddr
+            defapifunc      fgets funcAddr
             .equ funcAddr,  funcAddr+funcNext;
-            defapifunc      xfputs funcAddr
+            defapifunc      fputs funcAddr
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      xatoi funcAddr
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      uxatoi funcAddr
             .equ funcAddr,  funcAddr+funcNext;
-            defapifunc      xprintf funcAddr
+            defapifunc      printf funcAddr
             .equ funcAddr,  funcAddr+funcNext;
-            defapifunc      xvprintf funcAddr
+            defapifunc      sprintf funcAddr
             .equ funcAddr,  funcAddr+funcNext;
-            defapifunc      xsprintf funcAddr
-            .equ funcAddr,  funcAddr+funcNext;
-            defapifunc      xfprintf funcAddr
+            defapifunc      fprintf funcAddr
             #
             # getc calls
             #
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      usb_serial_getchar funcAddr
-            .equ funcAddr,  funcAddr+funcNext;
-            defapifunc      usb_serial_getchar funcAddr
             #
             # Util calls
             #
-          # .equ funcAddr,  funcAddr+funcNext;
-          # defapifunc      crc32_init funcAddr
-          # .equ funcAddr,  funcAddr+funcNext;
-          # defapifunc      crc32_addword funcAddr
+           #.equ funcAddr,  funcAddr+funcNext;
+           #defapifunc      crc32_init funcAddr
+           #.equ funcAddr,  funcAddr+funcNext;
+           #defapifunc      crc32_addword funcAddr
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      get_dword funcAddr
             .equ funcAddr,  funcAddr+funcNext;
@@ -169,7 +203,7 @@ BSS_END:    .word      __bss_section_end__
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      rtcGet funcAddr
             #
-            #FatFS System Calls
+            # FatFS System Calls
             #
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      f_open funcAddr
@@ -257,9 +291,19 @@ BSS_END:    .word      __bss_section_end__
             defapifunc      getUintParam funcAddr
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      set_serial_output funcAddr
-        #   .equ funcAddr,  funcAddr+funcNext;
-        #   defapifunc      printBytesPerSec funcAddr
+           #.equ funcAddr,  funcAddr+funcNext;
+           #defapifunc      printBytesPerSec funcAddr
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      printFSCode funcAddr
+
+            # Memory management calls.
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      sys_malloc funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      sys_realloc funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      sys_calloc funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      sys_free funcAddr
 
     .end

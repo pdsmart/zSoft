@@ -59,7 +59,11 @@ _callret:
         store               ; Place return code into memreg 1 in this app.
         poppc               ; Return to original caller.
         
-    
+  
+
+
+
+
         ;-----------------------------------------------
         ; ZPUTA API Function Entry Points
         ;-----------------------------------------------
@@ -69,6 +73,7 @@ _callret:
         ; a call to a library function in the APPlication is actually using code in ZPUTA at runtime thus minimising
         ; code in the APPlication.
         ;
+        ; This table doesnt consume space, just defines the addresses which will be called for the relevant function.
         .equ funcNext,  0x06;
         .equ funcAddr,  OS_BASEADDR+0x20;
         defapifunc      break funcAddr
@@ -77,30 +82,30 @@ _callret:
         ;
         .equ funcAddr,  funcAddr+funcNext;
         defapifunc      putchar funcAddr
+       ;.equ funcAddr,  funcAddr+funcNext;
+       ;defapifunc      putc funcAddr
         .equ funcAddr,  funcAddr+funcNext;
-        defapifunc      xputc funcAddr
+        defapifunc      fputc funcAddr
         .equ funcAddr,  funcAddr+funcNext;
-        defapifunc      xfputc funcAddr
+        defapifunc      puts funcAddr
         .equ funcAddr,  funcAddr+funcNext;
-        defapifunc      xputs funcAddr
+        defapifunc      gets funcAddr
         .equ funcAddr,  funcAddr+funcNext;
-        defapifunc      xgets funcAddr
+        defapifunc      fgets funcAddr
         .equ funcAddr,  funcAddr+funcNext;
-        defapifunc      xfgets funcAddr
-        .equ funcAddr,  funcAddr+funcNext;
-        defapifunc      xfputs funcAddr
+        defapifunc      fputs funcAddr
         .equ funcAddr,  funcAddr+funcNext;
         defapifunc      xatoi funcAddr
         .equ funcAddr,  funcAddr+funcNext;
         defapifunc      uxatoi funcAddr
         .equ funcAddr,  funcAddr+funcNext;
-        defapifunc      xprintf funcAddr
+        defapifunc      printf funcAddr
         .equ funcAddr,  funcAddr+funcNext;
-        defapifunc      xvprintf funcAddr
+       ;defapifunc      xvprintf funcAddr
+       ;.equ funcAddr,  funcAddr+funcNext;
+        defapifunc      sprintf funcAddr
         .equ funcAddr,  funcAddr+funcNext;
-        defapifunc      xsprintf funcAddr
-        .equ funcAddr,  funcAddr+funcNext;
-        defapifunc      xfprintf funcAddr
+        defapifunc      fprintf funcAddr
         ;
         ; getc calls
         ;
@@ -214,7 +219,16 @@ _callret:
     ;    defapifunc      printBytesPerSec funcAddr
         .equ funcAddr,  funcAddr+funcNext;
         defapifunc      printFSCode funcAddr
-    
+
+        ; Memory management calls.
+        .equ funcAddr,  funcAddr+funcNext;
+        defapifunc      sys_malloc funcAddr
+        .equ funcAddr,  funcAddr+funcNext;
+        defapifunc      sys_realloc funcAddr
+        .equ funcAddr,  funcAddr+funcNext;
+        defapifunc      sys_calloc funcAddr
+        .equ funcAddr,  funcAddr+funcNext;
+        defapifunc      sys_free funcAddr
     
         ;--------------------------------------
         ; Start of the main application program
@@ -246,6 +260,12 @@ _premain:
 .done:
         im .appret          ; &.appret bssptr+4
         storesp 4           ; &.appret
+
+        im 9                ; Param6 = address of __iob structure for stdio functionality available in this application.
+        pushspadd
+        load
+        im __iob            ; Setup the location of the pointer to __iob variable in the app
+        store               ; and place value into the pointer.
     
         im 8                ; Param5 = address of cfgSoC structure in ZPUTA memory space to be available in this application.
         pushspadd

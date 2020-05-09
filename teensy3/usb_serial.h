@@ -43,6 +43,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+int usb_uart_putchar(char c, FILE *);
+int usb_uart_getchar(FILE *);
 int usb_serial_getchar(void);
 int usb_serial_peekchar(void);
 int usb_serial_available(void);

@@ -5,6 +5,6 @@
   By Malcolm Mclean
 */
 
-int basic(const char *script);
+int                basic(const char *script);
 
 #endif

@@ -35,96 +35,124 @@ MEMORY
 {
   BOOT (rx) : ORIGIN = BOOTADDR,   LENGTH = BOOTLEN  /* Boot section which shouldnt exist in an app, so a link trap as warning */
   CODE (rx) : ORIGIN = OS_START,   LENGTH = OS_LEN   /* Up to the end of the RAM first less stack space */
+  HEAP (rx)  : ORIGIN = HEAP_STARTADDR, LENGTH = HEAP_SIZE  /* Allocated heap space for the OS. */
+  STACK (rx) : ORIGIN = STACK_STARTADDR, LENGTH = STACK_SIZE  /* Allocated stack space for the OS. */
 }
 
 /* Section Definitions */
 
 SECTIONS
 {
-  /* first section is .fixed_vectors which is used for startup code */
-  . = BOOTADDR;
-  _ramstart = . ;
-  __boot_start__ = . ;
-  .fixed_vectors :
-  {
-	KEEP(*(.fixed_vectors)) /* Seed section - allows -gc-sections */
-  }>BOOT
-  __boot_end__ = . ;
+    /* first section is .fixed_vectors which is used for startup code */
+    . = BOOTADDR;
+    _ramstart = . ;
+    __boot_start__ = . ;
+    .fixed_vectors :
+    {
+        KEEP(*(.fixed_vectors)) /* Seed section - allows -gc-sections */
+    }>BOOT
+    __boot_end__ = . ;
 
-  /* Remaining code sections */
-  . = ALIGN(4);
-  __text_start__ = . ;
-  .text :
-  {
-    *(.text)                   /* remaining code */
-    *(.text.*)                   /* remaining code */
-	. = ALIGN(4);
-	__ctors_start__ = . ;
-	KEEP(*(.ctors))
-	KEEP(*(.ctors.*))
-	__ctors_end__ = . ;
+    /* Remaining code sections */
     . = ALIGN(4);
-	__dtors_start__ = . ;
-	KEEP(*(.dtors))
-	KEEP(*(.dtors.*))
-	__dtors_end__ = . ;
-  } >CODE
-  __text_end__ = . ;
-
-  /* .rodata section which is used for read-only data (constants) */
-  . = ALIGN(4);
-  __rodata_start__ = . ;
-  .rodata :
-  {
-    *(.rodata)
-    *(.rodata.*)
-  } >CODE
-  . = ALIGN(4);
-  __rodata_end__ = . ;
-  _ramend = . ;
-
-  /* .data section which is used for initialized data. */
-  . = ALIGN(4);
-  _datastart = . ;
-  .data :
-  {
-    _data = . ;
-    __data_start__ = . ;
-    *(.data)
-    *(.data.*)
-    SORT(CONSTRUCTORS)
+    __text_start__ = . ;
+    .text :
+    {
+        *(.text)                     /* remaining code */
+        *(.text.*)                   /* remaining code */
+        . = ALIGN(4);
+        __ctors_start__ = . ;
+        KEEP(*(.ctors))
+        KEEP(*(.ctors.*))
+        __ctors_end__ = . ;
+        . = ALIGN(4);
+        __dtors_start__ = . ;
+        KEEP(*(.dtors))
+        KEEP(*(.dtors.*))
+        __dtors_end__ = . ;
+    } >CODE
+    __text_end__ = . ;
+  
+    /* .rodata section which is used for read-only data (constants) */
     . = ALIGN(4);
-    __data_end__ = . ;
-  } >CODE
+    __rodata_start__ = . ;
+    .rodata :
+    {
+        *(.rodata)
+        *(.rodata.*)
+    } >CODE
+    . = ALIGN(4);
+    __rodata_end__ = . ;
+    _ramend = . ;
+  
+    /* .data section which is used for initialized data. */
+    . = ALIGN(4);
+    _datastart = . ;
+    .data :
+    {
+        _data = . ;
+        __data_start__ = . ;
+        *(.data)
+        *(.data.*)
+        SORT(CONSTRUCTORS)
+        . = ALIGN(4);
+        __data_end__ = . ;
+    } >CODE
+  
+    /* .bss section which is used for uninitialized data */
+    . = ALIGN(4);
+    .bss :
+    {
+        __bss_start = . ;
+        __bss_start__ = . ;
+        *(.bss)
+        *(.bss.*)
+        *(COMMON)
+        __bss_end__ = . ;
+        _end = . ;
+    } >CODE
+    _dataend = . ;
 
-  /* .bss section which is used for uninitialized data */
-  . = ALIGN(4);
-  .bss :
-  {
-    __bss_start = . ;
-    __bss_start__ = . ;
-    *(.bss)
-    *(.bss.*)
-    *(COMMON)
-	__bss_end__ = . ;
-	_end = . ;
-  } >CODE
-  _dataend = . ;
+    /* Variable expanded by build.sh */
+    .heap HEAP_STARTADDR:
+    {
+        /* . = HEAP_STARTADDR; */
+        . = ALIGN(4);
+        __heap_section_start__ = .;
+        __HeapBase = .;
+        PROVIDE(end = .);
+        . += HEAP_SIZE;
+        __end__ = .;
+        __HeapLimit = .;
+        __heap_section_end__ = .;
+    } > HEAP
+    
+    /* Variable expanded by build.sh */
+    .stack STACK_STARTADDR :
+    {
+        /* . = STACK_STARTADDR; */
+        . = ALIGN(4);
+        __stack_section_start__ = .;
+        . += STACK_SIZE;
+        __stack_section_end__ = .;
+    } > STACK    
+  
+    /*
+    __HeapBase = HEAP_STARTADDR;
+    __HeapLimit = HEAP_ENDADDR;
+    */
+  
+    /* Top of stack pointer, used for sbrk validation. */  
+    _stack = STACK_ENDADDR;
 
-  __HeapBase = .;
-  __HeapLimit = STACK_ADDR - 0x400;
-
-  /* Top of stack pointer, used for sbrk validation. */  
-  _stack = STACK_ADDR;
-
-	/* Debug information */
-  .debug_loc 0 : { *(.debug_loc) }
-  .debug_abbrev 0 : { *(.debug_abbrev) }
-  .debug_str 0 : { *(.debug_str) }
-  .debug_info 0 : { *(.debug_info) }
-  .debug_line 0 : { *(.debug_line) }
-  .debug_frame 0 : { *(.debug_frame) }
-  .debug_pubnames 0 : { *(.debug_pubnames) }
-  .debug_aranges 0 : { *(.debug_aranges) }
-  .comment : { *(.comment) }
+      /* Debug information */
+    .debug_loc 0 : { *(.debug_loc) }
+    .debug_abbrev 0 : { *(.debug_abbrev) }
+    .debug_str 0 : { *(.debug_str) }
+    .debug_info 0 : { *(.debug_info) }
+    .debug_line 0 : { *(.debug_line) }
+    .debug_frame 0 : { *(.debug_frame) }
+    .debug_pubnames 0 : { *(.debug_pubnames) }
+    .debug_aranges 0 : { *(.debug_aranges) }
+    .comment : { *(.comment) }
 }

@@ -17,25 +17,18 @@
 
 
 #if defined __K64F__
-    #include <stdlib.h>
-    #include <string.h>
-    #include <WProgram.h>
-    #define uint32_t __uint32_t
-    #define uint16_t __uint16_t
-    #define uint8_t  __uint8_t
-    #define int32_t  __int32_t
-    #define int16_t  __int16_t
-    #define int8_t   __int8_t
-    #include "k64f_soc.h"
-    extern uint32_t milliseconds(void);
+  #include <stdio.h>
+  #include <stdint.h>
+  #include "k64f_soc.h"
+  extern uint32_t milliseconds(void);
 #else
-    #include <stdint.h>
-    #include "zpu_soc.h"
+  #include <stdint.h>
+  #include <stdio.h>
+  #include "zpu_soc.h"
 #endif
 
 #include <string.h>
 #include <stdarg.h>
-#include "xprintf.h"
 #include "dhry.h"
 
 /* Global Variables: */
@@ -142,22 +135,21 @@ int main_dhry ()
         /* Arr_2_Glob [8][7] would have an undefined value.             */
         /* Warning: With 16-Bit processors and Number_Of_Runs > 32000,  */
         /* overflow may occur for this array element.                   */
-  xprintf ("\r\n");
-  xprintf ("Dhrystone Benchmark, Version 2.1 (Language: C)\r\n");
-  xprintf ("\r\n");
+  printf ("Dhrystone Benchmark, Version 2.1 (Language: C)\r\n");
+  printf ("\r\n");
   if (Reg)
   {
-    xprintf ("Program compiled with 'register' attribute\r\n");
-    xprintf ("\r\n");
+    printf ("Program compiled with 'register' attribute\r\n");
+    printf ("\r\n");
   }
   else
   {
-    xprintf ("Program compiled without 'register' attribute\r\n");
-    xprintf ("\r\n");
+    printf ("Program compiled without 'register' attribute\r\n");
+    printf ("\r\n");
   }
   //Number_Of_Runs;
 
-  xprintf ("Execution starts, %d runs through Dhrystone\r\n", Number_Of_Runs);
+  printf ("Execution starts, %d runs through Dhrystone\r\n", Number_Of_Runs);
 
   /***************/
   /* Start timer */
@@ -178,12 +170,13 @@ int main_dhry ()
   Begin_Time = 0;
  #elif defined(__K64F__) && defined(__APP__)
   Begin_Time = milliseconds();
-  xprintf("Begin time:%08ld\n", Begin_Time);
  #elif defined(__K64F__) && (defined(__ZPUTA__) || defined(__ZOS__))
+  uint32_t millis(void);
   Begin_Time = millis();
  #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
  #endif
+  printf("Begin time        : %08ld\n", Begin_Time);
 #endif
   for (Run_Index = 1; Run_Index <= Number_Of_Runs; ++Run_Index)
   {
@@ -248,77 +241,77 @@ int main_dhry ()
   End_Time = TIMER_MILLISECONDS_UP;
  #elif defined(__K64F__) && defined(__APP__)
   End_Time = milliseconds();
-  xprintf("End time:%08ld\n", End_Time);
  #elif defined(__K64F__) && (defined(__ZPUTA__) || defined(__ZOS__))
   End_Time = millis();
  #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
  #endif
+  printf("End time          : %08ld\n", End_Time);
 #endif
 
 #if 0  
-  xprintf ("Execution ends\r\n");
-  xprintf ("\r\n");
-  xprintf ("Final values of the variables used in the benchmark:\r\n");
-  xprintf ("\r\n");
-  xprintf ("Int_Glob:            %d\r\n", Int_Glob);
-  xprintf ("        should be:   %d\r\n", 5);
-  xprintf ("Bool_Glob:           %d\r\n", Bool_Glob);
-  xprintf ("        should be:   %d\r\n", 1);
-  xprintf ("Ch_1_Glob:           %c\r\n", Ch_1_Glob);
-  xprintf ("        should be:   %c\r\n", 'A');
-  xprintf ("Ch_2_Glob:           %c\r\n", Ch_2_Glob);
-  xprintf ("        should be:   %c\r\n", 'B');
-  xprintf ("Arr_1_Glob[8]:       %d\r\n", Arr_1_Glob[8]);
-  xprintf ("        should be:   %d\r\n", 7);
-  xprintf ("Arr_2_Glob[8][7]:    %d\r\n", Arr_2_Glob[8][7]);
-  xprintf ("        should be:   Number_Of_Runs + 10\r\n");
-  xprintf ("Ptr_Glob->\r\n");
-  xprintf ("  Ptr_Comp:          %d\r\n", (int) Ptr_Glob->Ptr_Comp);
-  xprintf ("        should be:   (implementation-dependent)\r\n");
-  xprintf ("  Discr:             %d\r\n", Ptr_Glob->Discr);
-  xprintf ("        should be:   %d\r\n", 0);
-  xprintf ("  Enum_Comp:         %d\r\n", Ptr_Glob->variant.var_1.Enum_Comp);
-  xprintf ("        should be:   %d\r\n", 2);
-  xprintf ("  Int_Comp:          %d\r\n", Ptr_Glob->variant.var_1.Int_Comp);
-  xprintf ("        should be:   %d\r\n", 17);
-  xprintf ("  Str_Comp:          %s\r\n", Ptr_Glob->variant.var_1.Str_Comp);
-  xprintf ("        should be:   DHRYSTONE PROGRAM, SOME STRING\r\n");
-  xprintf ("Next_Ptr_Glob->\r\n");
-  xprintf ("  Ptr_Comp:          %d\r\n", (int) Next_Ptr_Glob->Ptr_Comp);
-  xprintf ("        should be:   (implementation-dependent), same as above\r\n");
-  xprintf ("  Discr:             %d\r\n", Next_Ptr_Glob->Discr);
-  xprintf ("        should be:   %d\r\n", 0);
-  xprintf ("  Enum_Comp:         %d\r\n", Next_Ptr_Glob->variant.var_1.Enum_Comp);
-  xprintf ("        should be:   %d\r\n", 1);
-  xprintf ("  Int_Comp:          %d\r\n", Next_Ptr_Glob->variant.var_1.Int_Comp);
-  xprintf ("        should be:   %d\r\n", 18);
-  xprintf ("  Str_Comp:          %s\r\n",
+  printf ("Execution ends\r\n");
+  printf ("\r\n");
+  printf ("Final values of the variables used in the benchmark:\r\n");
+  printf ("\r\n");
+  printf ("Int_Glob:            %d\r\n", Int_Glob);
+  printf ("        should be:   %d\r\n", 5);
+  printf ("Bool_Glob:           %d\r\n", Bool_Glob);
+  printf ("        should be:   %d\r\n", 1);
+  printf ("Ch_1_Glob:           %c\r\n", Ch_1_Glob);
+  printf ("        should be:   %c\r\n", 'A');
+  printf ("Ch_2_Glob:           %c\r\n", Ch_2_Glob);
+  printf ("        should be:   %c\r\n", 'B');
+  printf ("Arr_1_Glob[8]:       %d\r\n", Arr_1_Glob[8]);
+  printf ("        should be:   %d\r\n", 7);
+  printf ("Arr_2_Glob[8][7]:    %d\r\n", Arr_2_Glob[8][7]);
+  printf ("        should be:   Number_Of_Runs + 10\r\n");
+  printf ("Ptr_Glob->\r\n");
+  printf ("  Ptr_Comp:          %d\r\n", (int) Ptr_Glob->Ptr_Comp);
+  printf ("        should be:   (implementation-dependent)\r\n");
+  printf ("  Discr:             %d\r\n", Ptr_Glob->Discr);
+  printf ("        should be:   %d\r\n", 0);
+  printf ("  Enum_Comp:         %d\r\n", Ptr_Glob->variant.var_1.Enum_Comp);
+  printf ("        should be:   %d\r\n", 2);
+  printf ("  Int_Comp:          %d\r\n", Ptr_Glob->variant.var_1.Int_Comp);
+  printf ("        should be:   %d\r\n", 17);
+  printf ("  Str_Comp:          %s\r\n", Ptr_Glob->variant.var_1.Str_Comp);
+  printf ("        should be:   DHRYSTONE PROGRAM, SOME STRING\r\n");
+  printf ("Next_Ptr_Glob->\r\n");
+  printf ("  Ptr_Comp:          %d\r\n", (int) Next_Ptr_Glob->Ptr_Comp);
+  printf ("        should be:   (implementation-dependent), same as above\r\n");
+  printf ("  Discr:             %d\r\n", Next_Ptr_Glob->Discr);
+  printf ("        should be:   %d\r\n", 0);
+  printf ("  Enum_Comp:         %d\r\n", Next_Ptr_Glob->variant.var_1.Enum_Comp);
+  printf ("        should be:   %d\r\n", 1);
+  printf ("  Int_Comp:          %d\r\n", Next_Ptr_Glob->variant.var_1.Int_Comp);
+  printf ("        should be:   %d\r\n", 18);
+  printf ("  Str_Comp:          %s\r\n",
                                 Next_Ptr_Glob->variant.var_1.Str_Comp);
-  xprintf ("        should be:   DHRYSTONE PROGRAM, SOME STRING\r\n");
-  xprintf ("Int_1_Loc:           %d\r\n", Int_1_Loc);
-  xprintf ("        should be:   %d\r\n", 5);
-  xprintf ("Int_2_Loc:           %d\r\n", Int_2_Loc);
-  xprintf ("        should be:   %d\r\n", 13);
-  xprintf ("Int_3_Loc:           %d\r\n", Int_3_Loc);
-  xprintf ("        should be:   %d\r\n", 7);
-  xprintf ("Enum_Loc:            %d\r\n", Enum_Loc);
-  xprintf ("        should be:   %d\r\n", 1);
-  xprintf ("Str_1_Loc:           %s\r\n", Str_1_Loc);
-  xprintf ("        should be:   DHRYSTONE PROGRAM, 1'ST STRING\r\n");
-  xprintf ("Str_2_Loc:           %s\r\n", Str_2_Loc);
-  xprintf ("        should be:   DHRYSTONE PROGRAM, 2'ND STRING\r\n");
-  xprintf ("\r\n");
+  printf ("        should be:   DHRYSTONE PROGRAM, SOME STRING\r\n");
+  printf ("Int_1_Loc:           %d\r\n", Int_1_Loc);
+  printf ("        should be:   %d\r\n", 5);
+  printf ("Int_2_Loc:           %d\r\n", Int_2_Loc);
+  printf ("        should be:   %d\r\n", 13);
+  printf ("Int_3_Loc:           %d\r\n", Int_3_Loc);
+  printf ("        should be:   %d\r\n", 7);
+  printf ("Enum_Loc:            %d\r\n", Enum_Loc);
+  printf ("        should be:   %d\r\n", 1);
+  printf ("Str_1_Loc:           %s\r\n", Str_1_Loc);
+  printf ("        should be:   DHRYSTONE PROGRAM, 1'ST STRING\r\n");
+  printf ("Str_2_Loc:           %s\r\n", Str_2_Loc);
+  printf ("        should be:   DHRYSTONE PROGRAM, 2'ND STRING\r\n");
+  printf ("\r\n");
 #endif
 
   User_Time = End_Time - Begin_Time;
-  xprintf ("User time: %d\r\n", (int)User_Time);
+  printf ("User time         : %d\r\n", (int)User_Time);
   
   if (User_Time < Too_Small_Time)
   {
-    xprintf ("Measured time too small to obtain meaningful results\r\n");
-    xprintf ("Please increase number of runs\r\n");
-    xprintf ("\r\n");
+    printf ("Measured time too small to obtain meaningful results\r\n");
+    printf ("Please increase number of runs\r\n");
+    printf ("\r\n");
   }
 /*   else */
   {
@@ -340,12 +333,12 @@ int main_dhry ()
     Dhrystones_Per_Second =  (Number_Of_Runs*1000) / User_Time;
     Vax_Mips = (Number_Of_Runs*569) / User_Time;
 #endif 
-    xprintf ("Microseconds for one run through Dhrystone: ");
-    xprintf ("%d \r\n", (int32_t)Microseconds);
-    xprintf ("Dhrystones per Second:                      ");
-    xprintf ("%d \r\n", (int32_t)Dhrystones_Per_Second);
-    xprintf ("VAX MIPS rating * 1000 = %d \r\n",(int)Vax_Mips);
-    xprintf ("\r\n");
+    printf ("Microseconds for one run through Dhrystone: ");
+    printf ("%ld \r\n", (int32_t)Microseconds);
+    printf ("Dhrystones per Second:                      ");
+    printf ("%ld \r\n", (int32_t)Dhrystones_Per_Second);
+    printf ("VAX MIPS rating * 1000 = %d \r\n",(int)Vax_Mips);
+    printf ("\r\n");
   }
   
   return 0;

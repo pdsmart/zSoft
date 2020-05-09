@@ -42,23 +42,23 @@
 
 #if defined(__K64F__)
   #include <stdio.h>
-  #include <stdlib.h>
+  #include <stdint.h>
   #include <string.h>
+  #include <stdlib.h>
   #include "k64f_soc.h"
+  #include <ctype.h>
+  #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
   #include <stdint.h>
+  #include <stdio.h>	    
   #include "zpu_soc.h"
   #include <stdlib.h>
+  #include <stdmisc.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
-#include "diskio.h"
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "xprintf.h"
 #include "utils.h"
 #include "basic_main.h"
 #include "basic_utils.h"
@@ -74,6 +74,7 @@
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
 //
+#include "app.h"
 #include "tbasic.h"
 
 
@@ -127,7 +128,7 @@ short sysGetc(void)
 
 void sysPutc(char c)
 {
-    xputc(c);
+    fputc(c, stdout);
 }
 
 void sysEcho(char c)
@@ -249,7 +250,7 @@ void extraCommand(char cmd, numeric args[])
             sysPoke(args[0], args[1]);
             break;
         case 1:
-            xprintf("PIN: %d,%d\n", args[0], args[1]);
+            printf("PIN: %d,%d\n", args[0], args[1]);
             break;
         case 2:
             doExit = 1;
@@ -289,11 +290,11 @@ char storageOperation(void* data, short size)
             if(size > 0)
             {
                 fr = f_open(&fCurrent, fname, FA_CREATE_ALWAYS | FA_WRITE);
-                xprintf("Writing \"%s\"\n", fname);
+                printf("Writing \"%s\"\n", fname);
             } else
             {
                 fr = f_open(&fCurrent, fname, FA_OPEN_EXISTING | FA_READ);
-                xprintf("Reading \"%s\"\n", fname);
+                printf("Reading \"%s\"\n", fname);
             }
 
             if (fr != FR_OK)

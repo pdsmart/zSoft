@@ -3,74 +3,95 @@
 #endif
 
 #if defined __K64F__
-    #include <stdlib.h>
-    #include <string.h>
-    #define uint32_t __uint32_t
-    #define uint16_t __uint16_t
-    #define uint8_t  __uint8_t
-    #define int32_t  __int32_t
-    #define int16_t  __int16_t
-    #define int8_t   __int8_t
+  #include <stdlib.h>
+  #include <string.h>
+  #define uint32_t __uint32_t
+  #define uint16_t __uint16_t
+  #define uint8_t  __uint8_t
+  #define int32_t  __int32_t
+  #define int16_t  __int16_t
+  #define int8_t   __int8_t
 #else
-    #include <stdint.h>
-    #include <string.h>
+  #include <stdint.h>
+  #if !defined(FUNCTIONALITY)
+    #include <stdio.h>
+  #endif
+  #include <string.h>
+  #include "zpu_soc.h"
 #endif
 
-#include "zpu_soc.h"
 #include "uart.h"
 
 static uint8_t uart_channel = 0;
-__inline void set_serial_output(uint8_t c)
-{
-    uart_channel = (c == 0 ? 0 : 1);
-}
 
-__inline int putchar(int c)
+inline int _putchar(unsigned char c)
 {
     uint32_t status;
 
     do {
         status = UART_STATUS(uart_channel == 0 ? UART0 : UART1);
     } while((UART_IS_TX_FIFO_ENABLED(status) && UART_IS_TX_FIFO_FULL(status)) || (UART_IS_TX_FIFO_DISABLED(status) && UART_IS_TX_DATA_LOADED(status)));
-    UART_DATA(uart_channel == 0 ? UART0 : UART1) = c;
+    UART_DATA(uart_channel == 0 ? UART0 : UART1) = (int)c;
 
     return(c);
 }
 
-__inline void _putchar(unsigned char c)
+inline void set_serial_output(uint8_t c)
 {
-    putchar(c);
+    uart_channel = (c == 0 ? 0 : 1);
 }
 
+
+#if !defined(FUNCTIONALITY)
+// Stream version of putchar for stdio.
+//
+int uart_putchar(char c, FILE *stream)
+{
+    uint32_t status;
+
+    // Add CR when NL detected.
+    if (c == '\n')
+        uart_putchar('\r', stream);
+
+    // Wait for a slot to become available in UART buffer and then send character.
+    do {
+        status = UART_STATUS(uart_channel == 0 ? UART0 : UART1);
+    } while((UART_IS_TX_FIFO_ENABLED(status) && UART_IS_TX_FIFO_FULL(status)) || (UART_IS_TX_FIFO_DISABLED(status) && UART_IS_TX_DATA_LOADED(status)));
+    UART_DATA(uart_channel == 0 ? UART0 : UART1) = c;
+
+    return(0);
+}
+#endif
+
 #if !defined(FUNCTIONALITY) || FUNCTIONALITY <= 2
-__inline int dbgputchar(int c)
+inline int dbgputchar(int c)
 {
     uart_channel = 1;
-    putchar(c);
+    _putchar(c);
     uart_channel = 0;
 
     return(c);
 }
 
-__inline void _dbgputchar(unsigned char c)
+inline void _dbgputchar(unsigned char c)
 {
     dbgputchar(c);
 }
 #endif
 
 #ifdef USELOADB
-int puts(const char *msg)
+int uart_puts(const char *msg)
 {
     int result = 0;
 
     while (*msg) {
-		putchar(*msg++);
+		_putchar(*msg++);
         ++result;
 	}
     return(result);
 }
 #else
-int puts(const char *msg)
+int uart_puts(const char *msg)
 {
     int c;
     int result=0;
@@ -88,7 +109,7 @@ int puts(const char *msg)
             cs<<=8;
             if(c==0)
                 return(result);
-            putchar(c);
+            _putchar(c);
             ++result;
         }
     }
@@ -109,6 +130,15 @@ char getserial()
 
     return((char)reg & 0xFF);
 }
+
+#if !defined(FUNCTIONALITY)
+// Stream version of getchar for stdio.
+//
+int uart_getchar(FILE *stream)
+{
+    return((int)getserial());
+}
+#endif
 
 int8_t getserial_nonblocking()
 {

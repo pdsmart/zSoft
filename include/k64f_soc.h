@@ -78,13 +78,13 @@
 // Macro to print to the debug channel.
 //
 #define debugf(a, ...) ({\
-            xprintf(a, ##__VA_ARGS__);\
+            printf(a, ##__VA_ARGS__);\
            })
 #define dbg_putchar(a) ({\
-            xputc(a);\
+            putc(a);\
            })
 #define dbg_puts(a) ({\
-            xputs(a);\
+            puts(a);\
            })
 #define dbg_breadcrumb(x) putc(x);
 

@@ -51,7 +51,7 @@ Original Author: Shay Gal-on
 	Define to 1 if the platform has stdio.h.
 */
 #ifndef HAS_STDIO
-#define HAS_STDIO 0
+#define HAS_STDIO 1
 #endif
 /* Configuration : HAS_PRINTF
 	Define to 1 if the platform has stdio.h and implements the printf function.

@@ -19,20 +19,15 @@ Original Author: Shay Gal-on
 #include "core_portme.h"
 
 #if defined __K64F__
-    #include <stdlib.h>
-    #include <string.h>
-    #include <WProgram.h>
-    #include "k64f_soc.h"
-    #define uint32_t __uint32_t
-    #define uint16_t __uint16_t
-    #define uint8_t  __uint8_t
-    #define int32_t  __int32_t
-    #define int16_t  __int16_t
-    #define int8_t   __int8_t
-    extern uint32_t milliseconds(void);
+  #include <stdio.h>
+  #include <stdint.h>
+  #include <string.h>
+  #include "k64f_soc.h"
+  extern uint32_t milliseconds(void);
 #else
-    #include <zpu-types.h>
-    #include "zpu_soc.h"
+  #include <stdint.h>
+  #include <stdio.h>
+  #include "zpu_soc.h"
 #endif
 
 #if VALIDATION_RUN
@@ -67,6 +62,7 @@ CORETIMETYPE barebones_clock() {
   #elif defined(__K64F__) && defined(__APP__)
     CORETIMETYPE clockInuS = milliseconds();
   #elif defined(__K64F__) && (defined(__ZPUTA__) || defined(__ZOS__))
+    uint32_t millis(void); 
     CORETIMETYPE clockInuS = millis();
   #else
     #error "Target CPU not defined, use __ZPU__ or __K64F__"

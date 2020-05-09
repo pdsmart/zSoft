@@ -33,6 +33,7 @@ _PROTOTYPE( char *strcpy, (char *_s1, const char *_s2)			);
 _PROTOTYPE( size_t strcspn, (const char *_s1, const char *_s2)		);
 _PROTOTYPE( char *strerror, (int _errnum)				);
 _PROTOTYPE( size_t strlen, (const char *_s)				);
+_PROTOTYPE( size_t strnlen, (const char *_s, size_t _n) 		);
 _PROTOTYPE( char *strncat, (char *_s1, const char *_s2, size_t _n)	);
 _PROTOTYPE( char *strncpy, (char *_s1, const char *_s2, size_t _n)	);
 _PROTOTYPE( char *strpbrk, (const char *_s1, const char *_s2)		);

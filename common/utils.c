@@ -32,27 +32,25 @@
 #endif
 
 #if defined __K64F__
-    #include <stdlib.h>
-    #include <string.h>
-    #include "usb_serial.h"
-    #include "k64f_soc.h"
-    #define uint32_t __uint32_t
-    #define uint16_t __uint16_t
-    #define uint8_t  __uint8_t
-    #define int32_t  __int32_t
-    #define int16_t  __int16_t
-    #define int8_t   __int8_t
+  #include <stdio.h>
+  #include <stdint.h>
+  #include <stdlib.h>
+  #include <string.h>
+  #include "usb_serial.h"
+  #include "k64f_soc.h"
+  #include <../libraries/include/stdmisc.h>
 #else
-    #include <stdint.h>
-    #include <string.h>
-    #include "uart.h"
-    #include "zpu_soc.h"
+  #include <stdint.h>
+  #include <string.h>
+  #include <stdio.h>
+  #include <stdmisc.h>
+  #include "uart.h"
+  #include "zpu_soc.h"
 #endif
 
 #if defined(__SD_CARD__)
-    #include "ff.h"
+  #include "ff.h"
 #endif
-#include "xprintf.h"
 #include "utils.h"
 
 #if defined(__ZPU__)
@@ -62,9 +60,9 @@ void printnibble(uint8_t c)
 {
     c&=0xf;
     if (c>9)
-        xputc(c+'a'-10);
+        fputc(c+'a'-10, stdout);
     else
-        xputc(c+'0');
+        fputc(c+'0', stdout);
 }
 // Byte: 8 bits represented by 2 digits, <0-f><0-f>
 void printhexbyte(uint8_t c)
@@ -248,7 +246,7 @@ void rtcGet(RTC *time)
     dbg_puts("RTC Not yet implemented.\n");
   #endif
 
-    xprintf("%d/%d/%d %d:%d:%d.%d%d\n",time->year, time->month, time->day, time->hour, time->min, time->sec, time->msec, time->usec);
+    printf("%d/%d/%d %d:%d:%d.%d%d\n",time->year, time->month, time->day, time->hour, time->min, time->sec, time->msec, time->usec);
 }
 
 #ifdef __cplusplus

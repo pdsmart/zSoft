@@ -39,29 +39,21 @@
 
 #if defined(__K64F__)
   #include <stdio.h>
-  #include <stdlib.h>
+  #include <stdint.h>
   #include <string.h>
   #include "k64f_soc.h"
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+  #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
   #include <stdint.h>
+  #include <stdio.h>	    
   #include "zpu_soc.h"
   #include <stdlib.h>
+  #include <stdmisc.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
-#include "diskio.h"
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "xprintf.h"
 #include "utils.h"
 //
 #if defined __ZPUTA__
@@ -72,6 +64,7 @@
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
 //
+#include "app.h"
 #include "rtctime.h"
 
 // Utility functions.
@@ -120,11 +113,11 @@ uint32_t app(uint32_t param1, uint32_t param2)
                             rtc.usec = 0;
                             rtcSet(&rtc);
                             retCode = 0;
-                        } else xprintf("Illegal <sec> value.\n");
-                    } else xprintf("Illegal <min> value.\n");
-                } else xprintf("Illegal <hour> value.\n");
-            } else xprintf("Illegal <day> value.\n");
-        } else xprintf("Illegal <mon> value.\n");
+                        } else printf("Illegal <sec> value.\n");
+                    } else printf("Illegal <min> value.\n");
+                } else printf("Illegal <hour> value.\n");
+            } else printf("Illegal <day> value.\n");
+        } else printf("Illegal <mon> value.\n");
     }
 
 	// If the time provided is valid and the clock set, retrieve the time as verification and print.
@@ -132,7 +125,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
 	if(retCode == 0)
 	{
         rtcGet(&rtc);
-        xprintf("%u/%u/%u %02u:%02u:%02u.%03u%03u\n", rtc.year, rtc.month, rtc.day, rtc.hour, rtc.min, rtc.sec, rtc.msec, rtc.usec);
+        printf("%u/%u/%u %02u:%02u:%02u.%03u%03u\n", rtc.year, rtc.month, rtc.day, rtc.hour, rtc.min, rtc.sec, rtc.msec, rtc.usec);
 	}
 
     return(retCode);

@@ -28,11 +28,12 @@
  * SOFTWARE.
  */
 
+#include <stdio.h>
 #include "kinetis.h"
 #include "core_pins.h" // testing only
 #include "ser_print.h" // testing only
+#include "usb_serial.h"
 #include "usb_ser_print.h" // testing only
-#include "xprintf.h"       // fault dump output.
 #include <errno.h>
 
 
@@ -172,84 +173,84 @@ void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress )
     pc  = pulFaultStackAddress[ 6 ];
     psr = pulFaultStackAddress[ 7 ];
 
-    xputs("\n\n");
+    puts("\n");
     switch(fault_id)
     {
         case 1:
-            xputs("HARD FAULT");
+            puts("HARD FAULT");
             break;
         case 2:
-            xputs("BUS FAULT");
+            puts("BUS FAULT");
             break;
         case 3:
-            xputs("MEMORY MANAGEMENT FAULT");
+            puts("MEMORY MANAGEMENT FAULT");
             break;
         case 4:
-            xputs("USAGE FAULT");
+            puts("USAGE FAULT");
             break;
         default:
-            xputs("UNKNOWN FAULT");
+            puts("UNKNOWN FAULT");
             break;
     }
-    xputs("\n\nRegister values at time of fault:\n");
-    xprintf("  R0    : 0x%08lx",   r0);
-    xprintf("  R1    : 0x%08lx",   r1);
-    xprintf("  R2    : 0x%08lx",   r2);
-    xprintf("  R3    : 0x%08lx\n", r3);
-    xprintf("  R12   : 0x%08lx",   r12);
-    xprintf("  LR    : 0x%08lx",   lr);
-    xprintf("  PC    : 0x%08lx",   pc);
-    xprintf("  PSR   : 0x%08lx",   psr);
-    xprintf("  SP    : 0x%08lx\n", pulFaultStackAddress);
+    puts("\nRegister values at time of fault:");
+    printf("  R0    : 0x%08lx",   r0);
+    printf("  R1    : 0x%08lx",   r1);
+    printf("  R2    : 0x%08lx",   r2);
+    printf("  R3    : 0x%08lx\n", r3);
+    printf("  R12   : 0x%08lx",   r12);
+    printf("  LR    : 0x%08lx",   lr);
+    printf("  PC    : 0x%08lx",   pc);
+    printf("  PSR   : 0x%08lx",   psr);
+    printf("  SP    : 0x%08lx\n", *pulFaultStackAddress);
 
-    xprintf("  CFSR  : 0x%08lx",   (*((volatile unsigned long *)(0xE000ED28))));
-    xprintf("  UFSR  : 0x%08lx",   (*((volatile unsigned long *)(0xE000ED2A))));
-    xprintf("  HFSR  : 0x%08lx",   (*((volatile unsigned long *)(0xE000ED2C))));
-    xprintf("  DFSR  : 0x%08lx",   (*((volatile unsigned long *)(0xE000ED30))));
-    xprintf("  BFAR  : 0x%08lx\n", (*((volatile unsigned long *)(0xE000ED38))));
+    printf("  CFSR  : 0x%08lx",   (*((volatile unsigned long *)(0xE000ED28))));
+    printf("  UFSR  : 0x%08lx",   (*((volatile unsigned long *)(0xE000ED2A))));
+    printf("  HFSR  : 0x%08lx",   (*((volatile unsigned long *)(0xE000ED2C))));
+    printf("  DFSR  : 0x%08lx",   (*((volatile unsigned long *)(0xE000ED30))));
+    printf("  BFAR  : 0x%08lx\n", (*((volatile unsigned long *)(0xE000ED38))));
 
-    xprintf("  CCR   : 0x%08lx",   (*((volatile unsigned long *)(0xE000ED14))));
-    xprintf("  AFSR  : 0x%08lx\n", (*((volatile unsigned long *)(0xE000ED3C))));
-    xputs("\n\n");
+    printf("  CCR   : 0x%08lx",   (*((volatile unsigned long *)(0xE000ED14))));
+    printf("  AFSR  : 0x%08lx\n", (*((volatile unsigned long *)(0xE000ED3C))));
+    puts("\n");
 
     uint32_t pnt    = (uint32_t)pulFaultStackAddress - 0x200;
     uint32_t pntEnd = (uint32_t)pulFaultStackAddress + 0x200;
     uint32_t i = 0;
     char c = 0;
-    xputs("Stack contents:\n");
+    puts("Stack contents:");
     while (1)
     {
-        xprintf("%08X", pnt);
-        xputs(":  ");
+        printf("%08lX", pnt);
+        printf(":  ");
         if (SIM_SCGC4 & SIM_SCGC4_USBOTG) usb_isr();
 
         // print hexadecimal data
         for (i=0; i < 32; )
         {
             if(pnt+i < 0x20030000)
-                xprintf("%02X", *(uint8_t *)(pnt+i));
+                printf("%02X", *(uint8_t *)(pnt+i));
             else
-                xputs("  ");
+                printf("  ");
             i++;
-            xputc((char)' ');
+            putchar((char)' ');
             if (SIM_SCGC4 & SIM_SCGC4_USBOTG) usb_isr();
         }
 
         // print ascii data
-        xputs(" |");
+        printf(" |");
 
         // print single ascii char
         for (i=0; i < 32; i++)
         {
             c = (char)*(uint8_t *)(pnt+i);
             if ((pnt+i < 0x20030000) && (c >= ' ') && (c <= '~'))
-                xputc((char)c);
+                putchar((char)c);
             else
-                xputc((char)' ');
+                putchar((char)' ');
             if (SIM_SCGC4 & SIM_SCGC4_USBOTG) usb_isr();
         }
 
-        xputs("|\r\n");
+        puts("|");
 
         // Move on one row.
         pnt  += 32;
@@ -896,23 +897,21 @@ void _ZPUTA_Vectors(void)
     // 
     // putc and xprint calls
     // 
-    __asm__ volatile ("b usb_serial_putchar");
-    __asm__ volatile ("b xputc");
-    __asm__ volatile ("b xfputc");
-    __asm__ volatile ("b xputs");
-    __asm__ volatile ("b xgets");
-    __asm__ volatile ("b xfgets");
-    __asm__ volatile ("b xfputs");
+    __asm__ volatile ("b putchar");
+    __asm__ volatile ("b putc");
+    __asm__ volatile ("b fputc");
+    __asm__ volatile ("b puts");
+    __asm__ volatile ("b gets");
+    __asm__ volatile ("b fgets");
+    __asm__ volatile ("b fputs");
     __asm__ volatile ("b xatoi");
     __asm__ volatile ("b uxatoi");
-    __asm__ volatile ("b xprintf");
-    __asm__ volatile ("b xvprintf");
-    __asm__ volatile ("b xsprintf");
-    __asm__ volatile ("b xfprintf");
+    __asm__ volatile ("b printf");
+    __asm__ volatile ("b sprintf");
+    __asm__ volatile ("b fprintf");
     //
     // getc calls
     //
-    __asm__ volatile ("b usb_serial_getchar");
     __asm__ volatile ("b usb_serial_getchar");
     //
     // Util calls.
@@ -973,6 +972,13 @@ void _ZPUTA_Vectors(void)
     __asm__ volatile ("bx lr"); __asm__ volatile ("nop");
     // __asm__ volatile ("b printBytesPerSec");
     __asm__ volatile ("b printFSCode");
+    //
+    // Memory management calls for memory managed by OS.
+    //
+    __asm__ volatile ("b malloc");
+    __asm__ volatile ("b realloc");
+    __asm__ volatile ("b calloc");
+    __asm__ volatile ("b free");
 }
 
 // Automatically initialize the RTC.  When the build defines the compile
@@ -1512,10 +1518,54 @@ void * _sbrk(int incr)
 	return prev;
 }
 
-__attribute__((weak)) 
+int _write(int file, char *ptr, int len)
+{
+	int count = len;
+    if (file == 1) { // stdout
+        while (count > 0)
+		{
+			if(*ptr == '\n')
+			{
+				usb_serial_putchar('\r');
+			}
+			usb_serial_putchar(*ptr);
+            ++ptr;
+            --count;
+        }
+    }
+    return len;
+}
+
+int __putchar(int c)
+{
+   return(usb_serial_putchar(c));
+}
+
 int _read(int file, char *ptr, int len)
 {
-	return 0;
+	  int i = 0;
+      int t;
+
+	  for (i = 0; i < len; i++)
+	  {
+		while((t=usb_serial_getchar()) == -1);
+
+
+		if (((char)t != '\r') && ((char)t != '\n'))
+		{
+		    *(ptr + i) = t;
+		    usb_serial_putchar(t); // echo
+		} else
+		{
+	    	// terminate the line in the way expected by the libraries
+		    *(ptr + i) = '\n';
+	    	i++;
+			usb_serial_putchar('\r');
+			usb_serial_putchar('\n');
+	      break;
+	    }
+	  }
+	  return (i);
 }
 
 __attribute__((weak)) 

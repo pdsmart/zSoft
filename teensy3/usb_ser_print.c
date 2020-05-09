@@ -28,6 +28,7 @@
  * SOFTWARE.
  */
 
+#include <stdio.h>
 #include "kinetis.h"
 #include "usb_serial.h"
 #include "usb_ser_print.h"

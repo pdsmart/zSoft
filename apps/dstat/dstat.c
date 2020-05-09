@@ -39,29 +39,22 @@
 
 #if defined(__K64F__)
   #include <stdio.h>
-  #include <stdlib.h>
+  #include <stdint.h>
   #include <string.h>
   #include "k64f_soc.h"
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+  #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
   #include <stdint.h>
+  #include <stdio.h>	    
   #include "zpu_soc.h"
   #include <stdlib.h>
+  #include <stdmisc.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
 #include "diskio.h"
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "xprintf.h"
 #include "utils.h"
 //
 #if defined __ZPUTA__
@@ -72,6 +65,7 @@
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
 //
+#include "app.h"
 #include "dstat.h"
 
 // Utility functions.
@@ -102,44 +96,44 @@ uint32_t app(uint32_t param1, uint32_t param2)
     {
         if (disk_ioctl((BYTE)drive, GET_SECTOR_COUNT, &sector) == RES_OK)
         {
-            xprintf("Drive size: %lu sectors\n", sector);
+            printf("Drive size: %lu sectors\n", sector);
         }
         if (disk_ioctl((BYTE)drive, GET_BLOCK_SIZE, &sector) == RES_OK)
         {
-            xprintf("Erase block: %lu sectors\n", sector);
+            printf("Erase block: %lu sectors\n", sector);
         }
         if (disk_ioctl((BYTE)drive, MMC_GET_TYPE, &cardType) == RES_OK)
         {
-            xprintf("Card type: %u\n", cardType);
+            printf("Card type: %u\n", cardType);
         }
         if (disk_ioctl((BYTE)drive, MMC_GET_CSD, G->Buff) == RES_OK)
         {
-            xputs("CSD:\n"); memoryDump((uint32_t)G->Buff, 16, 16, 0, 32);
+            puts("CSD:\n"); memoryDump((uint32_t)G->Buff, 16, 16, 0, 32);
         }
         if (disk_ioctl((BYTE)drive, MMC_GET_CID, G->Buff) == RES_OK)
         {
-            xputs("CID:\n"); memoryDump((uint32_t)G->Buff, 16, 16, 0, 32);
+            puts("CID:\n"); memoryDump((uint32_t)G->Buff, 16, 16, 0, 32);
         }
         if (disk_ioctl((BYTE)drive, MMC_GET_OCR, G->Buff) == RES_OK)
         {
-            xputs("OCR:\n"); memoryDump((uint32_t)G->Buff, 4, 16, 0, 32);
+            puts("OCR:\n"); memoryDump((uint32_t)G->Buff, 4, 16, 0, 32);
         }
         if (disk_ioctl((BYTE)drive, MMC_GET_SDSTAT, G->Buff) == RES_OK)
         {
-            xputs("SD Status:\n");
+            puts("SD Status:\n");
             memoryDump((uint32_t)G->Buff, 64, 16, 0, 32);
         }
         if (disk_ioctl((BYTE)drive, ATA_GET_MODEL, line) == RES_OK)
         {
-            line[40] = '\0'; xprintf("Model: %s\n", line);
+            line[40] = '\0'; printf("Model: %s\n", line);
         }
         if (disk_ioctl((BYTE)drive, ATA_GET_SN, line) == RES_OK)
         {
-            line[20] = '\0'; xprintf("S/N: %s\n", line);
+            line[20] = '\0'; printf("S/N: %s\n", line);
         }
     } else
     {
-         xprintf("Illegal <#pd> value.\n");
+         printf("Illegal <#pd> value.\n");
     }
 
     return(0);

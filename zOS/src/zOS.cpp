@@ -50,23 +50,19 @@
 #endif
 
 #if defined __K64F__
-    #include <stdlib.h>
-    #include <string.h>
-    #include "WProgram.h"
-    #include "k64f_soc.h"
-    #define uint32_t __uint32_t
-    #define uint16_t __uint16_t
-    #define uint8_t  __uint8_t
-    #define int32_t  __int32_t
-    #define int16_t  __int16_t
-    #define int8_t   __int8_t
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <string.h>
+  #include "WProgram.h"
+  #include "k64f_soc.h"
+  #include <../libraries/include/stdmisc.h>
 #else
-//    #include <zstdio.h>
-//    #include <zpu-types.h>
-    #include <stdint.h>
-    #include <string.h>
-    #include "uart.h"
-    #include "zpu_soc.h"
+  #include <stdint.h>
+  #include <string.h>
+  #include <stdio.h>
+  #include <stdmisc.h >
+  #include "zpu_soc.h"
+  #include "uart.h"
 #endif
 
 #include "interrupts.h"
@@ -74,7 +70,6 @@
 #include "diskio.h"
 #include <fcntl.h>
 #include <sys/stat.h>
-#include "xprintf.h"
 #include "utils.h"
 #include "readline.h"
 #include "zOS_app.h"     /* Header for definitions specific to apps run from zOS */
@@ -109,39 +104,39 @@ void interrupt_handler()
     // Prevent additional interrupts.
     DisableInterrupts();
 
-    dbg_puts("ZPU Interrupt Handler\n");
+    dbg_puts("ZPU Interrupt Handler");
 
     if(INTR_IS_TIMER(intr))
     {
-        dbg_puts("Timer interrupt\n");
+        dbg_puts("Timer interrupt");
     }
     if(INTR_IS_PS2(intr))
     {
-        dbg_puts("PS2 interrupt\n");
+        dbg_puts("PS2 interrupt");
     }
     if(INTR_IS_IOCTL_RD(intr))
     {
-        dbg_puts("IOCTL RD interrupt\n");
+        dbg_puts("IOCTL RD interrupt");
     }
     if(INTR_IS_IOCTL_WR(intr))
     {
-        dbg_puts("IOCTL WR interrupt\n");
+        dbg_puts("IOCTL WR interrupt");
     }
     if(INTR_IS_UART0_RX(intr))
     {
-        dbg_puts("UART0 RX interrupt\n");
+        dbg_puts("UART0 RX interrupt");
     }
     if(INTR_IS_UART0_TX(intr))
     {
-        dbg_puts("UART0 TX interrupt\n");
+        dbg_puts("UART0 TX interrupt");
     }
     if(INTR_IS_UART1_RX(intr))
     {
-        dbg_puts("UART1 RX interrupt\n");
+        dbg_puts("UART1 RX interrupt");
     }
     if(INTR_IS_UART1_TX(intr))
     {
-        dbg_puts("UART1 TX interrupt\n");
+        dbg_puts("UART1 TX interrupt");
     }
 
     // Enable new interrupts.
@@ -152,7 +147,7 @@ void interrupt_handler()
 //
 void initTimer()
 {
-    dbg_puts("Setting up timer...\n");
+    dbg_puts("Setting up timer...");
     TIMER_INDEX(TIMER1) = 0;                // Set first timer
     TIMER_COUNTER(TIMER1) = 100000;         // Timer is prescaled to 100KHz
 }
@@ -161,7 +156,7 @@ void initTimer()
 //
 void enableTimer()
 {
-    dbg_puts("Enabling timer...\n");
+    dbg_puts("Enabling timer...");
     TIMER_ENABLE(TIMER1) = 1;               // Enable timer 0
 }
 #endif
@@ -206,7 +201,7 @@ uint8_t getCommandLine(char *buf, uint8_t bufSize)
     {
         if((ptr = f_gets(buf, bufSize, &fAutoExec)) != NULL)
         {
-            xputs(ptr);
+            puts(ptr);
         }
         else
         {
@@ -224,7 +219,7 @@ uint8_t getCommandLine(char *buf, uint8_t bufSize)
         readline((uint8_t *)buf, bufSize, HISTORY_FILE);
       #else
         ptr = buf;
-        xgets(ptr, bufSize);
+        gets(ptr, bufSize);
       #endif
     }
 
@@ -267,13 +262,13 @@ int cmdProcessor(void)
     fr = FR_NOT_ENABLED;
     if(!disk_initialize(0, 1))
     {
-        xsprintf(line, "0:");
+        sprintf(line, "0:");
         fr = f_mount(&G.FatFs[0], line, 0);
     }
 
     if(fr)
     {
-        xprintf("Failed to initialise sd card 0, please init manually.\n");
+        printf("Failed to initialise sd card 0, please init manually.\n");
     } else
     {
         diskInitialised = 1;
@@ -284,7 +279,7 @@ int cmdProcessor(void)
     while(1)
     {
         // Prompt to indicate input required.
-        xputs("* ");
+        printf("* ");
         ptr = line;
         getCommandLine(line, sizeof(line));
 
@@ -308,7 +303,7 @@ int cmdProcessor(void)
                 }
 
                 rtcGet(&rtc);
-                xprintf("%u/%u/%u %02u:%02u:%02u.%03u%03u\n", rtc.year, rtc.month, rtc.day, rtc.hour, rtc.min, rtc.sec, rtc.msec, rtc.usec);
+                printf("%u/%u/%u %02u:%02u:%02u.%03u%03u\n", rtc.year, rtc.month, rtc.day, rtc.hour, rtc.min, rtc.sec, rtc.msec, rtc.usec);
                 break;
           #endif
     
@@ -323,12 +318,12 @@ int cmdProcessor(void)
                 {
                     p3 = 0x00000000;
                 }
-                xputs("Clearing....");
+                printf("Clearing....");
                 for(memAddr=(uint32_t)p1; memAddr < (uint32_t)p2; memAddr+=4)
                 {
                     *(uint32_t *)(memAddr) = (uint32_t)p3;
                 }
-                xputs("\n");
+                printf("\n");
                 break;
           #endif
 
@@ -338,12 +333,12 @@ int cmdProcessor(void)
                 if (!xatoi(&ptr, &p1)) break;
                 if (!xatoi(&ptr, &p2)) break;
                 if (!xatoi(&ptr, &p3)) break;
-                xputs("Copying...");
+                printf("Copying...");
                 for(memAddr=(uint32_t)p1; memAddr < (uint32_t)p2; memAddr++, p3++)
                 {
                     *(uint8_t *)(p3) = *(uint8_t *)(memAddr);
                 }
-                xputs("\n");
+                printf("\n");
                 break;
           #endif
 
@@ -353,15 +348,15 @@ int cmdProcessor(void)
                 if (!xatoi(&ptr, &p1)) break;
                 if (!xatoi(&ptr, &p2)) break;
                 if (!xatoi(&ptr, &p3)) break;
-                xputs("Comparing...");
+                printf("Comparing...");
                 for(memAddr=(uint32_t)p1; memAddr < (uint32_t)p2; memAddr++, p3++)
                 {
                     if(*(uint8_t *)(p3) != *(uint8_t *)(memAddr))
                     {
-                        xprintf("%08lx(%08x)->%08lx(%08x)\n", memAddr, *(uint8_t *)(memAddr), p3, *(uint8_t *)(p3));
+                        printf("%08lx(%08x)->%08lx(%08x)\n", memAddr, *(uint8_t *)(memAddr), p3, *(uint8_t *)(p3));
                     }
                 }
-                xputs("\n");
+                printf("\n");
                 break;
           #endif
 
@@ -410,9 +405,9 @@ int cmdProcessor(void)
                 {
                     p3 = 8;
                 }
-                xputs("Dump Memory\n");
+                printf("Dump Memory\n");
                 memoryDump(p1, p2, p3, p1, 32);
-                xputs("\nComplete.\n");
+                printf("\nComplete.\n");
                 break;
           #endif
 
@@ -429,8 +424,8 @@ int cmdProcessor(void)
                 }
                 for (;;)
                 {
-                    xprintf("%08X %02X-", (uint32_t)p1, *(uint8_t *)p1);
-                    xgets(line, sizeof line);
+                    printf("%08lX %02X-", (uint32_t)p1, *(uint8_t *)p1);
+                    fgets(line, sizeof line, stdin);
                     ptr = line;
                     if (*ptr == '.') break;
                     if (*ptr < ' ') { p1++; continue; }
@@ -438,7 +433,7 @@ int cmdProcessor(void)
                     {
                         *(uint8_t *)(p1++) = (uint8_t)p2;
                     } else {
-                        xputs("???\n");
+                        printf("???\n");
                     }
                 }
                 break;
@@ -458,8 +453,8 @@ int cmdProcessor(void)
                 }
                 for (;;)
                 {
-                    xprintf("%08X %04X-", (uint32_t)up1, *(uint16_t *)up1);
-                    xgets(line, sizeof line);
+                    printf("%08lX %04X-", (uint32_t)up1, *(uint16_t *)up1);
+                    fgets(line, sizeof line, stdin);
                     ptr = line;
                     if (*ptr == '.') break;
                     if (*ptr < ' ') { up1 += 2; continue; }
@@ -468,7 +463,7 @@ int cmdProcessor(void)
                         *(uint16_t *)(up1) = (uint16_t)up2;
                         up1 += 2;
                     } else {
-                        xputs("???\n");
+                        printf("???\n");
                     }
                 }
                 break;
@@ -488,8 +483,8 @@ int cmdProcessor(void)
                 }
                 for (;;)
                 {
-                    xprintf("%08X %08X-", up1, *(uint32_t *)(up1));
-                    xgets(line, sizeof line);
+                    printf("%08lX %08lX-", up1, *(uint32_t *)(up1));
+                    fgets(line, sizeof line, stdin);
                     ptr = line;
                     if (*ptr == '.') break;
                     if (*ptr < ' ') { up1 += 4; continue; }
@@ -498,7 +493,7 @@ int cmdProcessor(void)
                         *(uint32_t *)(up1) = up2;
                         up1 += 4;
                     } else {
-                        xputs("???\n");
+                        printf("???\n");
                     }
                 }
                 break;
@@ -549,22 +544,22 @@ int cmdProcessor(void)
                 {
                     p3 = 0;
                 }
-                xputs("Searching..\n");
+                printf("Searching..\n");
                 for(memAddr=(uint32_t)p1; memAddr < (uint32_t)p2; memAddr+=4)
                 {
                     if(*(uint32_t *)(memAddr) == (uint32_t)p3)
                     {
-                        xprintf("%08lx->%08lx\n", memAddr, *(uint32_t *)(memAddr));
+                        printf("%08lx->%08lx\n", memAddr, *(uint32_t *)(memAddr));
                     }
                 }
-                xputs("\n");
+                printf("\n");
                 break;
           #endif
 
           #if defined(BUILTIN_MEM_TEST) && BUILTIN_MEM_TEST == 1
             // Test memory, [<start addr> [<end addr>] [<iter>] [<test bitmap>]]
             case CMD_MEM_TEST:
-                xputs("Test Memory not-builtin\n");
+                printf("Test Memory not-builtin\n");
                 break;
           #endif
 
@@ -572,7 +567,7 @@ int cmdProcessor(void)
             case CMD_EXECUTE:
             {
                 if (!xatoi(&ptr, &p1)) break;
-                xprintf("Executing code @ %08x ...\n", p1);
+                printf("Executing code @ %08lx ...\n", p1);
                 void *jmpptr = (void *)p1;
                 goto *jmpptr;
             }
@@ -581,19 +576,19 @@ int cmdProcessor(void)
             case CMD_CALL:
             {
                 if (!xatoi(&ptr, &p1)) break;
-                xprintf("Calling code @ %08x ...\n", p1);
+                printf("Calling code @ %08lx ...\n", p1);
                 int  (*func)(void) = (int (*)(void))p1;
                 int retCode = func();
                 if(retCode != 0)
                 {
-                    xprintf("Call returned code (%d).\n", retCode);
+                    printf("Call returned code (%d).\n", retCode);
                 }
             }
             break;
 
             // MISC commands
             case CMD_MISC_RESTART_APP:
-                xputs("Restarting application...\n");
+                printf("Restarting application...\n");
               #if defined __ZPU__
                 _restart();
               #endif
@@ -602,7 +597,7 @@ int cmdProcessor(void)
             // Reboot the ZPU to the cold start location.
             case CMD_MISC_REBOOT:
             {
-                xputs("Cold rebooting...\n");
+                printf("Cold rebooting...\n");
                 void *rbtptr = (void *)0x00000000;
                 goto *rbtptr;
             }
@@ -637,27 +632,32 @@ int cmdProcessor(void)
                             {
                                 // Try formatting with all the required drive and path fields.
                                 case 1:
-                                    xsprintf(&line[40], "%d:\\%s\\%s.%s", APP_CMD_BIN_DRIVE, APP_CMD_BIN_DIR, src1FileName, APP_CMD_EXTENSION);
+                                    sprintf(&line[40], "%d:\\%s\\%s.%s", APP_CMD_BIN_DRIVE, APP_CMD_BIN_DIR, src1FileName, APP_CMD_EXTENSION);
                                     break;
                                    
                                 // Try command as is.
                                 case 2:
-                                    xsprintf(&line[40], "%s");
+                                    sprintf(&line[40], "%s", src1FileName);
                                     break;
                                      
                                 // Try command as is but with drive and bin dir.
                                 case 3: 
-                                    xsprintf(&line[40], "%d:\\%s\\%s", APP_CMD_BIN_DRIVE, APP_CMD_BIN_DIR, src1FileName);
+                                    sprintf(&line[40], "%d:\\%s\\%s", APP_CMD_BIN_DRIVE, APP_CMD_BIN_DIR, src1FileName);
                                     break;
                                    
                                 // Try command as is but with just drive.
                                 case 4: 
                                 default:
-                                    xsprintf(&line[40], "%d:\\%s", APP_CMD_BIN_DRIVE, src1FileName);
+                                    sprintf(&line[40], "%d:\\%s", APP_CMD_BIN_DRIVE, src1FileName);
                                     break;
                             }
-                            //                 command    Load addr          Exec addr          Mode of exec    Param1            Param2  Global struct   SoC Config struct
+                            //                 command    Load addr          Exec addr          Mode of exec    Param1            Param2  Global struct   SoC Config struct 
+                          #if defined __ZPU__
                             retCode = fileExec(&line[40], APP_CMD_LOAD_ADDR, APP_CMD_EXEC_ADDR, EXEC_MODE_CALL, (uint32_t)ptr,    0,      (uint32_t)&G,   (uint32_t)&cfgSoC);
+                          #else
+                            retCode = fileExec(&line[40], APP_CMD_LOAD_ADDR, APP_CMD_EXEC_ADDR, EXEC_MODE_CALL, (uint32_t)ptr,    0,      (uint32_t)&G,   (uint32_t)&cfgSoC);
+                          #endif
+
                             if(retCode == 0xffffffff && trying <= 3)
                             {
                                 trying++;
@@ -669,10 +669,10 @@ int cmdProcessor(void)
                     }
                     if(!diskInitialised || !fsInitialised || retCode == 0xffffffff)
                     {
-                        xprintf("Bad command.\n");
+                        printf("Bad command.\n");
                     }
                 #else
-                    xprintf("Unknown command!\n");
+                    printf("Unknown command!\n");
                 #endif
                 }
                 break;
@@ -719,12 +719,12 @@ int main(int argc, char **argv)
   #if defined __K64F__
     Serial.begin(9600);
     delay(2000);                   // Give time for the USB Serial Port to connect.
-    xdev_out(usb_serial_putchar);
-    xdev_in(usb_serial_getchar);
+
+    // I/O is connected in the _read and_write methods withiin startup file mx20dx128.c.
+    setbuf(stdout, NULL);
   #else
-    // Setup the input/output devices for the xprintf library.
-    xdev_out(putchar);
-    xdev_in(getserial);
+    fdev_setup_stream(&osIO, uart_putchar, uart_getchar, _FDEV_SETUP_RW);
+    stdout = stdin = stderr = &osIO;
   #endif
 
     // Setup the configuration using the SoC configuration register if implemented otherwise the compiled internals.
@@ -733,15 +733,15 @@ int main(int argc, char **argv)
     // Ensure interrupts are disabled whilst setting up.
     DisableInterrupts();
 
-    //xputs("Setting up timer...\n");
+    //printf("Setting up timer...\n");
     //TIMER_INDEX(TIMER1) = 0;                // Set first timer
     //TIMER_COUNTER(TIMER1) = 100000;         // Timer is prescaled to 100KHz
     //enableTimer();
 
     // Indicate life...
-    xputs("Running...\n");
+    printf("Running...\n");
 
-    xputs("Enabling interrupts...\n");
+    printf("Enabling interrupts...\n");
     SetIntHandler(interrupt_handler);
   #if defined __ZPU__
     //EnableInterrupt(INTR_TIMER | INTR_PS2 | INTR_IOCTL_RD | INTR_IOCTL_WR | INTR_UART0_RX | INTR_UART0_TX | INTR_UART1_RX | INTR_UART1_TX);

@@ -36,7 +36,6 @@
 
 /*A reasonable value for YMAX is the int part of PI*B**(t/2)=3.1416*2**(12)*/
 #define YMAX     12867.0
-
 float sincosf(const float x, const int iscos)
 {
     float y, f, r, g, XN;

@@ -31,6 +31,7 @@
     extern "C" {
 #endif
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #define uint32_t __uint32_t
@@ -40,7 +41,6 @@
 #define int16_t  __int16_t
 #define int8_t   __int8_t
 #include "k64f_soc.h"
-#include "xprintf.h"
 
 // Global scope variables.
 #ifdef USE_BOOT_ROM
@@ -113,36 +113,36 @@ void setupSoCConfig(void)
 #if !defined(FUNCTIONALITY) || FUNCTIONALITY <= 1
 void showSoCConfig(void)
 {
-    xputs("K64F SoC Configuration:\n");
-    xputs("On-board Devices:\n");
-    if(cfgSoC.implFRAM)      { xprintf("    FRAM      (%08X:%08X).\n", cfgSoC.addrFRAM,     cfgSoC.addrFRAM     + cfgSoC.sizeFRAM); }
-    if(cfgSoC.implFRAM)      { xprintf("    FRAMNV    (%08X:%08X).\n", cfgSoC.addrFRAMNV,   cfgSoC.addrFRAMNV   + cfgSoC.sizeFRAMNV); }
-    if(cfgSoC.implFRAM)      { xprintf("    FRAMNVC   (%08X:%08X).\n", cfgSoC.addrFRAMNVC,  cfgSoC.addrFRAMNVC  + cfgSoC.sizeFRAMNVC); }
-    if(cfgSoC.implRAM)       { xprintf("    RAM       (%08X:%08X).\n", cfgSoC.addrRAM,      cfgSoC.addrRAM      + cfgSoC.sizeRAM); }
-    if(cfgSoC.implSD)        { xprintf("    SD CARD   (Devices =%02d).\n", (uint8_t)cfgSoC.sdCardNo); }
-    if(cfgSoC.implTimer1)    { xprintf("    TIMER1    (Timers  =%02d).\n", (uint8_t)cfgSoC.timer1No); }
-    if(cfgSoC.implIntrCtl)   { xprintf("    INTR CTRL (Channels=%02d).\n", (uint8_t)cfgSoC.intrChannels); }
-    if(cfgSoC.implPS2)       { xputs("    PS2\n"); }
-    if(cfgSoC.implSPI)       { xputs("    SPI\n"); }
-    xputs("Addresses:\n");
-    xprintf("    CPU Reset Vector Address = %08X\n",        cfgSoC.resetVector); 
-    xprintf("    CPU Memory Start Address = %08X\n",        cfgSoC.cpuMemBaseAddr);
-    xprintf("    Stack Start Address      = %08X\n",        cfgSoC.stackStartAddr);
-    xputs("Misc:\n");
-    xprintf("    System Clock Freq        = %d.%04dMHz\n",  (cfgSoC.sysFreq / 1000000), cfgSoC.sysFreq - ((cfgSoC.sysFreq / 1000000) * 1000000));
+    puts("K64F SoC Configuration:");
+    puts("On-board Devices:");
+    if(cfgSoC.implFRAM)      { printf("    FRAM      (%08lX:%08lX).\n", cfgSoC.addrFRAM,     cfgSoC.addrFRAM     + cfgSoC.sizeFRAM); }
+    if(cfgSoC.implFRAM)      { printf("    FRAMNV    (%08lX:%08lX).\n", cfgSoC.addrFRAMNV,   cfgSoC.addrFRAMNV   + cfgSoC.sizeFRAMNV); }
+    if(cfgSoC.implFRAM)      { printf("    FRAMNVC   (%08lX:%08lX).\n", cfgSoC.addrFRAMNVC,  cfgSoC.addrFRAMNVC  + cfgSoC.sizeFRAMNVC); }
+    if(cfgSoC.implRAM)       { printf("    RAM       (%08lX:%08lX).\n", cfgSoC.addrRAM,      cfgSoC.addrRAM      + cfgSoC.sizeRAM); }
+    if(cfgSoC.implSD)        { printf("    SD CARD   (Devices =%02d).\n", (uint8_t)cfgSoC.sdCardNo); }
+    if(cfgSoC.implTimer1)    { printf("    TIMER1    (Timers  =%02d).\n", (uint8_t)cfgSoC.timer1No); }
+    if(cfgSoC.implIntrCtl)   { printf("    INTR CTRL (Channels=%02d).\n", (uint8_t)cfgSoC.intrChannels); }
+    if(cfgSoC.implPS2)       { puts("    PS2"); }
+    if(cfgSoC.implSPI)       { puts("    SPI"); }
+    puts("Addresses:");
+    printf("    CPU Reset Vector Address = %08lX\n",        cfgSoC.resetVector); 
+    printf("    CPU Memory Start Address = %08lX\n",        cfgSoC.cpuMemBaseAddr);
+    printf("    Stack Start Address      = %08lX\n",        cfgSoC.stackStartAddr);
+    puts("Misc:");
+    printf("    System Clock Freq        = %lu.%04luMHz\n",  (cfgSoC.sysFreq / 1000000), cfgSoC.sysFreq - ((cfgSoC.sysFreq / 1000000) * 1000000));
    #ifdef DRV_CFC
-    xprintf("    CFC                      = %08X\n", DRV_CFC);
+    printf("    CFC                      = %08lX\n", DRV_CFC);
    #endif
    #ifdef DRV_MMC
-    xprintf("    MMC                      = %08X\n", DRV_MMC);
+    printf("    MMC                      = %08lX\n", DRV_MMC);
    #endif    
-    xputs("\n");
+    puts("\n");
 }
 
 // Function to print out the ZPU Id in text form.
 void printCPU(void)
 {
-    xputs("K64FX512");
+    printf("K64FX512");
 }
 #endif
 

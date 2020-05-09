@@ -42,18 +42,23 @@ BASEDIR        = ../../..
 
 # Override values given by parent make for this application as its memory usage differs from the standard app.
 ifeq ($(__K64F__),1)
-  override HEAPADDR  = 0x1FFF5000
-  override HEAPSIZE  = 0x00033000
-  override STACKADDR = 0x20028000
-  override STACKSIZE = 0x00000000
+  #override HEAPADDR  = 0x2002f000
+  #override HEAPSIZE  = 0x00000000
+  #override STACKADDR = 0x2002f000
+  #override STACKSIZE = 0x00000000
 
   # Modules making up Kilo.
   APP_C_SRC    = #$(APP_COMMON_DIR)/sysutils.c $(APP_COMMON_DIR)/ctypelocal.c
   CFLAGS       = 
-  CPPFLAGS     = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
-  LDFLAGS      = -nostdlib
-  LIBS         = -lumansi-k64f -lumstdio-k64f
+  CPPFLAGS     = #-D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
+  LDFLAGS      = 
+  LIBS         = 
 else
+  override HEAPADDR  = 0x0000ED00
+  override HEAPSIZE  = 0x00000300
+  override STACKADDR = 0x0000F000
+  override STACKSIZE = 0x00000000
+
   # Modules making up Kilo.
   APP_C_SRC    = #$(APP_COMMON_DIR)/sysutils.c $(APP_COMMON_DIR)/ctypelocal.c
   CFLAGS       = 

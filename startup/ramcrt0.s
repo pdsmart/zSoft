@@ -44,13 +44,15 @@
         .set _inthandler_fptr, 0x00000400
     
         .global _start
-_start: im _break
-        nop                 ; No Op instruction needed to start a new Immediate Value -> TOS load.
-        fixedim _premain
+_start:
+        im  _stack                  ; Set stack address.
+        popsp
+        ;
+        jmp _premain
         poppc
-    
+
         .balign 32, 255
-    
+
         ;--------------------------------
         ; ZPUTA API
         ;--------------------------------
@@ -59,25 +61,25 @@ _start: im _break
         ; the app code base small.
         ; This is a fixed size jump table which invokes the actual api code, per function, in the main .text
         ; section, allowing for optimizations.
-    
+
         ; Break handler.
         jmp     _break
-    
+
         ; putc and xprint calls
         ;
         jmp     __putchar
-        jmp     _xputc
-        jmp     _xfputc
-        jmp     _xputs
-        jmp     _xgets
-        jmp     _xfgets
-        jmp     _xfputs
+       ;jmp     _putc
+        jmp     _fputc
+        jmp     _puts
+        jmp     _gets
+        jmp     _fgets
+        jmp     _fputs
         jmp     _xatoi
         jmp     _uxatoi
-        jmp     _xprintf
-        jmp     _xvprintf
-        jmp     _xsprintf
-        jmp     _xfprintf
+        jmp     _printf
+       ;jmp     _xvprintf
+        jmp     _sprintf
+        jmp     _fprintf
         ;
         ; getc calls
         ;
@@ -142,40 +144,46 @@ _start: im _break
         jmp     _set_serial_output
        ;jmp     _printBytesPerSec
         jmp     _printFSCode
-    
+        ;
+        ; Memory management under OS control.
+        ;
+        jmp     _malloc
+        jmp     _realloc
+        jmp     _calloc
+        jmp     _free
+
         ;--------------------------------
         ; End of ZPUTA API
         ;--------------------------------
-    
-    
-    
+
         ;--------------------------------
         ; Main application startup.
         ;--------------------------------
-    
+
         .section ".text","ax"
-    
+
         .global _break;
-_break: breakpoint
+_break:
+        breakpoint
         im    _break
         poppc ; infinite loop
-    
+
         ;
         ; putc and xprint calls
         ;
         defapi  _putchar
-        defapi  xputc
-        defapi  xfputc
-        defapi  xputs
-        defapi  xgets
-        defapi  xfgets
-        defapi  xfputs
+       ;defapi  putc
+        defapi  fputc
+        defapi  puts
+        defapi  gets
+        defapi  fgets
+        defapi  fputs
         defapi  xatoi
         defapi  uxatoi
-        defapi  xprintf
-        defapi  xvprintf
-        defapi  xsprintf
-        defapi  xfprintf
+        defapi  printf
+       ;defapi  xvprintf
+        defapi  sprintf
+        defapi  fprintf
         ;
         ; getc calls
         ;
@@ -240,7 +248,13 @@ _break: breakpoint
         defapi  set_serial_output
        ;defapi  printBytesPerSec
         defapi  printFSCode
-    
+        ;
+        ; Memory management by OS.
+        ;
+        defapi  malloc
+        defapi  realloc
+        defapi  calloc
+        defapi  free
         .global _restart
 _restart:
 
@@ -248,7 +262,7 @@ _restart:
         .weak _premain
 _premain:
         ;    clear BSS data, then call main.
-    
+
         im __bss_start__                          ; bssptr
 .clearloop:
         loadsp 0                                  ; bssptr bssptr 
@@ -270,7 +284,7 @@ _premain:
         storesp 4                                 ; &_break
         im main                                   ; &main &break
         poppc                                     ; &break
-    
+
         ; NB! this is not an EMULATE instruction. It is a varargs fn.
         .global _syscall    
 _syscall:
@@ -284,12 +298,13 @@ _mask:
         .long 0xff00ffff
         .long 0xffff00ff
         .long 0xffffff00
-    
+
         .section ".bss"
         .balign 4,0
 
         .global _memreg
-_memreg: .long 0
-         .long 0
-         .long 0
-         .long 0
+_memreg:
+        .long 0
+        .long 0
+        .long 0
+        .long 0

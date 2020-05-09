@@ -96,6 +96,8 @@ TEENSY3_DIR     = $(CURDIR)/../teensy3
 STARTUP_DIR     = $(CURDIR)/../startup
 COMMON_DIR      = $(CURDIR)/../common
 INCLUDE_DIR     = $(CURDIR)/../include
+LIB_DIR         = $(CURDIR)/../libraries/lib
+LIB_INCLUDE_DIR = $(CURDIR)/../libraries/include
 FATFS_DIR       = $(CURDIR)/../common/FatFS
 DHRY_DIR        = $(CURDIR)/../common/Dhrystone
 COREMARK_DIR    = $(CURDIR)/../common/CoreMark
@@ -122,7 +124,7 @@ SIZE            = $(BASE)-size
 #************************************************************************
 
 # CPPFLAGS = compiler options for C and C++
-CPPFLAGS       = -Wall -g -Os -mthumb -ffunction-sections -fdata-sections -nostdlib -MMD $(OPTIONS) -DTEENSYDUINO=144 -DF_CPU=$(TEENSY_CORE_SPEED)
+CPPFLAGS       = -Wall -g -Os -mthumb -fno-builtin -ffunction-sections -fdata-sections -nostdlib -MMD $(OPTIONS) -DTEENSYDUINO=144 -DF_CPU=$(TEENSY_CORE_SPEED)
 CPPFLAGS      += -Isrc -Iteensy3 -I$(COMMON_DIR) -I$(FATFS_DIR) -I$(COREMARK_DIR) -I$(DHRY_DIR) -I$(TEENSY3_DIR) -I$(INCLUDE_DIR)
 CPPFLAGS      += -D__K64F__ -D__ZPUTA__ -DDEBUG -D__SD_CARD__ -DOS_BASEADDR=$(OS_BASEADDR) -DOS_APPADDR=$(OS_APPADDR) 
 #CPPFLAGS      += -fno-use-cxa-atexit
@@ -135,7 +137,7 @@ CXXFLAGS       = -std=gnu++14 -felide-constructors -fno-exceptions -fno-rtti
 CFLAGS         = 
 
 # linker options
-LDFLAGS        = -Os -Wl,--gc-sections -mthumb
+LDFLAGS        = -Os -Wl,--gc-sections -mthumb -L$(LIB_DIR)
 #LDFLAGS        = -Os -mthumb
 
 # Assembler flags.
@@ -146,7 +148,7 @@ LDFLAGS        = -Os -Wl,--gc-sections -mthumb
 ASFLAGS         = -I. -I$(COMMON_DIR) -I$(INCLUDE_DIR) -I$(STARTUP_DIR) --defsym OS_BASEADDR=$(OS_BASEADDR) --defsym OS_APPADDR=$(OS_APPADDR)
 
 # additional libraries to link
-LIBS           = -lm
+LIBS           = -lm -lummisc-k64f
 
 # compiler options specific to teensy version
 ifeq ($(TEENSY), 30)
@@ -192,7 +194,7 @@ SRC_CPP_FILES  := $(wildcard src/*.cpp)
 INO_FILES      := $(wildcard src/*.ino)
 CRT0_ASM_FILES := #$(STARTUP_DIR)/zputa_k64f_crt0.s
 CRT0_C_FILES   := $(STARTUP_DIR)/mk20dx128.c
-COMMON_FILES   := $(COMMON_DIR)/utils.c $(COMMON_DIR)/k64f_soc.c $(COMMON_DIR)/interrupts.c $(COMMON_DIR)/ps2.c $(COMMON_DIR)/swap.c $(COMMON_DIR)/spi.c $(COMMON_DIR)/xprintf.c $(COMMON_DIR)/readline.c
+COMMON_FILES   := $(COMMON_DIR)/utils.c $(COMMON_DIR)/k64f_soc.c $(COMMON_DIR)/interrupts.c $(COMMON_DIR)/ps2.c $(COMMON_DIR)/readline.c
 DHRYSTONE_FILES:= $(DHRY_DIR)/dhry_1.c $(DHRY_DIR)/dhry_2.c
 COREMARK_FILES := $(COREMARK_DIR)/core_list_join.c $(COREMARK_DIR)/core_main_embedded.c $(COREMARK_DIR)/core_matrix.c $(COREMARK_DIR)/core_state.c $(COREMARK_DIR)/core_util.c $(COREMARK_DIR)/ee_printf.c $(COREMARK_DIR)/core_portme.c
 FATFS_C_FILES  := $(FATFS_DIR)/ff.c
@@ -200,7 +202,7 @@ FATFS_CPP_FILES:= $(FATFS_DIR)/sdmmc_k64f.cpp
 PFS_FILES      := $(PFS_DIR)/sdmmc_teensy.c   $(PFS_DIR)/pff.c
 
 # Define the sources and what they compile from->to.
-SOURCES        := $(CRT0_ASM_FILES:.s=.o) $(CRT0_C_FILES:.c=.o) $(COMMON_FILES:.c=.o) $(DHRYSTONE_FILES:.c=.o) $(COREMARK_FILES:.c=.o) $(FATFS_C_FILES:.c=.o) $(FATFS_CPP_FILES:.cpp=.o) $(SRC_C_FILES:.c=.o) $(SRC_CPP_FILES:.cpp=.o) $(INO_FILES:.ino=.o) $(TEENSY_C_FILES:.c=.o) $(TEENSY_CPP_FILES:.cpp=.o) $(LIB_C_FILES:.c=.o) $(LIB_CPP_FILES:.cpp=.o)
+SOURCES        := $(CRT0_ASM_FILES:.s=.o) $(CRT0_C_FILES:.c=.o) $(COMMON_FILES:.c=.o) $(DHRYSTONE_FILES:.c=.o) $(COREMARK_FILES:.c=.o) $(FATFS_C_FILES:.c=.o) $(FATFS_CPP_FILES:.cpp=.o) $(SRC_C_FILES:.c=.o) $(SRC_CPP_FILES:.cpp=.o) $(INO_FILES:.ino=.o) $(TEENSY_C_FILES:.c=.o) $(TEENSY_CPP_FILES:.cpp=.o)
 OBJS           := $(foreach src,$(SOURCES), $(BUILD_DIR)/$(src))
 
 all: version hex bin srec rpt lss dmp

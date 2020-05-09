@@ -103,11 +103,11 @@ LINKMAPAPP     = $(STARTUP_DIR)/app_zpu_${OS_BASEADDR}_${OS_APPADDR}.ld
 CRT0_ASM_SRC   = $(STARTUP_DIR)/appcrt0.s
 
 # Memory management code. Bring in the UMM library if stdlib isnt being used.
-ifeq (-nostdlib,$(findstring -nostdlib,$(LDFLAGS)))
-  UMM_C_SRC    = $(UMM_DIR)/umm_malloc.c
-else
-  UMM_C_SRC    =
-endif
+#ifeq (-nostdlib,$(findstring -nostdlib,$(LDFLAGS)))
+#  UMM_C_SRC    = $(UMM_DIR)/umm_malloc.c
+#else
+#  UMM_C_SRC    =
+#endif
 
 # Common modules needed for this app.
 #COMMON_SRC    = $(COMMON_DIR)/syscalls.c $(COMMON_DIR)/malloc.c $(COMMON_DIR)/tools.c #$(COMMON_DIR)/utils.c

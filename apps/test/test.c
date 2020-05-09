@@ -39,29 +39,21 @@
 
 #if defined(__K64F__)
   #include <stdio.h>
-  #include <stdlib.h>
+  #include <stdint.h>
   #include <string.h>
   #include "k64f_soc.h"
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+  #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
   #include <stdint.h>
+  #include <stdio.h>	    
   #include "zpu_soc.h"
   #include <stdlib.h>
+  #include <stdmisc.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
-#include "diskio.h"
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "xprintf.h"
 #include "utils.h"
 //
 #if defined __ZPUTA__
@@ -72,6 +64,7 @@
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
 //
+#include "app.h"
 #include "test.h"
 
 // Utility functions.
@@ -104,10 +97,10 @@ uint32_t app(uint32_t param1, uint32_t param2)
     int32_t         idx1;
     uint32_t        idx2;
 
-    xputs("This is a test.\n");
-    xputs("Print another line.\n");
-    xprintf("This is another test.\n");
-    xputs("All done\n");
+    puts("This is a test.\n");
+    puts("Print another line.\n");
+    printf("This is another test.\n");
+    puts("All done\n");
 
     // Test the maths division.
     for (i = -10000; i < 10000; i += 8)
@@ -117,23 +110,23 @@ uint32_t app(uint32_t param1, uint32_t param2)
             k = i / j;
             m = __divsi3 (i, j);
             if (k != m)
-                xprintf ("fail %d %d %d %d\n", i, j, k, m);
+                printf ("fail %ld %ld %ld %ld\n", i, j, k, m);
         }
     }    
 
     // Test the mod, div and mul.
     for(idx1=-500; idx1 < 500; idx1++)
     {
-	    xprintf("Result(%d)=%d %d,%u,%u:Mul=%d\n", idx1, (idx1/10), (idx1 % 10),((uint32_t)idx1/10), ((uint32_t)idx1 % 10), idx1 * 10);
-	    xprintf("%d, %d\n", __divsi3(idx1,10), __udivsi3(idx1,10));
-	    xprintf("%u, %u\n", __divsi3(idx1,10), __udivsi3(idx1,10));
+	    printf("Result(%ld)=%ld %ld,%lu,%lu:Mul=%ld\n", idx1, (idx1/10), (idx1 % 10),((uint32_t)idx1/10), ((uint32_t)idx1 % 10), idx1 * 10);
+	    printf("%ld, %ld\n", __divsi3(idx1,10), __udivsi3(idx1,10));
+	    printf("%lu, %lu\n", __divsi3(idx1,10), __udivsi3(idx1,10));
     }
     for(idx2=0; idx2 < 500; idx2++)
     {
-	    xprintf("Result(%d)=%d %d, Mul:%d\n", idx2, (int32_t)(idx2/10), (int32_t)(idx2 % 10), idx2 * 10);
-	    xprintf("      (%d)=%d %d\n", idx2, (uint32_t)(idx2/10), (uint32_t)(idx2 % 10));
-	    xprintf("%d, %d\n", __divsi3(idx2,10), __udivsi3(idx2,10));
-	    xprintf("%u, %u\n", __divsi3(idx2,10), __udivsi3(idx2,10));
+	    printf("Result(%ld)=%ld %ld, Mul:%ld\n", idx2, (int32_t)(idx2/10), (int32_t)(idx2 % 10), idx2 * 10);
+	    printf("      (%lu)=%lu %lu\n", idx2, (uint32_t)(idx2/10), (uint32_t)(idx2 % 10));
+	    printf("%ld, %ld\n", __divsi3(idx2,10), __udivsi3(idx2,10));
+	    printf("%lu, %lu\n", __divsi3(idx2,10), __udivsi3(idx2,10));
     }    
 
     // These are just memory tests, the main test is in premain where a closer knit write operation of BSS fails, thus trying to debug.

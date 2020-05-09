@@ -8,6 +8,7 @@
 
 #if defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
 
+#include <stdio.h>
 #include "core_pins.h"  // include calls to kinetis.h or imxrt.h
 #include "usb_serial.h" // for Serial
 

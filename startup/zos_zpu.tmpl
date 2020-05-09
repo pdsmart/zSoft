@@ -52,7 +52,7 @@ SECTIONS
         KEEP(*(.fixed_vectors)) /* Seed section - allows -gc-sections */
     }>BOOT
     __boot_end__ = . ;
-  
+
     /* Remaining code sections */
     . = ALIGN(4);
     __text_start__ = . ;
@@ -144,7 +144,7 @@ SECTIONS
   
     /* Top of stack pointer, used for sbrk validation. */  
     _stack = STACK_ENDADDR;
-  
+
       /* Debug information */
     .debug_loc 0 : { *(.debug_loc) }
     .debug_abbrev 0 : { *(.debug_abbrev) }

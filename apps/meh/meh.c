@@ -39,29 +39,21 @@
 
 #if defined(__K64F__)
   #include <stdio.h>
-  #include <stdlib.h>
+  #include <stdint.h>
   #include <string.h>
   #include "k64f_soc.h"
-  #define uint32_t __uint32_t
-  #define uint16_t __uint16_t
-  #define uint8_t  __uint8_t
-  #define int32_t  __int32_t
-  #define int16_t  __int16_t
-  #define int8_t   __int8_t
+  #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
   #include <stdint.h>
+  #include <stdio.h>	    
   #include "zpu_soc.h"
   #include <stdlib.h>
+  #include <stdmisc.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
-#include "diskio.h"
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "xprintf.h"
 #include "utils.h"
 //
 #if defined __ZPUTA__
@@ -72,6 +64,7 @@
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
 //
+#include "app.h"
 #include "meh.h"
 
 // Utility functions.
@@ -100,7 +93,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
     if (!xatoi(&ptr, &addr))
     {
-        xprintf("Illegal <addr> value.\n");
+        printf("Illegal <addr> value.\n");
     } else
     {
 		// Ensure we are half word aligned.
@@ -115,8 +108,8 @@ uint32_t app(uint32_t param1, uint32_t param2)
         {
             for (;;)
             {
-                xprintf("%08X %04X-", (uint32_t)addr, *(uint16_t *)addr);
-                xgets(line, sizeof line);
+                printf("%08lX %04X-", (uint32_t)addr, *(uint16_t *)addr);
+                fgets(line, sizeof line, stdin);
                 ptr = line;
                 if (*ptr == '.') break;
                 if (*ptr < ' ') { addr += 2; continue; }
@@ -125,7 +118,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
                     *(uint16_t *)(addr) = (uint16_t)data;
 					addr += 2;
                 } else {
-                    xputs("???\n");
+                    puts("???\n");
                 }
             }
         }

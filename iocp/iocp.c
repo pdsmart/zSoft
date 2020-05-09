@@ -75,7 +75,7 @@ void interrupt_handler()
 //
 void enableTimer()
 {
-    OPTIONAL(puts("Enabling timer...\n"));
+    OPTIONAL(uart_puts("Enabling timer...\n"));
     TIMER_ENABLE(TIMER1) = 1;               // Enable timer 1
 }
 #endif
@@ -90,7 +90,7 @@ int uploadToMemory(uint32_t memAddr, uint32_t memSize)
 
     // Indicate mode selected and instructions to start upload.
     //
-    OPTIONAL(puts("Binary upload, waiting...\n"));
+    OPTIONAL(uart_puts("Binary upload, waiting...\n"));
 
     // Initialise CRC.
     //
@@ -115,7 +115,7 @@ int uploadToMemory(uint32_t memAddr, uint32_t memSize)
     uint32_t image_size = get_dword();
     if (image_size >  memSize-8)
     {
-        puts(" ERROR! Upload too big!\n\n");
+        uart_puts(" ERROR! Upload too big!\n\n");
     } else
     {
         // Get CRC of image.
@@ -154,7 +154,7 @@ int uploadToMemory(uint32_t memAddr, uint32_t memSize)
         // If CRCs dont match then indicate failure.
         if(crcSrc != crcDst)
         {
-            puts("CRC mismatch.\r\n");
+            uart_puts("CRC mismatch.\r\n");
         } else
             resultCode = 0;
     }
@@ -171,11 +171,11 @@ void printVersion(uint8_t showConfig)
 {
   #if FUNCTIONALITY == 0
     // Basic title showing name and Cpu Id.
-    puts("\n** IOCP BIOS (");
+    uart_puts("\n** IOCP BIOS (");
     printZPUId(cfgSoC.zpuId);
-    puts(" ZPU, rev");
+    uart_puts(" ZPU, rev");
     printhexbyte((uint8_t)cfgSoC.zpuId);
-    puts(") " VERSION " " VERSION_DATE " **\n");
+    uart_puts(") " VERSION " " VERSION_DATE " **\n");
 
     // Show configuration if requested.
     if(showConfig)
@@ -183,7 +183,7 @@ void printVersion(uint8_t showConfig)
         showSoCConfig();
     }
   #else
-    puts("IOCP " VERSION " " VERSION_DATE "\n");
+    uart_puts("IOCP " VERSION " " VERSION_DATE "\n");
   #endif
 }
 #endif
@@ -202,15 +202,15 @@ int cmdProcessor(void)
     DIR               dir;
 
     // Initial prompt.
-    puts("* ");
+    uart_puts("* ");
     while(1)
     {
         // console input
         funcSelect = getserial_nonblocking();
         if(funcSelect != -1)
         {
-            putchar((char)funcSelect);
-            puts("\n");
+            _putchar((int)funcSelect);
+            uart_puts("\n");
         }
 
         // Execute according to key selection.
@@ -245,32 +245,32 @@ int cmdProcessor(void)
             case '4':
                 if(cfgSoC.implInsnBRAM || cfgSoC.implBRAM)
                 {
-                    puts("Dump BRAM Memory\n");
+                    uart_puts("Dump BRAM Memory\n");
                     memoryDump(cfgSoC.addrBRAM, cfgSoC.sizeBRAM);
-                    puts("\n\nDumping completed.\n\n");
+                    uart_puts("\n\nDumping completed.\n\n");
                 } else
                 {
-                    OPTIONAL(puts("BRAM memory not implemented.\n"));
+                    OPTIONAL(uart_puts("BRAM memory not implemented.\n"));
                 }
                 break;
                 
             // Stack Memory dump - whichever memory is being used, dump out the stack.
             case '5':
-                puts("Dump Stack Memory\n");
+                uart_puts("Dump Stack Memory\n");
                 memoryDump(cfgSoC.stackStartAddr-504, cfgSoC.stackStartAddr+8);
-                puts("\n\nDumping completed.\n\n");
+                uart_puts("\n\nDumping completed.\n\n");
                 break;
                 
             // RAM Memory dump
             case '6':
                 if(cfgSoC.implRAM)
                 {
-                    puts("Dump RAM\n");
+                    uart_puts("Dump RAM\n");
                     memoryDump(cfgSoC.addrRAM, cfgSoC.sizeRAM);
-                    puts("\n\nDumping completed.\n\n");
+                    uart_puts("\n\nDumping completed.\n\n");
                 } else
                 {
-                    OPTIONAL(puts("RAM memory not implemented.\n"));
+                    OPTIONAL(uart_puts("RAM memory not implemented.\n"));
                 }
                 break;
                
@@ -278,14 +278,14 @@ int cmdProcessor(void)
             case 'C':
                 if(cfgSoC.implBRAM && cfgSoC.implInsnBRAM)
                 {
-                    puts("Clearing BRAM Memory\n");
+                    uart_puts("Clearing BRAM Memory\n");
                     for(memAddr=cfgSoC.addrBRAM; memAddr < (cfgSoC.addrBRAM+cfgSoC.sizeBRAM); memAddr+=4)
                     {
                         *(uint32_t *)(memAddr) = 0x00000000;
                     }
                 } else
                 {
-                    puts("BRAM memory not implemented.\n");
+                    uart_puts("BRAM memory not implemented.\n");
                 }
                 break;
                 
@@ -293,14 +293,14 @@ int cmdProcessor(void)
             case 'c':
                 if(cfgSoC.implRAM)
                 {
-                    puts("Clearing RAM\n");
+                    uart_puts("Clearing RAM\n");
                     for(memAddr=cfgSoC.addrRAM; memAddr < (cfgSoC.addrRAM+cfgSoC.sizeRAM); memAddr+=4)
                     {
                         *(uint32_t *)(memAddr) = 0xaa55ff00;
                     }
                 } else
                 {
-                    puts("RAM memory not implemented.\n");
+                    uart_puts("RAM memory not implemented.\n");
                 }
                 break;
 
@@ -314,19 +314,19 @@ int cmdProcessor(void)
 		                if (rc || !fno.fname[0]) break;	/* Error or end of dir */
 		                if (fno.fattrib & AM_DIR)
                         {
-			                puts("   <dir>  "); puts(fno.fname); puts("\n");
+			                uart_puts("   <dir>  "); uart_puts(fno.fname); uart_puts("\n");
                         } else
                         {
-			                printdhex(fno.fsize); puts("  "); puts(fno.fname); puts("\n");
+			                printdhex(fno.fsize); uart_puts("  "); uart_puts(fno.fname); uart_puts("\n");
                         }
 	                }
                 }
-                if(rc) { puts("Error: "); printhex(rc); puts("\n"); }
+                if(rc) { uart_puts("Error: "); printhex(rc); uart_puts("\n"); }
                 break;
                 
             // Reset the system.
             case 'R':
-                puts("Restarting...\n");
+                uart_puts("Restarting...\n");
                 void *strtptr = (void *)0x00000;
                 goto *strtptr;
                 break;
@@ -334,13 +334,13 @@ int cmdProcessor(void)
             // Help screen
             case 'h':
                 printVersion(false);
-                puts("0: Execute App in Boot BRAM.                   1: Execute App in RAM\n"
-                     "2: Upload App to BRAM.                         3: Upload App to RAM.\n"
-                     "4: Dump BRAM Memory.                           5: Dump Stack Memory.\n"
-                     "6: Dump RAM Memory.                            d: List SD directory.\n"
-                     "c: Clear RAM.                                  C: Clear BRAM App Memory.\n"
-                     "h: Show this screen.                           i: Configuration information.\n"
-                     "R: Reset system.\n");
+                uart_puts("0: Execute App in Boot BRAM.                   1: Execute App in RAM\n"
+                          "2: Upload App to BRAM.                         3: Upload App to RAM.\n"
+                          "4: Dump BRAM Memory.                           5: Dump Stack Memory.\n"
+                          "6: Dump RAM Memory.                            d: List SD directory.\n"
+                          "c: Clear RAM.                                  C: Clear BRAM App Memory.\n"
+                          "h: Show this screen.                           i: Configuration information.\n"
+                          "R: Reset system.\n");
                 break;
 
             // Configuration information
@@ -358,7 +358,7 @@ int cmdProcessor(void)
         //
         if(funcSelect != -1)
         {
-            puts("* ");
+            uart_puts("* ");
         }
 
         // If the autoboot timer has expired then attempt to autoboot preloaded application.
@@ -375,7 +375,7 @@ int cmdProcessor(void)
             {
                 startAppAddr = cfgSoC.addrRAM;
             }
-            OPTIONAL(if(startAppAddr != 0) { puts("..autobooting.\n");  });
+            OPTIONAL(if(startAppAddr != 0) {  uart_puts("..autobooting.\n");  });
         }
                         
         // Start application request
@@ -385,7 +385,7 @@ int cmdProcessor(void)
             DisableInterrupt(INTR_TIMER);
 
             // Start application
-            OPTIONAL(puts("\nStart App @ 0x"); printdhex(startAppAddr); putchar((int)'\n'));
+            OPTIONAL(uart_puts("\nStart App @ 0x"); printdhex(startAppAddr); _putchar((int)'\n'));
             void *jmpptr = (void *)startAppAddr;
             goto *jmpptr;
         }
@@ -425,7 +425,7 @@ int main(int argc, char **argv)
     if(pf_mount(&FatFs))
     {
       #if !defined(FUNCTIONALITY) || FUNCTIONALITY <= 2
-        puts("Failed to mount disk.\n");
+        uart_puts("Failed to mount disk.\n");
       #endif
     } else
     {
@@ -442,7 +442,7 @@ int main(int argc, char **argv)
           
             // Indicate booting...
           #if !defined(FUNCTIONALITY) || FUNCTIONALITY <= 2
-            puts("Boot SD\n");
+            uart_puts("Boot SD\n");
           #endif
 
             // Load the application into memory and execute.
