@@ -153,10 +153,16 @@ endif
 
 #CFLAGS       += -I. -I$(INCLUDE_DIR) -I$(COMMON_DIR)/.  -c -Os $(ZPUOPTS) -DPRINTF_HEX_ONLY -DDISABLE_PRINTF # -DDISABLE_UART_TX -DDISABLE_UART_RX
 CFLAGS        += -I. -I$(COMMON_DIR) -I$(FATFS_DIR) -I$(OSDIR) -I$(INCLUDE_DIR) -I$(APP_INCLUDE_DIR) -I${UMM_DIR} -I$(LIB_INCLUDE_DIR)
-CFLAGS        += -c -Os -ffunction-sections -fdata-sections $(ZPUOPTS)
+CFLAGS        += -c -ffunction-sections -fdata-sections $(ZPUOPTS)
 CFLAGS        += -D__ZPU__ -D__APP__ -DOS_BASEADDR=$(OS_BASEADDR) -DOS_APPADDR=$(OS_APPADDR)
 ifeq (-nostdlib,$(findstring -nostdlib,$(LDFLAGS)))
   CFLAGS      += -DUMM_BEST_FIT -DUMM_INFO -DUMM_DBG_LOG_LEVEL=0
+endif
+
+ifeq ($(APP_NAME),dhry)
+  CFLAGS      += -O3
+else
+  CFLAGS      += -Os
 endif
 	
 #CFLAGS       += -I. -I$(COMMON_DIR) -I$(INCLUDE_DIR) -c -O1 -ffunction-sections -fdata-sections $(ZPUOPTS) -DZPU

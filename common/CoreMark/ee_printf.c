@@ -575,7 +575,11 @@ repeat:
 }
 
 void uart_send_char(char c) {
+  #if defined __K64F__
     fputc(c, stdout);
+  #else
+    putchar(c);
+  #endif
 }
 
 int ee_printf(const char *fmt, ...)

@@ -262,9 +262,28 @@ _premain:
         storesp 4           ; &.appret
 
         im 9                ; Param6 = address of __iob structure for stdio functionality available in this application.
-        pushspadd
-        load
-        im __iob            ; Setup the location of the pointer to __iob variable in the app
+        pushspadd           ; Add 9 to the stack pointer placing result into TOS
+        load                ; Fetch [TOS] and store to TOS, ie.get the stack parameter referenced by memory address [TOS] and store fetched data into TOS.
+        load                ; Get value of Pointer, parameter passed is the address of the pointer, so [ [TOS] ] above.
+        im __iob            ; Setup the location of the pointer to __iob variable in the app into TOS - We now have TOS = address of __iob, NOS = parameter value retrieved from stack (TOS above).
+        store               ; and place value into the pointer.
+        ;
+        im 9                ; Same but now for __iob[1], we take __iob value passed on stack and add 4 to retrieve the pointer for __iob[1]
+        pushspadd           ; 
+        im 4                ; Add 4 to the address to retrieve __iob[1]
+        add
+        load                ; Fetch [TOS] which is [__iob[1]].
+        load                ; Fetch pointer.
+        im __iob+4          ; Setup location for __iob[1] in our namespace.
+        store               ; and place value into the pointer.
+        ;
+        im 9                ; Same but now for __iob[2], we take __iob value passed on stack and add 4 to retrieve the pointer for __iob[2]
+        pushspadd           ; 
+        im 8                ; Add 8 to the address to retrieve __iob[2]
+        add
+        load                ; Fetch [TOS] which is [__iob[2]].
+        load                ; Fetch pointer.
+        im __iob+8          ; Setup location for __iob[2] in our namespace.
         store               ; and place value into the pointer.
     
         im 8                ; Param5 = address of cfgSoC structure in ZPUTA memory space to be available in this application.

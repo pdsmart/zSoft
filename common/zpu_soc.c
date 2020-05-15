@@ -168,9 +168,9 @@ void setupSoCConfig(void)
 void showSoCConfig(void)
 {
   #if defined(__ZOS__) || defined(__ZPUTA__)
-    puts("SoC Configuration");
-    if(cfgSoC.implSoCCFG)    { puts(" (from SoC config)"); }
-    puts(":\nDevices implemented:\n");
+    printf("SoC Configuration");
+    if(cfgSoC.implSoCCFG)    { printf(" (from SoC config)"); }
+    printf(":\nDevices implemented:\n");
     if(cfgSoC.implWBSDRAM)   { printf("    WB SDRAM  (%08X:%08X).\n", cfgSoC.addrWBSDRAM,  cfgSoC.addrWBSDRAM  + cfgSoC.sizeWBSDRAM); }
     if(cfgSoC.implSDRAM)     { printf("    SDRAM     (%08X:%08X).\n", cfgSoC.addrSDRAM,    cfgSoC.addrSDRAM    + cfgSoC.sizeSDRAM); }
     if(cfgSoC.implInsnBRAM)  { printf("    INSN BRAM (%08X:%08X).\n", cfgSoC.addrInsnBRAM, cfgSoC.addrInsnBRAM + cfgSoC.sizeInsnBRAM); }
@@ -179,16 +179,16 @@ void showSoCConfig(void)
     if(cfgSoC.implSD)        { printf("    SD CARD   (Devices =%02d).\n", (uint8_t)cfgSoC.sdCardNo); }
     if(cfgSoC.implTimer1)    { printf("    TIMER1    (Timers  =%02d).\n", (uint8_t)cfgSoC.timer1No); }
     if(cfgSoC.implIntrCtl)   { printf("    INTR CTRL (Channels=%02d).\n", (uint8_t)cfgSoC.intrChannels); }
-    if(cfgSoC.implWB)        { puts("    WISHBONE BUS\n"); }
-    if(cfgSoC.implWBI2C)     { puts("    WB I2C\n"); }
-    if(cfgSoC.implIOCTL)     { puts("    IOCTL\n"); }
-    if(cfgSoC.implPS2)       { puts("    PS2\n"); }
-    if(cfgSoC.implSPI)       { puts("    SPI\n"); }
-    puts("Addresses:\n");
+    if(cfgSoC.implWB)        { printf("    WISHBONE BUS\n"); }
+    if(cfgSoC.implWBI2C)     { printf("    WB I2C\n"); }
+    if(cfgSoC.implIOCTL)     { printf("    IOCTL\n"); }
+    if(cfgSoC.implPS2)       { printf("    PS2\n"); }
+    if(cfgSoC.implSPI)       { printf("    SPI\n"); }
+    printf("Addresses:\n");
     printf("    CPU Reset Vector Address = %08X\n",        cfgSoC.resetVector); 
     printf("    CPU Memory Start Address = %08X\n",        cfgSoC.cpuMemBaseAddr);
     printf("    Stack Start Address      = %08X\n",        cfgSoC.stackStartAddr);
-    puts("Misc:\n");
+    printf("Misc:\n");
     printf("    ZPU Id                   = %04X\n",        cfgSoC.zpuId);
     printf("    System Clock Freq        = %d.%04dMHz\n",  (cfgSoC.sysFreq / 1000000), cfgSoC.sysFreq - ((cfgSoC.sysFreq / 1000000) * 1000000));
     if(cfgSoC.implSDRAM)
@@ -201,7 +201,7 @@ void showSoCConfig(void)
    #ifdef DRV_MMC
     printf("    MMC                      = %08X\n", DRV_MMC);
    #endif    
-    puts("\n");
+    printf("\n");
   #else
     puts("SoC Configuration");
     if(cfgSoC.implSoCCFG)    { puts(" (from SoC config)"); }
@@ -249,7 +249,7 @@ void printZPUId(uint32_t zpuId)
           #if defined __IOCP__
             puts("Small");
           #else
-            puts("Small");
+            printf("Small");
           #endif
             break;
 
@@ -257,7 +257,7 @@ void printZPUId(uint32_t zpuId)
           #if defined __IOCP__
             puts("Medium");
           #else
-            puts("Medium");
+            printf("Medium");
           #endif
             break;
 
@@ -265,7 +265,7 @@ void printZPUId(uint32_t zpuId)
           #if defined __IOCP__
             puts("Flex");
           #else
-            puts("Flex");
+            printf("Flex");
           #endif
             break;
 
@@ -273,15 +273,15 @@ void printZPUId(uint32_t zpuId)
           #if defined __IOCP__
             puts("EVO");
           #else
-            puts("EVO");
+            printf("EVO");
           #endif
             break;
 
         case ZPU_ID_EVO_MINIMAL:
           #if defined __IOCP__
-            puts("EVOmin");
+            puts("EVOm");
           #else
-            puts("EVOmin");
+            printf("EVOm");
           #endif
             break;
 
@@ -289,7 +289,7 @@ void printZPUId(uint32_t zpuId)
           #if defined __IOCP__
             puts("Unknown");
           #else
-            puts("Unknown");
+            printf("Unknown");
           #endif
             break;
     }

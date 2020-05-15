@@ -838,6 +838,7 @@ uint32_t fileExec(char *src, uint32_t addr, uint32_t execAddr, uint8_t execMode,
             // Call the loaded program entry address, return expected.
             case EXEC_MODE_CALL:
               #if defined __ZPU__
+printf("0=%08lx, 1=%08lx, 2=%08lx, _IOB=%08lx %08lx %08lx\n", __iob[0], __iob[1], __iob[2], (uint32_t)(__iob), (uint32_t *)__iob, __iob   );
                 retCode = func(param1, param2, &_memreg, G, cfg, (uint32_t)__iob);
               #elif defined __K64F__
                 retCode = func(param1, param2, G, cfg, (uint32_t)stdin, (uint32_t)stdout, (uint32_t)stderr);

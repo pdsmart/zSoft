@@ -43,27 +43,27 @@ DHRY_DIR       = $(COMMON_DIR)/Dhrystone
 
 # Override values given by parent make for this application as its memory usage differs from the standard app.
 ifeq ($(__K64F__),1)
-  override HEAPADDR  = 0x2002f000
-  override HEAPSIZE  = 0x00000000
-  override STACKADDR = 0x2002f000
-  override STACKSIZE = 0x00000000
+  #override HEAPADDR  = 0x2002f000
+  #override HEAPSIZE  = 0x00000000
+  #override STACKADDR = 0x2002f000
+  #override STACKSIZE = 0x00000000
 
   # Modules making up Kilo.
   APP_C_SRC    = #$(APP_COMMON_DIR)/sysutils.c $(APP_COMMON_DIR)/ctypelocal.c
   CFLAGS      += -I$(DHRY_DIR)
   # Enable Dhrystone Test
   OFLAGS      += -DDHRYSTONE_TEST
-  CPPFLAGS     = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
+  CPPFLAGS     = #-D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
   LDFLAGS      = -nostdlib
   LIBS         = -lumansi-k64f -lumstdio-k64f
   DHRY_SRC     = $(DHRY_DIR)/dhry_1.c $(DHRY_DIR)/dhry_2.c
   DHRY_OBJ     = $(patsubst $(DHRY_DIR)/%.c,$(BUILD_DIR)/%.o,$(DHRY_SRC))
   MAIN_OBJ     = $(DHRY_OBJ)
 else
-  override HEAPADDR  = 0x0000dc00
-  override HEAPSIZE  = 0x00001000
-  override STACKADDR = 0x0000ec00
-  override STACKSIZE = 0x00000000
+  #override HEAPADDR  = 0x0000dc00
+  #override HEAPSIZE  = 0x00001000
+  #override STACKADDR = 0x0000ec00
+  #override STACKSIZE = 0x00000000
 
   # Modules making up Kilo.
   # Modules making up Kilo.
@@ -71,7 +71,7 @@ else
   CFLAGS      += -I$(DHRY_DIR)
   # Enable Dhrystone Test
   OFLAGS      += -DDHRYSTONE_TEST
-  CPPFLAGS     = -D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
+  CPPFLAGS     = #-D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
   LDFLAGS      = -nostdlib
   LIBS         = -lumansi-zpu -limath-zpu
   DHRY_SRC     = $(DHRY_DIR)/dhry_1.c $(DHRY_DIR)/dhry_2.c

@@ -89,7 +89,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
     char      *fileName;
     uint32_t  retCode = 0xffffffff;
     FRESULT   fr = 1;
-
+printf("0=%08lx, 1=%08lx, 2=%08lx, _IOB=%08lx\n", __iob[0], __iob[1], __iob[2], (uint32_t)__iob);
     fileName    = getStrParam(&ptr);
     if(*fileName == 0x00)
     {
