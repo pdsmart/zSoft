@@ -399,6 +399,7 @@ int ff_del_syncobj (FF_SYNC_t sobj);	/* Delete a sync object */
 #define AM_DIR	0x10	/* Directory */
 #define AM_ARC	0x20	/* Archive */
 
+#define SECTOR_SIZE     512
 
 #ifdef __cplusplus
 }

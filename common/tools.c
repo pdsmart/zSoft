@@ -57,8 +57,6 @@ int16_t decodeCommand(char **ptr)
 {
     uint8_t idx;
     char    *paramptr = (*ptr);
- //   char    *spaceptr = NULL;
- //   char    *splitptr = NULL;
 
     // If no command entered, exit.
     if(*ptr == 0x0)
@@ -66,9 +64,6 @@ int16_t decodeCommand(char **ptr)
 
     // Find the end of the command and terminate it for comparison.
     while(*paramptr == ' ') paramptr++;
-//    spaceptr = paramptr;
-//    while(*spaceptr != ' ' && *spaceptr != 0x00) spaceptr++;
-//    if(*spaceptr == ' ') { (*spaceptr) = 0x00; splitptr = spaceptr; spaceptr++; }
 
     // Loop through all the commands and try to find a match.
     for (idx=0; idx < NCMDKEYS; idx++)
@@ -81,10 +76,6 @@ int16_t decodeCommand(char **ptr)
             return sym->key;
         }
     }
-
- //   // Restore buffer as we didnt process it.
- //   if(splitptr != NULL)
- //       *splitptr = ' ';
 
     // No command found, so raise error.
     return CMD_BADKEY;

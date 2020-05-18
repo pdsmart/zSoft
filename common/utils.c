@@ -150,7 +150,7 @@ char *getStrParam(char **ptr)
 {
     char    *paramptr = (*ptr);
     char    *spaceptr;
-	uint8_t inQuotes = 0;
+    uint8_t inQuotes = 0;
 
     // If no parameter available, exit.
     if(*ptr == 0x0)
@@ -158,15 +158,15 @@ char *getStrParam(char **ptr)
 
     // Find the end of the command and terminate it.
     while(*paramptr == ' ') paramptr++;
-	if(*paramptr == '"') { paramptr++; inQuotes=1; }
+    if(*paramptr == '"') { paramptr++; inQuotes=1; }
     spaceptr = paramptr;
-	if(inQuotes == 1)
-	{
-		while(*spaceptr != '"' && *spaceptr != 0x00) spaceptr++;
-	} else
-	{
-		while(*spaceptr != ' ' && *spaceptr != 0x00) spaceptr++;
-	}
+    if(inQuotes == 1)
+    {
+        while(*spaceptr != '"' && *spaceptr != 0x00) spaceptr++;
+    } else
+    {
+        while(*spaceptr != ' ' && *spaceptr != 0x00) spaceptr++;
+    }
     if(*spaceptr == ' ' || *spaceptr == '"') { (*spaceptr) = 0x00; spaceptr++; }
 
     // Callers pointer is advanced to the next argument or end of string.

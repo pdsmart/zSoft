@@ -233,6 +233,7 @@ int cmdProcessor(void)
     // Local variables.
     char              *ptr;
     char              line[120];
+    char              *cmdline;
     long              p1;
     long              p2;
     long              p3;
@@ -242,9 +243,9 @@ int cmdProcessor(void)
   #if defined(__SD_CARD__)
     char              *src1FileName;
     uint8_t           diskInitialised = 0;
-    uint8_t           fsInitialised = 0;
-    uint8_t           trying = 0;
-    uint32_t          retCode;
+    uint8_t           fsInitialised   = 0;
+    uint8_t           trying          = 0;
+    uint32_t          retCode         = 0xffffffff;
     FRESULT           fr;
     #if defined(BUILTIN_HW_TEST_TIMERS) && BUILTIN_HW_TEST_TIMERS == 1
     RTC               rtc;
@@ -614,66 +615,81 @@ int cmdProcessor(void)
             default:
                 // Reset to start of line - if we match a command but it isnt built in, need to search for it on disk.
                 //
-                ptr = line;
-                if(*ptr != 0x00)
+                if(line[0] != '\0')
                 {
-                #if defined(__SD_CARD__)
-                    if(diskInitialised && fsInitialised)
+                    // Duplicate the command line to pass it unmodified to the application.
+                    cmdline = strndup(line, sizeof(line));
+                    if(cmdline != NULL)
                     {
-                        // Append the app extension to the command and try to execute.
+                #if defined(__SD_CARD__)
+                        // Get the name of the command to try the various formats of using it.
+                        ptr = cmdline;
                         src1FileName=getStrParam(&ptr);
 
-                        // The user normally just types the command, but it is possible to type the drive and or path and or extension, so cater
-                        // for these possibilities by trial. An alternate way is to disect the entered command but I think this would take more code space.
-                        trying = 1;
-                        while(trying)
+                        if(diskInitialised && fsInitialised && strlen(src1FileName) < 16)
                         {
-                            switch(trying)
+                            // The user normally just types the command, but it is possible to type the drive and or path and or extension, so cater
+                            // for these possibilities by trial. An alternate way is to disect the entered command but I think this would take more code space.
+                            trying = 1;
+                            while(trying)
                             {
-                                // Try formatting with all the required drive and path fields.
-                                case 1:
-                                    sprintf(&line[40], "%d:\\%s\\%s.%s", APP_CMD_BIN_DRIVE, APP_CMD_BIN_DIR, src1FileName, APP_CMD_EXTENSION);
-                                    break;
-                                   
-                                // Try command as is.
-                                case 2:
-                                    sprintf(&line[40], "%s", src1FileName);
-                                    break;
-                                     
-                                // Try command as is but with drive and bin dir.
-                                case 3: 
-                                    sprintf(&line[40], "%d:\\%s\\%s", APP_CMD_BIN_DRIVE, APP_CMD_BIN_DIR, src1FileName);
-                                    break;
-                                   
-                                // Try command as is but with just drive.
-                                case 4: 
-                                default:
-                                    sprintf(&line[40], "%d:\\%s", APP_CMD_BIN_DRIVE, src1FileName);
-                                    break;
-                            }
-                            //                 command    Load addr          Exec addr          Mode of exec    Param1            Param2  Global struct   SoC Config struct 
-                          #if defined __ZPU__
-                            retCode = fileExec(&line[40], APP_CMD_LOAD_ADDR, APP_CMD_EXEC_ADDR, EXEC_MODE_CALL, (uint32_t)ptr,    0,      (uint32_t)&G,   (uint32_t)&cfgSoC);
-                          #else
-                            retCode = fileExec(&line[40], APP_CMD_LOAD_ADDR, APP_CMD_EXEC_ADDR, EXEC_MODE_CALL, (uint32_t)ptr,    0,      (uint32_t)&G,   (uint32_t)&cfgSoC);
-                          #endif
+                                switch(trying)
+                                {
+                                    // Try formatting with all the required drive and path fields.
+                                    case 1:
+                                        sprintf(&line[40], "%d:\\%s\\%s.%s", APP_CMD_BIN_DRIVE, APP_CMD_BIN_DIR, src1FileName, APP_CMD_EXTENSION);
+                                        break;
+                                       
+                                    // Try command as is.
+                                    case 2:
+                                        sprintf(&line[40], "%s", src1FileName);
+                                        break;
+                                         
+                                    // Try command as is but with drive and bin dir.
+                                    case 3: 
+                                        sprintf(&line[40], "%d:\\%s\\%s", APP_CMD_BIN_DRIVE, APP_CMD_BIN_DIR, src1FileName);
+                                        break;
+                                       
+                                    // Try command as is but with just drive.
+                                    case 4: 
+                                    default:
+                                        sprintf(&line[40], "%d:\\%s", APP_CMD_BIN_DRIVE, src1FileName);
+                                        break;
+                                }
+                                //                  command   Load addr          Exec addr          Mode of exec    Param1          Param2               Global struct   SoC Config struct 
+                              #if defined __ZPU__
+                                retCode = fileExec(&line[40], APP_CMD_LOAD_ADDR, APP_CMD_EXEC_ADDR, EXEC_MODE_CALL, (uint32_t)ptr,  (uint32_t)cmdline,   (uint32_t)&G,   (uint32_t)&cfgSoC);
+                              #else
+                                retCode = fileExec(&line[40], APP_CMD_LOAD_ADDR, APP_CMD_EXEC_ADDR, EXEC_MODE_CALL, (uint32_t)ptr,  (uint32_t)cmdline,   (uint32_t)&G,   (uint32_t)&cfgSoC);
+                              #endif
 
-                            if(retCode == 0xffffffff && trying <= 3)
-                            {
-                                trying++;
-                            } else
-                            {
-                                trying = 0;
+                                if(retCode == 0xffffffff && trying <= 3)
+                                {
+                                    trying++;
+                                } else
+                                {
+                                    trying = 0;
+                                }
                             }
                         }
-                    }
-                    if(!diskInitialised || !fsInitialised || retCode == 0xffffffff)
-                    {
-                        printf("Bad command.\n");
-                    }
+                        if(!diskInitialised || !fsInitialised || retCode == 0xffffffff)
+                        {
+                            printf("Bad command.\n");
+                        }
+
+                        // Free up the duplicated command line.
+                        //
+                        free(cmdline);
                 #else
-                    printf("Unknown command!\n");
+                        // Free up the duplicated command line.
+                        //
+                        free(cmdline);
+                        printf("Unknown command!\n");
                 #endif
+                    } else
+                    {
+                        printf("Memory exhausted, cannot process command.\n");
+                    }
                 }
                 break;
 

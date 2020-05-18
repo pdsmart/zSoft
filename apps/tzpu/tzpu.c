@@ -1,20 +1,14 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// Name:            fcat.c
-// Created:         July 2019
+// Name:            tzpu.c
+// Created:         May 2020
 // Author(s):       Philip Smart
-// Description:     Standalone App for the zOS/ZPU test application.
-//                  This program implements a loadable appliation which can be loaded from SD card by
-//                  the zOS/ZPUTA application. The idea is that commands or programs can be stored on the
-//                  SD card and executed by zOS/ZPUTA just like an OS such as Linux. The primary purpose
-//                  is to be able to minimise the size of zOS/ZPUTA for applications where minimal ram is
-//                  available.
-//
+// Description:     The TranZPUter control program, responsible for booting up and configuring the
+//                  underlying host, providing SD card services and interactive menus.
 // Credits:         
 // Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
 //
-// History:         July 2019    - Initial framework creation.
-//                  April 2020   - Updates to function with the K64F processor and zOS.
+// History:         May 2020 - Initial write of the TranZPUter software.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -33,21 +27,30 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#define TZPU_VERSION "1.0"
+
 #ifdef __cplusplus
     extern "C" {
 #endif
 
 #if defined(__K64F__)
   #include <stdio.h>
+  #include <ctype.h>
   #include <stdint.h>
+  #include <string.h>
+  #include <unistd.h>
+  #include <stdarg.h>
+  #include <usb_serial.h>
+#include <core_pins.h>
+  #include <Arduino.h>
   #include "k64f_soc.h"
   #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
   #include <stdint.h>
-  #include "zpu_soc.h"
   #include <stdio.h>
-  #include <string.h>
+  #include "zpu_soc.h"
   #include <stdlib.h>
+  #include <ctype.h>
   #include <stdmisc.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
@@ -64,16 +67,40 @@
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
 //
-#include "app.h"
-#include "fcat.h"
+#include <app.h>
+#include <tranzputer.h>
+#include "tzpu.h"
 
 // Utility functions.
-#include "tools.c"
+#include <tools.c>
 
 // Version info.
-#define VERSION      "v1.1"
-#define VERSION_DATE "10/04/2020"
-#define APP_NAME     "FCAT"
+#define VERSION              "v1.0"
+#define VERSION_DATE         "15/05/2020"
+#define APP_NAME             "TZPU"
+
+void testBus(void)
+{
+    printf("Requesting Z80 BUS and Mainboard access\n");
+    if(reqMainboardBus(100) == 0)
+    {
+        setupSignalsForZ80Access(WRITE);
+        uint8_t data = 0x00;
+     //   while(digitalRead(Z80_WAIT) == 0);
+        for(uint16_t idx=0xD000; idx < 0xD800; idx++)
+        {
+            writeZ80Memory(idx, data);
+           // delay(1000000);
+            data++;
+        }
+        releaseZ80();
+    }
+    else
+    {
+        printf("Failed to obtain the Z80 bus.\n");
+    }
+}
+
 
 // Main entry and start point of a zOS/ZPUTA Application. Only 2 parameters are catered for and a 32bit return code, additional parameters can be added by changing the appcrt0.s
 // startup code to add them to the stack prior to app() call.
@@ -85,23 +112,37 @@ uint32_t app(uint32_t param1, uint32_t param2)
 {
     // Initialisation.
     //
-    char      *ptr = (char *)param1;
-    char      *fileName;
-    uint32_t  retCode = 0xffffffff;
-    FRESULT   fr = 1;
+  //  char      *ptr = (char *)param1;
+  //  char      *pathName;    
+    uint32_t  retCode = 1;
+    
+    // Get name of file to load.
+    //
+    //pathName    = getStrParam(&ptr);
+    //if(strlen(pathName) == 0)
+    //{
+    //    printf("Usage: tzpu <file>\n");
+    //}
+    _init_Teensyduino_internal_();
+    setupPins(G->millis);
 
-#if defined __ZPU__
-  printf("0=%08lx, 1=%08lx, 2=%08lx, _IOB=%08lx\n", __iob[0], __iob[1], __iob[2], (uint32_t)__iob);
-#endif
+    printf("Loading Monitor ROM\n");
+    loadZ80Memory("SA1510.rom", 0x00000000, 0, 1);
 
-    fileName    = getStrParam(&ptr);
-    if(*fileName == 0x00)
-    {
-        printf("Illegal <file> value.\n");
-    } else
-        fr      = fileCat(fileName);
+    printf("Loading Floppy ROM\n");
+    loadZ80Memory("1Z-013A.rom", 0x0000F000, 0, 1);
 
-    if(fr) { printFSCode(fr); } else { retCode = 0; }
+    printf("Testing Display\n");
+    testBus();
+    displaySignals();
+
+	pinMode(13, OUTPUT);
+	while (1) {
+		digitalWriteFast(13, HIGH);
+		delay(500);
+		digitalWriteFast(13, LOW);
+		delay(500);
+	}
 
     return(retCode);
 }
