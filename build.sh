@@ -23,6 +23,7 @@
 #     -s <size>     = Required size of application stack
 #     -a <size>     = Maximum size of an app, defaults to (BRAM SIZE - App Start Address - Stack Size) 
 #                     if the App Start is located within BRAM otherwise defaults to 0x10000.
+#     -T            = TranZPUter specific build, adds initialisation and setup code.
 #     -d            = Debug mode.
 #     -x            = Shell trace mode.
 #     -h            = This help screen.
@@ -247,12 +248,13 @@ APP_HEAP_SIZE=0x1000;
 APP_STACK_SIZE=0x400;
 OS_HEAP_SIZE=0x4000;
 OS_STACK_SIZE=0x1000;
+TRANZPUTER=0
 OSVER=2;
 
 # Process parameters, loading up variables as necessary.
 #
 if [ $# -gt 0 ]; then
-    while getopts ":hC:I:O:o:M:B:A:N:n:S:s:da:x" opt; do
+    while getopts ":hC:I:O:o:M:B:A:N:n:S:s:da:xT" opt; do
         case $opt in
             d)     DEBUGMODE=1;;
             C)     CPU=`echo ${OPTARG} | tr 'a-z' 'A-Z'`;;
@@ -267,6 +269,7 @@ if [ $# -gt 0 ]; then
             S)     getHex ${OPTARG} OS_STACK_SIZE;;
             s)     getHex ${OPTARG} APP_STACK_SIZE;;
             a)     getHex ${OPTARG} APP_LEN;;
+            T)     TRANZPUTER=1;;
             x)     set -x; TRACEMODE=1;;
             h)     Usage;;
            \?)     FatalUsage "Unknown option: -${OPTARG}";;
@@ -311,6 +314,13 @@ fi
 # Check OSVER which has no meaning for the K64F processor.
 if [ "${CPU}" = "K64F" -a "${OSVER}" != "2" ]; then
     Fatal "-o <os ver> has no meaning for the K64F, base is in Flash RAM and applications, if SD card enabled, are in RAM."
+fi
+
+# Setup any specific build options.
+if [ ${TRANZPUTER} -eq 1 ]; then
+    if [ "${CPU}" = "K64F" -a "${OS}" = "ZOS" ]; then 
+        BUILDFLAGS="__TRANZPUTER__=1"
+    fi
 fi
 
 # Clear out the build target directory.
@@ -483,7 +493,7 @@ else
     # Calculate the heap, stack and RAM start address vars.
     OS_RAM_ENDADDR=0x20030000
     OS_RAM_MASK=0x3FFFF000
-    OS_RAM_OSMEM=0x004000
+    OS_RAM_OSMEM=0x005000
     subHex ${OS_RAM_ENDADDR} 8                    OS_STACK_ENDADDR
     subHex ${OS_RAM_ENDADDR} ${OS_STACK_SIZE}     OS_STACK_STARTADDR
     roundHex ${OS_STACK_STARTADDR} ${OS_RAM_MASK} OS_STACK_STARTADDR
@@ -546,17 +556,17 @@ if [ "${OS}" = "ZPUTA" ]; then
                           -e "s/STACK_ADDR/${OS_STACK_STARTADDR}/g" > ${BUILDPATH}/startup/${OSBUILDSTR}.ld
 
     cd ${BUILDPATH}/zputa
-    make ${CPUTYPE}=1 ${OSTYPE}=1 clean
+    make ${CPUTYPE}=1 ${OSTYPE}=1 ${BUILDFLAGS} clean
     if [ $? != 0 ]; then
         Fatal "Aborting, failed to clean ZPUTA build environment!"
     fi
 
     if [ "${CPUTYPE}" = "__ZPU__" ]; then
-        Log "make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU}"
-        make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU}
+        Log "make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} ${BUILDFLAGS}"
+        make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} ${BUILDFLAGS}
     else
-        Log "make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU}"
-        make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU}
+        Log "make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} ${BUILDFLAGS}"
+        make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} ${BUILDFLAGS}
     fi
     if [ $? != 0 ]; then
         Fatal "Aborting, failed to build ZPUTA!"
@@ -592,11 +602,11 @@ elif [ "${OS}" = "ZOS" ]; then
         Fatal "Aborting, failed to clean zOS build environment!"
     fi
     if [ "${CPUTYPE}" = "__ZPU__" ]; then
-        Log "make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE}"
-        make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE}
+        Log "make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE} ${BUILDFLAGS}"
+        make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE} ${BUILDFLAGS}
     else
-        Log "make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE}"
-        make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE}
+        Log "make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE} ${BUILDFLAGS}"
+        make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE} ${BUILDFLAGS}
     fi
     if [ $? != 0 ]; then
         Fatal "Aborting, failed to build zOS!"
@@ -617,20 +627,20 @@ else
 fi
 
 cd ${BUILDPATH}/apps
-Log "make ${CPUTYPE}=1 ${OSTYPE}=1 clean"
-make ${CPUTYPE}=1 ${OSTYPE}=1 clean
+Log "make ${CPUTYPE}=1 ${OSTYPE}=1 ${BUILDFLAGS} clean"
+make ${CPUTYPE}=1 ${OSTYPE}=1 ${BUILDFLAGS} clean
 if [ $? != 0 ]; then
     Fatal "Aborting, failed to clean Apps build environment!"
 fi
-Log "make ${CPUTYPE} ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} TMPLFILE=${TMPLFILE} BASEADDR=${APP_BASEADDR} BASELEN=${APP_BOOTLEN} HEAPADDR=${APP_HEAP_STARTADDR} HEAPSIZE=${APP_HEAP_SIZE} STACKADDR=${APP_STACK_STARTADDR} STACKENDADDR=${APP_STACK_ENDADDR} STACKSIZE=${APP_STACK_SIZE} APPSTART=${APP_STARTADDR} APPSIZE=${APP_LEN}"
-make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} TMPLFILE=${TMPLFILE} BASEADDR=${APP_BASEADDR} BASELEN=${APP_BOOTLEN} HEAPADDR=${APP_HEAP_STARTADDR} HEAPSIZE=${APP_HEAP_SIZE} STACKADDR=${APP_STACK_STARTADDR} STACKENDADDR=${APP_STACK_ENDADDR} STACKSIZE=${APP_STACK_SIZE} APPSTART=${APP_STARTADDR} APPSIZE=${APP_LEN}
+Log "make ${CPUTYPE} ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} TMPLFILE=${TMPLFILE} BASEADDR=${APP_BASEADDR} BASELEN=${APP_BOOTLEN} HEAPADDR=${APP_HEAP_STARTADDR} HEAPSIZE=${APP_HEAP_SIZE} STACKADDR=${APP_STACK_STARTADDR} STACKENDADDR=${APP_STACK_ENDADDR} STACKSIZE=${APP_STACK_SIZE} APPSTART=${APP_STARTADDR} APPSIZE=${APP_LEN} ${BUILDFLAGS}"
+make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} TMPLFILE=${TMPLFILE} BASEADDR=${APP_BASEADDR} BASELEN=${APP_BOOTLEN} HEAPADDR=${APP_HEAP_STARTADDR} HEAPSIZE=${APP_HEAP_SIZE} STACKADDR=${APP_STACK_STARTADDR} STACKENDADDR=${APP_STACK_ENDADDR} STACKSIZE=${APP_STACK_SIZE} APPSTART=${APP_STARTADDR} APPSIZE=${APP_LEN} ${BUILDFLAGS}
 if [ $? != 0 ]; then
     Fatal "Aborting, failed to build Apps!"
 fi
 mkdir -p bin
 rm -f bin/*
-Log "make ${CPUTYPE}=1 ${OSTYPE}=1 install"
-make ${CPUTYPE}=1 ${OSTYPE}=1 install
+Log "make ${CPUTYPE}=1 ${OSTYPE}=1 ${BUILDFLAGS} install"
+make ${CPUTYPE}=1 ${OSTYPE}=1 ${BUILDFLAGS} install
 if [ $? != 0 ]; then
     Fatal "Aborting, failed to install generated binaries!"
 fi

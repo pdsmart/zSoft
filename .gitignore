@@ -60,3 +60,10 @@ apps/*/*.k64
 common/old2
 include.bak
 libraries/umlibc/misc2
+apps/tzpu/tzpu.c.1605
+apps/tzpu/tzpu.h.1605
+c
+teensy3/TeensyThreads/
+x
+zOS/main.hex
+

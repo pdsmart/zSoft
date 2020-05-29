@@ -89,13 +89,13 @@ void usage(void)
     printf("  -u | --upload   <file>   File whose contents are uploaded into the traZPUter memory.\n");
     printf("  -U | --uploadset <file>:<addr>,...,<file>:<addr>\n");
     printf("                           Upload a set of files at the specified locations. --mainboard specifies mainboard is target, default is tranZPUter.\n");
-    printf("  -f | --fill <byte>       Fill the memory specified by --addr, --size and [--mainboard] with the value <byte>.\n");
     printf("  -V | --video             The specified input file is uploaded into the video frame buffer or the specified output file is filled with the video frame buffer.\n");
     printf("\nOptions:-\n");
     printf("  -a | --addr              Memory address to read/write.\n");
     printf("  -l | --size              Size of memory block to read. This option is only used when reading tranZPUter memory, for writing, the file size is used.\n");
     printf("  -s | --swap              Read tranZPUter memory and store in <infile> then write out <outfile> to the same memory location.\n");
     printf("  -m | --mainboard         Operations will take place on the MZ80A mainboard. Default without this flag is to target the tranZPUter memory.\n");
+    printf("  -z | --mzf               File operations are to process the file as an MZF format file, --addr and --size will override the MZF header values if needed.\n");
     printf("  -v | --verbose           Output more messages.\n");
 
     printf("\nExamples:\n");
@@ -115,17 +115,17 @@ uint32_t app(uint32_t param1, uint32_t param2)
     //
     uint32_t   memAddr           = 0xFFFFFFFF;
     uint32_t   memSize           = 0xFFFFFFFF;
-    uint16_t   fillByte          = 0xFFFF;
     int        argc              = 0;
     int        help_flag         = 0;
     int        mainboard_flag    = 0;
+    int        mzf_flag          = 0;
     int        swap_flag         = 0;
     int        verbose_flag      = 0;
     int        video_flag        = 0;
     int        opt; 
     int        option_index      = 0; 
-    int        uploadFNLen        = 0;
-    int        downloadFNLen       = 0;
+    int        uploadFNLen       = 0;
+    int        downloadFNLen     = 0;
     int        uploadCnt         = 0;
     long       val;
     char      *argv[20];
@@ -162,8 +162,8 @@ uint32_t app(uint32_t param1, uint32_t param2)
         {"uploadset",     required_argument, 0,   'U'},
         {"addr",          required_argument, 0,   'a'},
         {"size",          required_argument, 0,   'l'},
-        {"fill",          required_argument, 0,   'f'},
         {"mainboard",     no_argument,       0,   'm'},
+        {"mzf",           no_argument,       0,   'z'},
         {"swap",          no_argument,       0,   's'},
         {"verbose",       no_argument,       0,   'v'},
         {"video",         no_argument,       0,   'V'},
@@ -172,7 +172,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
     // Parse the command line options.
     //
-    while((opt = getopt_long(argc, argv, ":ha:l:mvU:Vsd:u:", long_options, &option_index)) != -1)  
+    while((opt = getopt_long(argc, argv, ":ha:l:mvU:Vzsd:u:", long_options, &option_index)) != -1)  
     {  
         switch(opt)  
         {  
@@ -186,15 +186,6 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
             case 's':
                 swap_flag = 1;
-                break;
-
-            case 'f':
-                if(xatoi(&argv[optind-1], &val) == 0)
-                {
-                    printf("Illegal numeric:%s\n", argv[optind-1]);
-                    return(5);
-                }
-                fillByte = (uint16_t)val;
                 break;
 
             case 'a':
@@ -230,15 +221,12 @@ uint32_t app(uint32_t param1, uint32_t param2)
             case 'U':
                 // Extract an array of <file>:<addr>,... sets for upload.
                 //
-           printf("This line:%s\n", argv[optind-1]); 
                 ptr = strtok((char *)argv[optind-1], ",");
                 while (ptr && uploadCnt < 20-1)
                 {
-        printf("Split:%s\n", ptr);
                     uploadArr[uploadCnt++] = ptr;
                     ptr = strtok(0, ",");
                 }
-            printf("Final count=%d\n", uploadCnt);
                 if(uploadCnt == 0)
                 {
                     printf("Upload set command should use format <file>:<addr>,...\n");
@@ -254,6 +242,10 @@ uint32_t app(uint32_t param1, uint32_t param2)
                 video_flag = 1;
                 break;
 
+            case 'z':
+                mzf_flag = 1;
+                break;
+
             case ':':  
                 printf("Option %s needs a value\n", argv[optind-1]);  
                 break;  
@@ -264,25 +256,20 @@ uint32_t app(uint32_t param1, uint32_t param2)
     } 
 
     // Validate the input.
-    if(uploadCnt && (help_flag == 1 || uploadFNLen > 0 || downloadFNLen > 0 || swap_flag == 1 || video_flag == 1 || fillByte != 0xFFFF || memAddr != 0xFFFFFFFF || memSize != 0xFFFFFFFF))
+    if(uploadCnt && (help_flag == 1 || uploadFNLen > 0 || downloadFNLen > 0 || swap_flag == 1 || video_flag == 1 || memAddr != 0xFFFFFFFF || memSize != 0xFFFFFFFF))
     {
-        printf("Illegal combination of flags, --upload can only be used with --mainboard.\n");
+        printf("Illegal combination of flags, --uploadset can only be used with --mainboard.\n");
         return(10);
     }
-    if(video_flag == 1 && (help_flag == 1 || swap_flag == 1 || fillByte != 0xFFFF || mainboard_flag == 1 || memAddr != 0xFFFFFFFF || memSize != 0xFFFFFFFF))
+    if(video_flag == 1 && (help_flag == 1 || swap_flag == 1 || mainboard_flag == 1 || memAddr != 0xFFFFFFFF || memSize != 0xFFFFFFFF))
     {
-        printf("Illegal combination of flags, --video can only be used with --infile, --outfile and --mainboard.\n");
+        printf("Illegal combination of flags, --video can only be used with --upload, --download and --mainboard.\n");
         return(11);
-    }
-    if(fillByte != 0xFFFF && (help_flag == 1 || uploadFNLen > 0 || downloadFNLen > 0 || swap_flag == 1 || video_flag == 1 || memAddr == 0xFFFFFFFF || memSize == 0xFFFFFFFF))
-    {
-        printf("Illegal combination of flags, --fill can only be used with --addr, --size and --mainboard.\n");
-        return(12);
     }
 
     // If the Video and Upload modes arent required, check other argument combinations.
     //
-    if(uploadCnt == 0 && video_flag == 0 && fillByte == 0xFFFF)
+    if(uploadCnt == 0 && video_flag == 0)
     {
         if(help_flag == 1)
         {
@@ -307,28 +294,33 @@ uint32_t app(uint32_t param1, uint32_t param2)
             printf("Please define the size of memory you wish to read.\n");
             return(16);
         }
-        if(memAddr == 0xFFFFFFFF)
+        if(mzf_flag == 1 && downloadFNLen > 0)
+        {
+            printf("MZF Format can currently only be used for file uploading.\n");
+            return(17);
+        }
+        if(memAddr == 0xFFFFFFFF && mzf_flag == 0)
         {
             printf("Please define the target address.\n");
-            return(17);
+            return(18);
         }
     }
     if(uploadCnt == 0 && video_flag == 0)
     {
-        if(mainboard_flag == 1 && (memAddr > 0x10000 || memAddr + memSize > 0x10000))
+        if(mainboard_flag == 1 && mzf_flag == 0 && (memAddr > 0x10000 || memAddr + memSize > 0x10000))
         {
             printf("Mainboard only has 64K, please change the address and size.\n");
-            return(17);
+            return(19);
         }
-        if(mainboard_flag == 0 && (memAddr >= 0x80000 || memAddr + memSize > 0x80000))
+        if(mainboard_flag == 0 && mzf_flag == 0 && (memAddr >= 0x80000 || memAddr + memSize > 0x80000))
         {
             printf("tranZPUter board only has 512K, please change the address and size.\n");
-            return(18);
+            return(20);
         }
     }
 
     // Initialise the IO.
-    setupPins(G->millis);
+    setupZ80Pins(1, G->millis);
 
     // Bulk file upload command (used to preload a file set).
     //
@@ -343,13 +335,19 @@ uint32_t app(uint32_t param1, uint32_t param2)
             if(xatoi(&ptr, &val) == 0)
             {
                 printf("Illegal numeric in upload list:%s\n", ptr);
-                return(20);
+                return(30);
             }
             memAddr = (uint32_t)val;
          
             // Now we have the input file and the address where it should be loaded, call the load function.
             //
-            loadZ80Memory(uploadFile, memAddr, mainboard_flag, (idx == uploadCnt-1) ? 1 : 0);
+            if(mzf_flag == 0)
+            {
+                loadZ80Memory(uploadFile, 0, memAddr, 0, mainboard_flag, (idx == uploadCnt-1) ? 1 : 0);
+            } else
+            {
+                loadMZFZ80Memory(uploadFile, memAddr,    mainboard_flag, (idx == uploadCnt-1) ? 1 : 0);
+            }
         }
     }
  
@@ -368,13 +366,6 @@ uint32_t app(uint32_t param1, uint32_t param2)
         }
     } 
     
-    // Fill tranZPUter memory or mainboard memory with a fixed value to initialise memory before an upload?
-    //
-    else if(fillByte != 0xFFFF)
-    {
-        fillZ80Memory(memAddr, memSize, (uint8_t)fillByte, mainboard_flag);
-    }
-
     else
     {
         if(downloadFNLen > 0)
@@ -383,15 +374,22 @@ uint32_t app(uint32_t param1, uint32_t param2)
             {
                 printf("Saving %s memory at address:%06lx into file:%s\n", (mainboard_flag == 0 ? "tranZPUter" : "mainboard"), memAddr, downloadFile);
             }
-            saveZ80Memory(downloadFile, memAddr, memSize, mainboard_flag);
+            saveZ80Memory(downloadFile, memAddr, memSize, 0, mainboard_flag);
         }
         if(uploadFNLen > 0)
         {
             if(verbose_flag)
             {
-                printf("Loading file:%s into the %s at address:%06lx\n", uploadFile, (mainboard_flag == 0 ? "tranZPUter" : "mainboard"), memAddr);
+                printf("Loading file:%s into the %s memory\n", uploadFile, (mainboard_flag == 0 ? "tranZPUter" : "mainboard"));
             }
-            loadZ80Memory(uploadFile, memAddr, mainboard_flag, 1);
+
+            if(mzf_flag == 0)
+            {
+                loadZ80Memory(uploadFile, 0, memAddr, 0, mainboard_flag, 1);
+            } else
+            {
+                loadMZFZ80Memory(uploadFile, memAddr,    mainboard_flag, 1);
+            }
         }
     }
 

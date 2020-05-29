@@ -96,8 +96,14 @@
 /     0 - Include all code pages above and configured by f_setcp()
 */
 
+// zOS running on the tranZPUter uses LFN.
+//
+//#if defined __TRANZPUTER__
+#define FF_USE_LFN		1
+//#else
+//#define FF_USE_LFN		0
+//#endif
 
-#define FF_USE_LFN		0
 #define FF_MAX_LFN		255
 /* The FF_USE_LFN switches the support for LFN (long file name).
 /

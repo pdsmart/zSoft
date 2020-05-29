@@ -56,7 +56,9 @@
   #include "WProgram.h"
   #include "k64f_soc.h"
   #include <../libraries/include/stdmisc.h>
-#else
+  #include <TeensyThreads.h>
+
+#else // __ZPU__
   #include <stdint.h>
   #include <string.h>
   #include <stdio.h>
@@ -74,6 +76,10 @@
 #include "readline.h"
 #include "zOS_app.h"     /* Header for definitions specific to apps run from zOS */
 #include "zOS.h"
+
+#if defined __TRANZPUTER__
+  #include <tranzputer.h>
+#endif
 
 #if defined(BUILTIN_TST_DHRYSTONE) && BUILTIN_TST_DHRYSTONE == 1
   #include <dhry.h>
@@ -226,6 +232,64 @@ uint8_t getCommandLine(char *buf, uint8_t bufSize)
     return(result);
 }
 
+#if defined __TRANZPUTER__
+// Thread to monitor and control the tranZPUter board offering needed services and monitoring.
+//
+void tranZPUterControl(void)
+{
+    // Locals.
+    uint8_t        ioAddr;
+    uint8_t        ioData;
+  
+    // Loop waiting on events and processing.
+    //
+    while(1)
+    {
+        // Indicate the thread is busy so we are not interrupted whilst servicing the tranZPUter.
+        //
+        G.ctrlThreadBusy = 1;
+
+        // If a user reset event occurred, reload the default ROM set.
+        //
+        if(isZ80Reset())
+        {
+printf("Doing a reset load\n");
+            // Reload the memory on the tranZPUter to boot default.
+            loadTranZPUterDefaultROMS();
+
+            // Clear reset event which caused this reload.
+            clearZ80Reset();
+        }
+
+        // Has there been an IO instruction for a service request?
+        //
+        if(getZ80IO(&ioAddr, &ioData) == 1)
+        {
+printf("Got an IO request, addr:%02x, Data:%02x\n", ioAddr, ioData);
+            switch(ioAddr)
+            {
+                // Service request. Actual data about the request is stored in the Z80 memory, so read the request and process.
+                //
+                case IO_TZ_SVCREQ:
+                    // Handle the service request.
+                    //
+                    processServiceRequest();
+                    break;
+
+                default:
+                    break;
+            }
+        }
+       
+        // Indicate the thread is free.
+        //
+        G.ctrlThreadBusy = 0;
+        threads.delay(100);
+        threads.yield();
+    }
+}
+#endif
+
 // Interactive command processor. Allow user to input a command and execute accordingly.
 //
 int cmdProcessor(void)
@@ -273,7 +337,22 @@ int cmdProcessor(void)
     } else
     {
         diskInitialised = 1;
-        fsInitialised = 1;
+        fsInitialised   = 1;
+
+      #if defined __TRANZPUTER__
+        // Setup the tranZPUter ready for action!
+        setupTranZPUter();
+       
+        // Setup memory on Z80 to default.
+        loadTranZPUterDefaultROMS();
+
+        // Cache initial directory.
+        svcCacheDir(TZSVC_DEFAULT_DIR, 1);
+
+        // For the tranZPUter, once we know that an SD card is available, launch seperate thread to handle hardware and service functionality.
+        // No SD card = no tranZPUter functionality.
+        G.ctrlThreadId = threads.addThread(tranZPUterControl, 0, 16384);
+      #endif
     }
   #endif
 
@@ -628,6 +707,18 @@ int cmdProcessor(void)
 
                         if(diskInitialised && fsInitialised && strlen(src1FileName) < 16)
                         {
+                          #if defined __TRANZPUTER__
+                            // If running on the tranZPUter, suspend the control thread if we are to run a tranZPUter applet to prevent clashes with hardware.
+                            //
+                            if(src1FileName[0] == 't' && src1FileName[1] == 'z')
+                            {
+                                // Wait until the control thread has completed a loop then suspend thread for the duration of the app run to avoid clash for resources.
+                                //
+                                while(G.ctrlThreadBusy == 1);
+                                threads.suspend(G.ctrlThreadId);
+                            }
+                          #endif
+
                             // The user normally just types the command, but it is possible to type the drive and or path and or extension, so cater
                             // for these possibilities by trial. An alternate way is to disect the entered command but I think this would take more code space.
                             trying = 1;
@@ -660,6 +751,7 @@ int cmdProcessor(void)
                               #if defined __ZPU__
                                 retCode = fileExec(&line[40], APP_CMD_LOAD_ADDR, APP_CMD_EXEC_ADDR, EXEC_MODE_CALL, (uint32_t)ptr,  (uint32_t)cmdline,   (uint32_t)&G,   (uint32_t)&cfgSoC);
                               #else
+                                //printf("%s,%08lx,%08lx,%d,%s,%s\n", &line[40], APP_CMD_LOAD_ADDR, APP_CMD_EXEC_ADDR, EXEC_MODE_CALL, ptr, cmdline);
                                 retCode = fileExec(&line[40], APP_CMD_LOAD_ADDR, APP_CMD_EXEC_ADDR, EXEC_MODE_CALL, (uint32_t)ptr,  (uint32_t)cmdline,   (uint32_t)&G,   (uint32_t)&cfgSoC);
                               #endif
 
@@ -671,6 +763,11 @@ int cmdProcessor(void)
                                     trying = 0;
                                 }
                             }
+
+                          #if defined __TRANZPUTER__
+                            // Restart the suspended control thread, the application should have left the 
+                            threads.restart(G.ctrlThreadId);
+                          #endif
                         }
                         if(!diskInitialised || !fsInitialised || retCode == 0xffffffff)
                         {

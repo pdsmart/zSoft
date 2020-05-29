@@ -604,9 +604,9 @@ void _init_Teensyduino_internal_(void)
 	// https://forum.pjrc.com/threads/36606-startup-time-(400ms)?p=113980&viewfull=1#post113980
 	// https://forum.pjrc.com/threads/31290-Teensey-3-2-Teensey-Loader-1-24-Issues?p=87273&viewfull=1#post87273
 
-	delay(TEENSY_INIT_USB_DELAY_BEFORE);
+	//delay(TEENSY_INIT_USB_DELAY_BEFORE);
 	//usb_init();
-	delay(TEENSY_INIT_USB_DELAY_AFTER);
+	//delay(TEENSY_INIT_USB_DELAY_AFTER);
 }
 
 

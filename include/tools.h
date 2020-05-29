@@ -103,6 +103,11 @@ extern "C" {
 #define CMD_APP_MBASIC            141              // Mini Basic
 #define CMD_APP_KILO              142              // Kilo Editor
 #define CMD_APP_ED                143              // Ed Editor
+#define CMD_TZ_ZPU                150              // tranZPUter interface/test.
+#define CMD_TZ_LOAD               151              // tranZPUter memory load/save tool.
+#define CMD_TZ_DUMP               152              // tranZPUter memory dump tool.
+#define CMD_TZ_CLEAR              153              // tranZPUter memory clear tool.
+#define CMD_TZ_RESET              154              // tranZPUter memory reset tool.
 #define CMD_BADKEY                 -1
 #define CMD_NOKEY                   0 
 #define CMD_GROUP_DISK              1
@@ -114,6 +119,7 @@ extern "C" {
 #define CMD_GROUP_EXEC              7
 #define CMD_GROUP_MISC              8
 #define CMD_GROUP_APP               9
+#define CMD_GROUP_TZ               10
 #define CMD_GROUP_DISK_NAME         "DISK IO CONTROLS"
 #define CMD_GROUP_BUFFER_NAME       "DISK BUFFER CONTROLS"
 #define CMD_GROUP_FS_NAME           "FILESYSTEM CONTROLS"
@@ -123,6 +129,7 @@ extern "C" {
 #define CMD_GROUP_EXEC_NAME         "EXECUTION"
 #define CMD_GROUP_MISC_NAME         "MISC COMMANDS"
 #define CMD_GROUP_APP_NAME          "APPLICATIONS"
+#define CMD_GROUP_TZ_NAME           "TRANZPUTER"
  
 // File Execution modes.
 //
@@ -377,6 +384,13 @@ static t_cmdstruct cmdTable[] = {
     { "mbasic",     BUILTIN_DEFAULT,          CMD_APP_MBASIC,       CMD_GROUP_APP },
     { "kilo",       BUILTIN_DEFAULT,          CMD_APP_KILO,         CMD_GROUP_APP },
     { "ed",         BUILTIN_DEFAULT,          CMD_APP_ED,           CMD_GROUP_APP },
+  #if defined __TRANZPUTER__
+    { "tzpu",       BUILTIN_DEFAULT,          CMD_TZ_TZPU,          CMD_GROUP_TZ },
+    { "tzload",     BUILTIN_DEFAULT,          CMD_TZ_LOAD,          CMD_GROUP_TZ },
+    { "tzdump",     BUILTIN_DEFAULT,          CMD_TZ_DUMP,          CMD_GROUP_TZ },
+    { "tzclear",    BUILTIN_DEFAULT,          CMD_TZ_CLEAR,         CMD_GROUP_TZ },
+    { "tzreset",    BUILTIN_DEFAULT,          CMD_TZ_RESET,         CMD_GROUP_TZ },
+  #endif
 };
 #endif
 
@@ -477,6 +491,14 @@ static t_helpstruct helpTable[] = {
     { CMD_APP_MBASIC,       "[<file]>",                           "Mini Basic" },
     { CMD_APP_KILO,         "<file>",                             "VT100 editor" },
     { CMD_APP_ED,           "<file>",                             "Minimal VT100 editor" },
+  #if defined __TRANZPUTER__
+    // TranZPUter commands.
+    { CMD_TZ_TZPU,          "--help",                             "Testing tool" },
+    { CMD_TZ_LOAD,          "--help",                             "Memory load/save tool" },
+    { CMD_TZ_DUMP,          "--help",                             "Memory dump tool" },
+    { CMD_TZ_CLEAR,         "--help",                             "Memory clearing tool" },
+    { CMD_TZ_RESET,         "--help",                             "Remote reset tool" },
+  #endif
 };
 #endif
 #define NGRPKEYS (sizeof(groupTable)/sizeof(t_groupstruct))

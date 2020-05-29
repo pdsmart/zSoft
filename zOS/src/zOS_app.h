@@ -39,13 +39,17 @@
 
 // Global parameters accessible in applications.
 typedef struct {
-    uint8_t                  fileInUse;                                /* Flag to indicate if file[0] is in use. */
-    FIL                      File[MAX_FILE_HANDLE];                    /* Maximum open file objects */
-    FATFS                    FatFs[FF_VOLUMES];                        /* Filesystem object for each logical drive */
-    BYTE                     Buff[512];                                /* Working buffer */
-    DWORD                    Sector;                                   /* Sector to read */
+    uint8_t                  fileInUse;                                // Flag to indicate if file[0] is in use.
+    FIL                      File[MAX_FILE_HANDLE];                    // Maximum open file objects
+    FATFS                    FatFs[FF_VOLUMES];                        // Filesystem object for each logical drive
+    BYTE                     Buff[512];                                // Working buffer
+    DWORD                    Sector;                                   // Sector to read
   #if defined __K64F__
-	uint32_t volatile    *millis;                                  /* Pointer to the K64F millisecond tick */
+	uint32_t volatile    *millis;                                  // Pointer to the K64F millisecond tick
+  #endif
+  #if defined __TRANZPUTER__
+	int                  ctrlThreadId;                             // Id of tranZPUter control thread.
+	uint8_t              ctrlThreadBusy;                           // Flag to indicate when the control thread cannot be disturbed.
   #endif
 } GLOBALS;
 

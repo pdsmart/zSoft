@@ -273,18 +273,18 @@ BSS_END:    .word      __bss_section_end__
            #defapifunc      f_printf funcAddr
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      f_gets funcAddr
-           #
-           # Low level disk calls.
-           #
+            #
+            # Low level disk calls.
+            #
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      disk_read funcAddr
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      disk_write funcAddr
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      disk_ioctl funcAddr
-           #
-           # Miscellaneous calls.
-           #
+            #
+            # Miscellaneous calls.
+            #
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      getStrParam funcAddr
             .equ funcAddr,  funcAddr+funcNext;
@@ -306,4 +306,69 @@ BSS_END:    .word      __bss_section_end__
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      sys_free funcAddr
 
+            # tranZPUter kernel methods.
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      setupZ80Pins              funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      resetZ80                  funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      reqZ80Bus                 funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      reqMainboardBus           funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      reqTranZPUterBus          funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      setupSignalsForZ80Access  funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      releaseZ80                funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      writeZ80Memory            funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      readZ80Memory             funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      writeZ80IO                funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      readZ80IO                 funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      refreshZ80                funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      refreshZ80AllRows         funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      setCtrlLatch              funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      copyFromZ80               funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      copyToZ80                 funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      fillZ80Memory             funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      captureVideoFrame         funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      refreshVideoFrame         funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      loadVideoFrameBuffer      funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      saveVideoFrameBuffer      funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      getVideoFrame             funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      getAttributeFrame         funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      loadZ80Memory             funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      loadMZFZ80Memory          funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      saveZ80Memory             funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      memoryDumpZ80             funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      isZ80Reset                funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      isZ80MemorySwapped        funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      getZ80IO                  funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      clearZ80Reset             funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      loadTranZPUterDefaultROMS funcAddr
     .end

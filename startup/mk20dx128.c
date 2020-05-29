@@ -36,6 +36,11 @@
 #include "usb_ser_print.h" // testing only
 #include <errno.h>
 
+#if defined __TRANZPUTER__
+  #define FRESULT uint8_t
+  #include <tranzputer.h>
+#endif
+
 
 // Flash Security Setting. On Teensy 3.2, you can lock the MK20 chip to prevent
 // anyone from reading your code.  You CAN still reprogram your Teensy while
@@ -979,6 +984,44 @@ void _ZPUTA_Vectors(void)
     __asm__ volatile ("b realloc");
     __asm__ volatile ("b calloc");
     __asm__ volatile ("b free");
+
+  #if defined __TRANZPUTER__
+    //
+    // tranZPUter methods which need to be called via the kernel not accessed by the application directly.
+    // 
+    __asm__ volatile ("b setupZ80Pins");
+    __asm__ volatile ("b resetZ80");
+    __asm__ volatile ("b reqZ80Bus");
+    __asm__ volatile ("b reqMainboardBus");
+    __asm__ volatile ("b reqTranZPUterBus");
+    __asm__ volatile ("b setupSignalsForZ80Access");
+    __asm__ volatile ("b releaseZ80");
+    __asm__ volatile ("b writeZ80Memory");
+    __asm__ volatile ("b readZ80Memory");
+    __asm__ volatile ("b writeZ80IO");
+    __asm__ volatile ("b readZ80IO");
+    __asm__ volatile ("b refreshZ80");
+    __asm__ volatile ("b refreshZ80AllRows");
+    __asm__ volatile ("b setCtrlLatch");
+    __asm__ volatile ("b copyFromZ80");
+    __asm__ volatile ("b copyToZ80");
+    __asm__ volatile ("b fillZ80Memory");
+    __asm__ volatile ("b captureVideoFrame");
+    __asm__ volatile ("b refreshVideoFrame");
+    __asm__ volatile ("b loadVideoFrameBuffer");
+    __asm__ volatile ("b saveVideoFrameBuffer");
+    __asm__ volatile ("b getVideoFrame");
+    __asm__ volatile ("b getAttributeFrame");
+    __asm__ volatile ("b loadZ80Memory");
+    __asm__ volatile ("b loadMZFZ80Memory");
+    __asm__ volatile ("b saveZ80Memory");
+    __asm__ volatile ("b memoryDumpZ80");
+    __asm__ volatile ("b isZ80Reset");
+    __asm__ volatile ("b isZ80MemorySwapped");
+    __asm__ volatile ("b getZ80IO");
+    __asm__ volatile ("b clearZ80Reset");
+    __asm__ volatile ("b loadTranZPUterDefaultROMS");
+  #endif
 }
 
 // Automatically initialize the RTC.  When the build defines the compile
@@ -999,6 +1042,7 @@ static void startup_default_early_hook(void) {
 #endif
 }
 static void startup_default_late_hook(void) {}
+
 void startup_early_hook(void)		__attribute__ ((weak, alias("startup_default_early_hook")));
 void startup_late_hook(void)		__attribute__ ((weak, alias("startup_default_late_hook")));
 
@@ -1068,6 +1112,7 @@ void ResetHandler(void)
 	UART0_C2 = UART_C2_TE;
 	PORTB_PCR17 = PORT_PCR_MUX(3);
 #endif
+
 #if defined(KINETISK) && !defined(__MK66FX1M0__)
 	// If the RTC oscillator isn't enabled, get it started early.
 	// But don't do this early on Teensy 3.6 - RTC_CR depends on 3.3V+VBAT
@@ -1087,12 +1132,12 @@ void ResetHandler(void)
 #else
 	SMC_PMPROT = SMC_PMPROT_AVLP | SMC_PMPROT_ALLS | SMC_PMPROT_AVLLS;
 #endif
-    
+
 	// TODO: do this while the PLL is waiting to lock....
 	while (dest < &_edata) *dest++ = *src++;
 	dest = &_sbss;
 	while (dest < &_ebss) *dest++ = 0;
-
+  
 	// default all interrupts to medium priority level
 	for (i=0; i < NVIC_NUM_INTERRUPTS + 16; i++) _VectorsRam[i] = _VectorsFlash[i];
 	for (i=0; i < NVIC_NUM_INTERRUPTS; i++) NVIC_SET_PRIORITY(i, 128);
@@ -1439,6 +1484,16 @@ void ResetHandler(void)
 	SYST_CVR = 0;
 	SYST_CSR = SYST_CSR_CLKSOURCE | SYST_CSR_TICKINT | SYST_CSR_ENABLE;
 	SCB_SHPR3 = 0x20200000;  // Systick = priority 32
+ 
+// Earliest point when the K64F can change the GPIO pins.
+// This macro sets the CTL_BUSRQ signal as an output and low to halt the Z80 from going through its startup
+// procedure. This then gives the needed time for the K64F to startup and bring the SD card online so 
+// that the tranZPUter board can be configured before releasing the Z80.
+//
+//#if defined __TRANZPUTER__
+//    holdZ80();
+//#endif
+
 
 	//init_pins();
 	__enable_irq();
@@ -1477,7 +1532,6 @@ void ResetHandler(void)
 #endif
 
 	__libc_init_array();
-
 	startup_late_hook();
 	main();
 	

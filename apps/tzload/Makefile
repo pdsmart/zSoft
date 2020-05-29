@@ -38,6 +38,7 @@
 APP_NAME       = tzload
 APP_DIR        = $(CURDIR)/..
 APP_COMMON_DIR = $(CURDIR)/../common
+COMMON_DIR     = $(CURDIR)/../../common
 BASEDIR        = ../../..
 TEENSYDIR      = ../../teensy3/
 
@@ -49,7 +50,7 @@ ifeq ($(__K64F__),1)
   #override STACKSIZE = 0x00000000
 
   # Modules making up tzpu.
-  APP_C_SRC    = $(APP_COMMON_DIR)/pins_teensy.c $(APP_COMMON_DIR)/analog.c $(APP_COMMON_DIR)/tranzputer.c #$(TEENSYDIR)/yield.cpp
+  APP_C_SRC    = $(APP_COMMON_DIR)/pins_teensy.c $(APP_COMMON_DIR)/analog.c $(COMMON_DIR)/tranzputer.c
   CFLAGS       = 
   CPPFLAGS     = 
   LDFLAGS      = 

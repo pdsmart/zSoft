@@ -36,41 +36,43 @@
 #########################################################################################################
 
 ifeq ($(__K64F__),1)
-  TOOLSPATH    = $(CURDIR)/../../tools
-  COMPILERPATH = $(TOOLSPATH)/arm/bin
-  BASE	       = $(abspath $(COMPILERPATH))/arm-none-eabi
+  TOOLSPATH        = $(CURDIR)/../../tools
+  COMPILERPATH     = $(TOOLSPATH)/arm/bin
+  BASE	           = $(abspath $(COMPILERPATH))/arm-none-eabi
 else
-  TOOLSPATH    = /opt/zpu
-  COMPILERPATH = $(TOOLSPATH)/bin
-  BASE	       = zpu-elf
+  TOOLSPATH        = /opt/zpu
+  COMPILERPATH     = $(TOOLSPATH)/bin
+  BASE	           = zpu-elf
 endif
-CC             = $(BASE)-gcc
-CXX            = $(BASE)-g++
-LD             = $(BASE)-gcc
-AS             = $(BASE)-as
-CP             = $(BASE)-objcopy
-DUMP           = $(BASE)-objdump
-OBJCOPY        = $(BASE)-objcopy
-SIZE           = $(BASE)-size
+CC                 = $(BASE)-gcc
+CXX                = $(BASE)-g++
+LD                 = $(BASE)-gcc
+AS                 = $(BASE)-as
+CP                 = $(BASE)-objcopy
+DUMP               = $(BASE)-objdump
+OBJCOPY            = $(BASE)-objcopy
+SIZE               = $(BASE)-size
 
-FS_SUBDIRS    := falloc fattr fcat fcd fclose fconcat fcp fdel fdir fdrive fdump finspect flabel fmkdir
-FS_SUBDIRS    += fmkfs fopen fread frename fsave fseek fshowdir fstat ftime ftrunc fwrite fxtract
-DISK_SUBDIRS  := ddump dstat
-BUFFER_SUBDIRS:= bdump bedit bread bwrite bfill blen
-MEM_SUBDIRS   := mclear mcopy mdiff mdump meb meh mew mperf msrch mtest
-HW_SUBDIRS    := hr ht tcpu
-TST_SUBDIRS   := dhry coremark
-MISC_SUBDIRS  := help time
-APP_SUBDIRS   := tbasic mbasic kilo ed
+FS_SUBDIRS        := falloc fattr fcat fcd fclose fconcat fcp fdel fdir fdrive fdump finspect flabel fmkdir
+FS_SUBDIRS        += fmkfs fopen fread frename fsave fseek fshowdir fstat ftime ftrunc fwrite fxtract
+DISK_SUBDIRS      := ddump dstat
+BUFFER_SUBDIRS    := bdump bedit bread bwrite bfill blen
+MEM_SUBDIRS       := mclear mcopy mdiff mdump meb meh mew mperf msrch mtest
+HW_SUBDIRS        := hr ht tcpu
+TST_SUBDIRS       := dhry coremark
+MISC_SUBDIRS      := help time
+APP_SUBDIRS       := tbasic mbasic kilo ed
 ifeq ($(__K64F__),1)
-  TZPU_SUBDIRS:= tzpu tzload
+  ifeq ($(__TRANZPUTER__),1)
+    TZPU_SUBDIRS  := tzpu tzload tzdump tzclear tzreset
+  endif
 else
-  TZPU_SUBDIRS:=
+  TZPU_SUBDIRS    :=
 endif
 
-SUBDIRS       := $(FS_SUBDIRS) $(DISK_SUBDIRS) $(BUFFER_SUBDIRS) $(MEM_SUBDIRS) $(HW_SUBDIRS) $(TST_SUBDIRS) $(MISC_SUBDIRS) $(APP_SUBDIRS) $(TZPU_SUBDIRS)
-BASEDIR        = ../..
-TARGETS       := all clean install
+SUBDIRS           := $(FS_SUBDIRS) $(DISK_SUBDIRS) $(BUFFER_SUBDIRS) $(MEM_SUBDIRS) $(HW_SUBDIRS) $(TST_SUBDIRS) $(MISC_SUBDIRS) $(APP_SUBDIRS) $(TZPU_SUBDIRS)
+BASEDIR            = ../..
+TARGETS           := all clean install
 
 # Our target.
 $(TARGETS): $(SUBDIRS)

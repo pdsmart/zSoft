@@ -35,7 +35,7 @@
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #########################################################################################################
 
-APP_NAME       = tzpu
+APP_NAME       = tzreset
 APP_DIR        = $(CURDIR)/..
 APP_COMMON_DIR = $(CURDIR)/../common
 COMMON_DIR     = $(CURDIR)/../../common
@@ -51,7 +51,7 @@ ifeq ($(__K64F__),1)
 
   # Modules making up tzpu.
   APP_C_SRC    = $(APP_COMMON_DIR)/pins_teensy.c $(APP_COMMON_DIR)/analog.c $(COMMON_DIR)/tranzputer.c
-  CFLAGS       = #-D__TZPU_DEBUG__
+  CFLAGS       = 
   CPPFLAGS     = 
   LDFLAGS      = 
   LIBS         = 

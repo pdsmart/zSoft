@@ -41,7 +41,7 @@
   #include <unistd.h>
   #include <stdarg.h>
   #include <usb_serial.h>
-#include <core_pins.h>
+  #include <core_pins.h>
   #include <Arduino.h>
   #include "k64f_soc.h"
   #include <../../libraries/include/stdmisc.h>
@@ -123,26 +123,18 @@ uint32_t app(uint32_t param1, uint32_t param2)
     //{
     //    printf("Usage: tzpu <file>\n");
     //}
-    _init_Teensyduino_internal_();
-    setupPins(G->millis);
+   // _init_Teensyduino_internal_();
+   // setupZ80Pins(1, G->millis);
 
     printf("Loading Monitor ROM\n");
-    loadZ80Memory("SA1510.rom", 0x00000000, 0, 1);
+    loadZ80Memory("SA1510.rom", 0, 0x00000000, 0, 0, 1);
 
     printf("Loading Floppy ROM\n");
-    loadZ80Memory("1Z-013A.rom", 0x0000F000, 0, 1);
+    loadZ80Memory("1Z-013A.rom", 0, 0x0000F000, 0, 0, 1);
 
     printf("Testing Display\n");
     testBus();
-    displaySignals();
-
-	pinMode(13, OUTPUT);
-	while (1) {
-		digitalWriteFast(13, HIGH);
-		delay(500);
-		digitalWriteFast(13, LOW);
-		delay(500);
-	}
+    //displaySignals();
 
     return(retCode);
 }
