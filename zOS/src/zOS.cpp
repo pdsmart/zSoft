@@ -253,7 +253,6 @@ void tranZPUterControl(void)
         //
         if(isZ80Reset())
         {
-printf("Doing a reset load\n");
             // Reload the memory on the tranZPUter to boot default.
             loadTranZPUterDefaultROMS();
 

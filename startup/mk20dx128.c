@@ -1021,6 +1021,7 @@ void _ZPUTA_Vectors(void)
     __asm__ volatile ("b getZ80IO");
     __asm__ volatile ("b clearZ80Reset");
     __asm__ volatile ("b loadTranZPUterDefaultROMS");
+    __asm__ volatile ("b convertSharpFilename");
   #endif
 }
 

@@ -371,4 +371,6 @@ BSS_END:    .word      __bss_section_end__
             defapifunc      clearZ80Reset             funcAddr
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      loadTranZPUterDefaultROMS funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      convertSharpFilename      funcAddr
     .end
