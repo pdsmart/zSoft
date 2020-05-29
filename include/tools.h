@@ -103,7 +103,7 @@ extern "C" {
 #define CMD_APP_MBASIC            141              // Mini Basic
 #define CMD_APP_KILO              142              // Kilo Editor
 #define CMD_APP_ED                143              // Ed Editor
-#define CMD_TZ_ZPU                150              // tranZPUter interface/test.
+#define CMD_TZ_TZPU               150              // tranZPUter interface/test.
 #define CMD_TZ_LOAD               151              // tranZPUter memory load/save tool.
 #define CMD_TZ_DUMP               152              // tranZPUter memory dump tool.
 #define CMD_TZ_CLEAR              153              // tranZPUter memory clear tool.

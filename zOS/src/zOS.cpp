@@ -283,7 +283,7 @@ printf("Got an IO request, addr:%02x, Data:%02x\n", ioAddr, ioData);
         // Indicate the thread is free.
         //
         G.ctrlThreadBusy = 0;
-        threads.delay(100);
+        threads.delay(1);
         threads.yield();
     }
 }

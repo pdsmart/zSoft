@@ -115,6 +115,8 @@
 #define TZSVC_CMD_SAVEFILE           0x09                                // Service command to save a file directly from tranZPUter memory.
 #define TZSVC_CMD_ERASEFILE          0x0A                                // Service command to erase a file on the SD card.
 #define TZSVC_CMD_CHANGEDIR          0x0B                                // Service command to change active directory on the SD card.
+#define TZSVC_CMD_LOAD40BIOS         0x20                                // Service command requesting that the 40 column version of the SA1510 BIOS is loaded.
+#define TZSVC_CMD_LOAD80BIOS         0x21                                // Service command requesting that the 80 column version of the SA1510 BIOS is loaded.
 #define TZSVC_DEFAULT_DIR            "MZF"                               // Default directory where MZF files are stored.
 #define TZSVC_DEFAULT_EXT            "MZF"                               // Default file extension for MZF files.
 #define TZSVC_DEFAULT_WILDCARD       "*"                                 // Default wildcard file matching.

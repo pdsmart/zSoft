@@ -1937,8 +1937,11 @@ void loadTranZPUterDefaultROMS(void)
         {
             fillZ80Memory(MZ_MROM_STACK_ADDR, MZ_MROM_STACK_SIZE, 0x00, 1);
         }
-    z80Control.disableRefresh = 1;
+
+        // No longer need refresh on the mainboard as all operations are in static RAM.
+        z80Control.disableRefresh = 1;
     }
+    return;
 }
 
 // Method to set the service status flag on the Z80 (and duplicated in the internal
@@ -2865,6 +2868,22 @@ void processServiceRequest(void)
         // Change active directory. Do this immediately to validate the directory name given.
         case TZSVC_CMD_CHANGEDIR:
             status=svcCacheDir((const char *)svcControl.directory, 0);
+            break;
+
+        // Load the 40 column version of the SA1510 bios into memory.
+        case TZSVC_CMD_LOAD40BIOS:
+            if((status=loadZ80Memory((const char *)MZ_ROM_SA1510_40C, 0, MZ_MROM_ADDR, 0, 0, 1)) != FR_OK)
+            {
+                printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_SA1510_40C);
+            }
+            break;
+          
+        // Load the 80 column version of the SA1510 bios into memory.
+        case TZSVC_CMD_LOAD80BIOS:
+            if((status=loadZ80Memory((const char *)MZ_ROM_SA1510_80C, 0, MZ_MROM_ADDR, 0, 0, 1)) != FR_OK)
+            {
+                printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_SA1510_80C);
+            }
             break;
 
         default:

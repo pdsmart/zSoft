@@ -372,5 +372,5 @@ BSS_END:    .word      __bss_section_end__
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      loadTranZPUterDefaultROMS funcAddr
             .equ funcAddr,  funcAddr+funcNext;
-            defapifunc      convertSharpFilename      funcAddr
+            defapifunc      convertSharpFilenameToAscii funcAddr
     .end
