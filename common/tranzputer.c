@@ -1429,7 +1429,6 @@ FRESULT loadZ80Memory(const char *src, uint32_t fileOffset, uint32_t addr, uint3
             fr0 = f_lseek(&File, f_size(&File));
         if(!fr0)
             size = (uint32_t)f_tell(&File);
-printf("Size:%08lx\n", size);
     }
 
     // Seek to the correct location.
@@ -1608,7 +1607,7 @@ FRESULT saveZ80Memory(const char *dst, uint32_t addr, uint32_t size, t_svcDirEnt
     
     // Try and create the destination file.
     fr0 = f_open(&File, dst, FA_CREATE_ALWAYS | FA_WRITE);
-  printf("SAVE:%8lx,%8lx\n",addr,size); 
+
     // If no errors in opening the file, proceed with reading and loading into memory.
     if(!fr0)
     {
@@ -2527,48 +2526,41 @@ uint8_t svcCacheDir(const char *directory, uint8_t force)
         }
     }
     osControl.dirMap.entries = 0;
-printf("Opendir\n");
+
     // Open the directory and extract all files.
     result = f_opendir(&dirFp, directory);
     if(result == FR_OK)
     {
-printf("Dir Open\n");
         fileNo = 0;
         
         do {
             // Read an SD directory entry then open the returned SD file so that we can to read out the important MZF data for name matching.
             //
             result = f_readdir(&dirFp, &fno);
-printf("Read entry\n");
+
             // If an error occurs or we are at the end of the directory listing close the sector and pass back.
             if(result != FR_OK || fno.fname[0] == 0) break;
 
-printf("Read entry:%s\n", fno.fname);
             // Check to see if this is a valid MZF file.
             const char *ext = strrchr(fno.fname, '.');
             if(!ext || strcasecmp(++ext, TZSVC_DEFAULT_EXT) != 0)
                 continue;
-printf("After continue\n");
 
             // Build filename.
             //
             sprintf(fqfn, "0:\\%s\\%s", directory, fno.fname);
-printf("After fqfn\n");
 
             // Open the file so we can read out the MZF header which is the information TZFS/CPM needs.
             //
             result = f_open(&File, fqfn, FA_OPEN_EXISTING | FA_READ);
-printf("After open\n");
 
             // If no error occurred, read in the header.
             //
             if(!result) result = f_read(&File, (char *)&dirEnt, TZSVC_CMPHDR_SIZE, &readSize);
-printf("After read\n");
 
             // No errors, read the header.
             if(!result && readSize == TZSVC_CMPHDR_SIZE)
             {
-printf("In alloc\n");
                 // Close the file, no longer needed.
                 f_close(&File);
 
@@ -2576,7 +2568,7 @@ printf("In alloc\n");
                 // fixed at 17 characters as you cant reliably rely on terminators and the additional data makes it a constant 32 chars long.
                 osControl.dirMap.file[fileNo] = (t_sharpToSDMap *)malloc(sizeof(t_sharpToSDMap));
                 osControl.dirMap.file[fileNo]->sdFileName = (uint8_t *)malloc(strlen(fno.fname)+1);
-printf("Mem alloc:%08lx, %08lx\n", osControl.dirMap.file[fileNo], osControl.dirMap.file[fileNo]);
+
                 if(osControl.dirMap.file[fileNo] == NULL || osControl.dirMap.file[fileNo]->sdFileName == NULL)
                 {
                     printf("Out of memory cacheing directory:%s\n", directory);
@@ -2863,6 +2855,7 @@ void processServiceRequest(void)
         // Erase a file from the SD Card.
         case TZSVC_CMD_ERASEFILE:
             status=svcEraseFile();
+            refreshCacheDir = 1;
             break;
 
         // Change active directory. Do this immediately to validate the directory name given.
