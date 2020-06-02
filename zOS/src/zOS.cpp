@@ -264,7 +264,10 @@ void tranZPUterControl(void)
         //
         if(getZ80IO(&ioAddr, &ioData) == 1)
         {
-printf("Got an IO request, addr:%02x, Data:%02x\n", ioAddr, ioData);
+            // Interrupt triggering has artifcats, ignore them!
+            if(ioData == 0xff)
+                continue;
+
             switch(ioAddr)
             {
                 // Service request. Actual data about the request is stored in the Z80 memory, so read the request and process.

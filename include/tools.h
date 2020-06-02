@@ -177,6 +177,7 @@ static t_groupstruct groupTable[] = {
     { CMD_GROUP_EXEC,    CMD_GROUP_EXEC_NAME }, 
     { CMD_GROUP_MISC,    CMD_GROUP_MISC_NAME }, 
     { CMD_GROUP_APP,     CMD_GROUP_APP_NAME }, 
+    { CMD_GROUP_TZ,      CMD_GROUP_TZ_NAME }, 
 };
 #endif
 

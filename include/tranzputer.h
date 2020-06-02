@@ -46,10 +46,9 @@
 #define TZMM_TZFS2                   0x03                                // TZFS main memory configuration. all memory is in tranZPUter RAM, E800-EFFF is used by TZFS, SA1510 is at 0000-1000 and RAM is 1000-CFFF, 64K Block 0 selected, F000-FFFF is in 64K Block 1.
 #define TZMM_TZFS3                   0x04                                // TZFS main memory configuration. all memory is in tranZPUter RAM, E800-EFFF is used by TZFS, SA1510 is at 0000-1000 and RAM is 1000-CFFF, 64K Block 0 selected, F000-FFFF is in 64K Block 2.
 #define TZMM_TZFS4                   0x05                                // TZFS main memory configuration. all memory is in tranZPUter RAM, E800-EFFF is used by TZFS, SA1510 is at 0000-1000 and RAM is 1000-CFFF, 64K Block 0 selected, F000-FFFF is in 64K Block 3.
-#define TZMM_CPM                     0x14                                // CPM main memory configuration. all memory is in tranZPUter RAM, E800-EFFF is used as the static CBIOS and F000-FFFF is the paged CBIOS, TPA is from 0000-D000(BDOS+CCP = 1800), all is in 64K Block 4, F000-FFFF is in 64K Block 4.
-#define TZMM_CPM2                    0x15                                // CPM main memory configuration. E800-EFFF and TPA 0000-D000 are in tranZPUter RAM 64K block 4, CBIOS2 F000-FFFF is in 64K block 5 and video and memory control D000-E7FF are on the mainboard.
-#define TZMM_CPM3                    0x16                                // CPM main memory configuration. E800-EFFF and TPA 0000-D000 are in tranZPUter RAM 64K block 4, CBIOS2 F000-FFFF is in 64K block 6 and video and memory control D000-E7FF are on the mainboard.
-#define TZMM_CPM4                    0x17                                // CPM main memory configuration. E800-EFFF and TPA 0000-D000 are in tranZPUter RAM 64K block 4, CBIOS2 F000-FFFF is in 64K block 7 and video and memory control D000-E7FF are on the mainboard.
+#define TZMM_CPM                     0x06                                // CPM main memory configuration, all memory on the tranZPUter board, 64K block 4 selected. Special case for F3C0:F3FF & F7C0:F7FF (floppy disk paging vectors) which resides on the mainboard.
+#define TZMM_CPM2                    0x07                                // CPM main memory configuration, F000-FFFF are on the tranZPUter board in block 4, 0040-CFFF and E800-EFFF are in block 5, mainboard for D000-DFFF (video), E000-E800 (Memory control) selected.
+                                                                         // Special case for 0000:003F (interrupt vectors) which resides in block 4, F3C0:F3FF & F7C0:F7FF (floppy disk paging vectors) which resides on the mainboard.
 #define TZMM_TZPU0                   0x18                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 0 is selected.
 #define TZMM_TZPU1                   0x19                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 1 is selected.
 #define TZMM_TZPU2                   0x1A                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 2 is selected.
@@ -88,17 +87,24 @@
 #define MZ_MEMORY_RESET              0xE010                              // Address when read resets the memory to the default location 0000-0FFF.
 #define MZ_CRT_NORMAL                0xE014                              // Address when read sets the CRT to normal display mode.
 #define MZ_CRT_INVERSE               0xE018                              // Address when read sets the CRT to inverted display mode.
-#define MZ_ROM_SA1510_40C            "SA1510.ROM"                        // Original 40 character Monitor ROM.
-#define MZ_ROM_SA1510_80C            "SA1510-8.ROM"                      // Original Monitor ROM patched for 80 character screen mode.
-#define MZ_ROM_TZFS                  "TZFS.ROM"                          // tranZPUter Filing System ROM.
+#define MZ_ROM_SA1510_40C            "0:\\TZFS\\SA1510.ROM"              // Original 40 character Monitor ROM.
+#define MZ_ROM_SA1510_80C            "0:\\TZFS\\SA1510-8.ROM"            // Original Monitor ROM patched for 80 character screen mode.
+#define MZ_ROM_TZFS                  "0:\\TZFS\\TZFS.ROM"                // tranZPUter Filing System ROM.
+
+// CP/M constants.
+//
+#define CPM_MAX_DRIVES               16                                  // Maximum number of drives in CP/M.
+#define CPM_FILE_CCPBDOS             "0:\\CPM\\CPM22.BIN"                // CP/M CCP and BDOS for warm start reloads.
+#define CPM_DRIVE_TMPL               "0:\\CPM\\CPMDSK%02u.RAW"           // Template for CPM disk drives stored on the SD card.
+#define CPM_SECTORS_PER_TRACK        32                                  // Number of sectors in a track on the virtual CPM disk.
+#define CPM_TRACKS_PER_DISK          1024                                // Number of tracks on a disk.
 
 // Service request constants.
 //
-#define TZSVC_CMD_STRUCT_ADDR        0xEC80                              // Address of the command structure.
+#define TZSVC_CMD_STRUCT_ADDR_TZFS   0x0ED80                             // Address of the command structure within TZFS - exists in 64K Block 0.
+#define TZSVC_CMD_STRUCT_ADDR_CPM    0x4F560                             // Address of the command structure within CP/M - exists in 64K Block 4.
 #define TZSVC_CMD_STRUCT_SIZE        0x280                               // Size of the inter z80/K64 service command memory.
-#define TZSVC_CMD_SIZE               0x04+TZSVC_DIRNAME_SIZE+\
-                                         +TZSVC_FILENAME_SIZE+\
-                                          TZSVC_WILDCARD_SIZE            // Size of the command/result portion of the control structure.
+#define TZSVC_CMD_SIZE               (sizeof(t_svcControl)-TZSVC_SECTOR_SIZE)
 #define TZVC_MAX_CMPCT_DIRENT_BLOCK  TZSVC_SECTOR_SIZE/TZSVC_CMPHDR_SIZE // Maximum number of directory entries per sector.
 #define TZSVC_MAX_DIR_ENTRIES        255                                 // Maximum number of files in one directory, any more than this will be ignored.
 #define TZSVC_CMPHDR_SIZE            32                                  // Compacted header size, contains everything except the comment field, padded out to 32bytes.
@@ -108,15 +114,17 @@
 #define TZSVC_CMD_NEXTDIR            0x02                                // Service command to return the next block of an open directory.
 #define TZSVC_CMD_READFILE           0x03                                // Service command to open a file and return the first block.
 #define TZSVC_CMD_MEXTREADFILE       0x04                                // Service command to return the next block of an open file.
-#define TZSVC_CMD_WRITEFILE          0x05                                // Service command to create a file and write the first block into it.
-#define TZSVC_CMD_NEXTWRITEFILE      0x06                                // Service command to write the next block into the open file.
-#define TZSVC_CMD_CLOSE              0x07                                // Service command to close any open file or directory.
-#define TZSVC_CMD_LOADFILE           0x08                                // Service command to load a file directly into tranZPUter memory.
-#define TZSVC_CMD_SAVEFILE           0x09                                // Service command to save a file directly from tranZPUter memory.
-#define TZSVC_CMD_ERASEFILE          0x0A                                // Service command to erase a file on the SD card.
-#define TZSVC_CMD_CHANGEDIR          0x0B                                // Service command to change active directory on the SD card.
+#define TZSVC_CMD_CLOSE              0x05                                // Service command to close any open file or directory.
+#define TZSVC_CMD_LOADFILE           0x06                                // Service command to load a file directly into tranZPUter memory.
+#define TZSVC_CMD_SAVEFILE           0x07                                // Service command to save a file directly from tranZPUter memory.
+#define TZSVC_CMD_ERASEFILE          0x08                                // Service command to erase a file on the SD card.
+#define TZSVC_CMD_CHANGEDIR          0x09                                // Service command to change active directory on the SD card.
 #define TZSVC_CMD_LOAD40BIOS         0x20                                // Service command requesting that the 40 column version of the SA1510 BIOS is loaded.
 #define TZSVC_CMD_LOAD80BIOS         0x21                                // Service command requesting that the 80 column version of the SA1510 BIOS is loaded.
+#define TZSVC_CMD_LOADBDOS           0x30                                // Service command to reload CPM BDOS+CCP.
+#define TZSVC_CMD_ADDSDDRIVE         0x31                                // Service command to attach a CPM disk to a drive number.
+#define TZSVC_CMD_READSDDRIVE        0x32                                // Service command to read an attached SD file as a CPM disk drive.
+#define TZSVC_CMD_WRITESDDRIVE       0x33                                // Service command to write to a CPM disk drive which is an attached SD file.
 #define TZSVC_DEFAULT_DIR            "MZF"                               // Default directory where MZF files are stored.
 #define TZSVC_DEFAULT_EXT            "MZF"                               // Default file extension for MZF files.
 #define TZSVC_DEFAULT_WILDCARD       "*"                                 // Default wildcard file matching.
@@ -402,6 +410,21 @@ typedef struct __attribute__((__packed__)) {
     t_svcCmpDirEnt                   mzfHeader;                          // Compact Sharp header data of this file.
 } t_sharpToSDMap;
 
+// Structure to define the control information for a CP/M disk drive.
+//
+typedef struct {
+    uint8_t                          *fileName;                          // FQFN of the CPM disk image file.
+    uint32_t                         lastTrack;                          // Track of last successful operation.
+    uint32_t                         lastSector;                         // Sector of last successful operation.
+    FIL                              File;                               // Opened file handle of the CPM disk image.
+} t_cpmDrive;
+
+// Structure to define which CP/M drives are added to the system, mapping a number from CP/M into a record containing the details of the file on the SD card.
+//
+typedef struct {
+    t_cpmDrive                       *drive[CPM_MAX_DRIVES];             // 1:1 map of CP/M drive number to an actual file on the SD card.
+} t_cpmDriveMap;
+
 // Structure to hold a map of an entire directory of files on the SD card and their associated Sharp MZ0A filename.
 typedef struct __attribute__((__packed__)) {
     uint8_t                          valid;                              // Is this mapping valid?
@@ -414,6 +437,7 @@ typedef struct __attribute__((__packed__)) {
 //
 typedef struct {
   #ifndef __APP__
+    uint32_t                         svcControlAddr;                     // Address of the service control record within the 512K static RAM bank.
     uint8_t                          refreshAddr;                        // Refresh address for times when the K64F must issue refresh cycles on the Z80 bus.
     uint8_t                          disableRefresh;                     // Disable refresh if the mainboard DRAM isnt being used.
     uint8_t                          runCtrlLatch;                       // Latch value the Z80 is running with.
@@ -431,11 +455,11 @@ typedef struct {
     uint8_t                          memorySwap;                         // A memory Swap event has occurred, 0000-0FFF -> C000-CFFF (1), or C000-CFFF -> 0000-0FFF (0)
     uint8_t                          crtMode;                            // A CRT event has occurred, Normal mode (0) or Reverse Mode (1)
     uint8_t                          scroll;                             // Hardware scroll offset.
-    volatile uint32_t                portA;
-    volatile uint32_t                portB;
-    volatile uint32_t                portC;
-    volatile uint32_t                portD;
-    volatile uint32_t                portE;    
+    volatile uint32_t                portA;                              // ISR store of GPIO Port A used for signal decoding.
+    volatile uint32_t                portB;                              // ISR store of GPIO Port B used for signal decoding.
+    volatile uint32_t                portC;                              // ISR store of GPIO Port C used for signal decoding.
+    volatile uint32_t                portD;                              // ISR store of GPIO Port D used for signal decoding.
+    volatile uint32_t                portE;                              // ISR store of GPIO Port E used for signal decoding.
   #endif
 } t_z80Control;
 
@@ -444,6 +468,8 @@ typedef struct {
 typedef struct {
 	uint8_t                          tzAutoBoot;                         // Autoboot the tranZPUter into TZFS mode.
     t_dirMap                         dirMap;                             // Directory map of SD filenames to Sharp MZ80A filenames.
+    t_cpmDriveMap                    cpmDriveMap;                        // Map of file number to an open SD disk file to be used as a CPM drive.
+    uint8_t                          *lastFile;                          // Last file loaded - typically used for CPM to reload itself.
 } t_osControl;
 
 // Structure to contain inter CPU communications memory for command service processing and results.
@@ -459,8 +485,11 @@ typedef struct __attribute__((__packed__)) {
         uint8_t                      dirSector;                          // Virtual directory sector number.
         uint8_t                      fileSector;                         // Sector within open file to read/write.
     };
- //   uint16_t                         sectorNo;                           // Sector number of file to retrieve.
+    uint16_t                         trackNo;                            // For virtual drives with track and sector this is the track number
+    uint16_t                         sectorNo;                           // For virtual drives with tracl and sector this is the sector number.
     uint8_t                          fileNo;                             // File number of a file within the last directory listing to open/update.
+    uint16_t                         loadAddr;                           // Load address for ROM/File images which need to be dynamic.
+    uint16_t                         loadSize;                           // Size for ROM/File to be loaded.
     uint8_t                          directory[TZSVC_DIRNAME_SIZE];      // Directory in which to look for a file. If no directory is given default to MZF.
     uint8_t                          filename[TZSVC_FILENAME_SIZE];      // File to open or create.
     uint8_t                          wildcard[TZSVC_WILDCARD_SIZE];      // A basic wildcard pattern match filter to be applied to a directory search.
@@ -545,13 +574,17 @@ void     convertSharpFilenameToAscii(char *, char *, uint8_t);
 uint8_t  setZ80SvcStatus(uint8_t);
 void     svcSetDefaults(void);
 uint8_t  svcReadDir(uint8_t);
-uint8_t  svcFindFile(char *, char *, uint32_t);
+uint8_t  svcFindFile(char *, char *, uint8_t);
 uint8_t  svcReadDirCache(uint8_t);
-uint8_t  svcFindFileCache(char *, char *, uint32_t);
+uint8_t  svcFindFileCache(char *, char *, uint8_t);
 uint8_t  svcCacheDir(const char *, uint8_t);
 uint8_t  svcReadFile(uint8_t);
 uint8_t  svcLoadFile(void);
 uint8_t  svcEraseFile(void);
+uint8_t  svcAddCPMDrive(void);
+uint8_t  svcReadCPMDrive(void);
+uint8_t  svcWriteCPMDrive(void);
+uint32_t getServiceAddr(void);
 void     processServiceRequest(void);
 void     loadTranZPUterDefaultROMS(void);
 void     tranZPUterControl(void);

@@ -151,6 +151,10 @@ else ifeq ($(__ZOS__),1)
   CPPFLAGS    += -D__ZOS__
 endif
 
+ifeq ($(__TRANZPUTER__),1)
+  CPPFLAGS    += -D__TRANZPUTER__
+endif
+
 # Allow local overrides to the HEAPADDR for certain applications.
 ifeq (,$(findstring __HEAPADDR__,$(CPPFLAGS)))
 ifeq ($(HEAPADDR),)

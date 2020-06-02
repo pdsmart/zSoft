@@ -37,7 +37,8 @@
 #include <errno.h>
 
 #if defined __TRANZPUTER__
-  #define FRESULT uint8_t
+  //#define FRESULT uint8_t
+  #include <ff.h>
   #include <tranzputer.h>
 #endif
 

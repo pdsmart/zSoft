@@ -106,7 +106,7 @@ static void __attribute((naked, noinline)) irqPortD(void)
 {
     // Save register we use.
     asm volatile     ("push     {r0-r6,lr}");
-  
+
     // Capture GPIO ports - this is necessary in order to make a clean capture and then decode.
     asm volatile     ("ldr      r5, =0x400ff010");  // GPIOA_PDIR
     asm volatile     ("ldr      r0, [r5, #0]");
@@ -158,6 +158,13 @@ cbr0:
     asm volatile     ("lsrs     r5, r0, #17");       // (z80Control.portA >> 17)&0x01)
     asm volatile     ("and.w    r5, r5, #1");
     asm volatile     ("orrs     r3, r5");
+
+    // Ignore IO requests which arent service related.
+    asm volatile     ("movw     r5, " XSTR(IO_TZ_SVCREQ) "");
+    asm volatile     ("cmp      r3, r5");
+    asm volatile goto("bne      %l0" :::: irqPortD_Exit);
+
+    // Not memory mode so store the address.
     asm volatile     ("str      r3, %0" : "=m" (z80Control.ioAddr) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
 
     // Convert data port bits into a byte and store.
@@ -208,6 +215,9 @@ static void __attribute((naked, noinline)) irqPortC(void)
 {
     // Save register we use.
     asm volatile     ("push     {r0-r6,lr}");
+
+    // Short circuit interrupt when not needed.
+    asm volatile goto("b        %l0" :::: irqPortC_Exit);
 
     // Capture GPIO ports - this is necessary in order to make a clean capture and then decode.
     asm volatile     ("ldr      r5, =0x400ff010");  // GPIOA_PDIR
@@ -372,7 +382,7 @@ static void setupIRQ(void)
     installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
    
     // Setup the IRQ for Z80_MREQ.
-    installIRQ(Z80_MREQ, IRQ_MASK_FALLING);
+  //installIRQ(Z80_MREQ, IRQ_MASK_FALLING);
    
     // Setup the IRQ for Z80_RESET.
     installIRQ(Z80_RESET, IRQ_MASK_FALLING);
@@ -500,6 +510,7 @@ printf("FirstCall\n");
     }
 
     // Initialise control structure.
+    z80Control.svcControlAddr = getServiceAddr();
     z80Control.refreshAddr    = 0x00;
     z80Control.disableRefresh = 0;
     z80Control.runCtrlLatch   = readCtrlLatch(); 
@@ -543,14 +554,13 @@ void resetZ80(void)
     __disable_irq();
     pinOutputSet(Z80_RESET, LOW);
     for(volatile uint32_t pulseWidth=0; pulseWidth < 100; pulseWidth++);
-    //while((*ms - startTime) < 1);
     pinHigh(Z80_RESET);
     pinInput(Z80_RESET);
     __enable_irq();
 
     // Wait a futher settling period before reinstating the interrupt.
     //
-    while((*ms - startTime) < 250);
+    while((*ms - startTime) < 400);
 
     // Restore the Z80 RESET IRQ as we have changed the pin mode.
     //
@@ -1548,7 +1558,7 @@ FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint8_t mainBoard, uint
     // Locals.
     FIL           File;
     unsigned int  readSize;
-    unsigned char buf[128];
+    t_svcDirEnt   mzfHeader;
     FRESULT       fr0;
 
     // Sanity check on filenames.
@@ -1561,7 +1571,7 @@ FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint8_t mainBoard, uint
     // If no error occurred, read in the header.
     //
     if(!fr0)
-        fr0 = f_read(&File, buf, MZF_HEADER_SIZE, &readSize);
+        fr0 = f_read(&File, (char *)&mzfHeader, MZF_HEADER_SIZE, &readSize);
 
     // No errors, process.
     if(!fr0 && readSize == MZF_HEADER_SIZE)
@@ -1570,13 +1580,22 @@ FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint8_t mainBoard, uint
         f_close(&File);
       
         // Save the header into the CMT area for reference, some applications expect it.
+        // This assumes the TZFS is running and the memory bank is 64K block 0.
         //
-        copyToZ80(MZ_CMT_ADDR, (uint8_t *)buf, MZF_HEADER_SIZE, 0);
-
+        copyToZ80(MZ_CMT_ADDR, (uint8_t *)&mzfHeader, MZF_HEADER_SIZE, 0);
+printf("File:%s,attr=%02x,addr:%08lx\n", src, mzfHeader.attr, addr);
         // Now obtain the parameters.
         //
         if(addr == 0xFFFFFFFF)
-            addr = (uint32_t)(buf[MZF_LOADADDR+1] << 8) | (uint32_t)buf[MZF_LOADADDR];
+            addr = mzfHeader.loadAddr;
+
+        // Look at the attribute byte, if it is >= 0xF8 then it is a special tranZPUter binary object requiring loading into a seperate memory bank.
+        // The attribute & 0x07 << 16 specifies the memory bank in which to load the image.
+        if(mzfHeader.attr >= 0xF8)
+        {
+            addr += ((mzfHeader.attr & 0x07) << 16);
+            printf("CPM: Addr=%08lx\n", addr);
+        }
 
         // Ok, load up the file into Z80 memory.
         fr0 = loadZ80Memory(src, MZF_HEADER_SIZE, addr, 0, mainBoard, releaseBus);
@@ -1899,8 +1918,9 @@ void loadTranZPUterDefaultROMS(void)
     // Locals.
     FRESULT  result;
 
-    // Start off by clearing memory, the AS6C4008 chip holds random values at power on.
-    fillZ80Memory(0x000000, 0x80000, 0x00, 0);
+    // Start off by clearing active memory banks, the AS6C4008 chip holds random values at power on.
+    fillZ80Memory(0x000000, 0x10000, 0x00, 0); // TZFS and Sharp MZ80A mode.
+    fillZ80Memory(0x040000, 0x20000, 0x00, 0); // CPM Mode.
 
     // Now load the necessary images into memory.
     if((result=loadZ80Memory((const char *)MZ_ROM_SA1510_40C, 0, MZ_MROM_ADDR, 0, 0, 1)) != FR_OK)
@@ -1915,7 +1935,7 @@ void loadTranZPUterDefaultROMS(void)
     {
         printf("Error: Failed to load page 2 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
     }
-    if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x2800, MZ_BANKRAM_ADDR+0x20000, 0x1000, 0, 0) != FR_OK))
+    if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x2800, MZ_BANKRAM_ADDR+0x20000, 0x1000, 0, 1) != FR_OK))
     {
         printf("Error: Failed to load page 3 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
     }
@@ -1930,10 +1950,11 @@ void loadTranZPUterDefaultROMS(void)
     {
         // Set the memory model to BOOT so we can bootstrap TZFS.
         setCtrlLatch(TZMM_BOOT);
-       
+
         // If autoboot flag set, force a restart to the ROM which will call User ROM startup code.
         if(osControl.tzAutoBoot)
         {
+            delay(100);
             fillZ80Memory(MZ_MROM_STACK_ADDR, MZ_MROM_STACK_SIZE, 0x00, 1);
         }
 
@@ -1962,7 +1983,7 @@ uint8_t setZ80SvcStatus(uint8_t status)
 
         // Update the memory location.
         //
-        result=writeZ80Memory(TZSVC_CMD_STRUCT_ADDR+TZSVC_RESULT_OFFSET, status);
+        result=writeZ80Memory(z80Control.svcControlAddr+TZSVC_RESULT_OFFSET, status);
 
         // Release the Z80.
         writeCtrlLatch(z80Control.runCtrlLatch);
@@ -2081,7 +2102,7 @@ static int matchFileWithWildcard(const char *pattern, const char *fileName, int 
         getNextChar(&fileName);
 
     /* Retry until end of name if infinite search is specified */
-    } while (infinite && nc);
+    } while (infinite && nc != 0x00 && nc != 0x0d);
 
     return 0;
 }
@@ -2104,7 +2125,7 @@ uint8_t svcReadDir(uint8_t mode)
     static uint8_t    dirSector = 0;          // Virtual directory sector.
     FRESULT           result    = FR_OK;
     unsigned int      readSize;
-    char              fqfn[FF_SFN_BUF + 13];  // 0:\12345678\<filename>
+    char              fqfn[FF_LFN_BUF + 13];  // 0:\12345678\<filename>
     FIL               File;
     t_svcCmpDirBlock  *dirBlock = (t_svcCmpDirBlock *)&svcControl.sector;   
 
@@ -2233,13 +2254,13 @@ uint8_t svcReadDir(uint8_t mode)
 // It is a bit long winded as each file that matches the filename specification has to be opened and the MZF header filename 
 // has to be checked. Cacheing would help here but wasteful in resources for number of times it would be called.
 //
-uint8_t svcFindFile(char *file, char *searchFile, uint32_t searchNo)
+uint8_t svcFindFile(char *file, char *searchFile, uint8_t searchNo)
 {
     // Locals
     uint8_t        fileNo    = 0;
     uint8_t        found     = 0;
     unsigned int   readSize;
-    char           fqfn[FF_SFN_BUF + 13];  // 0:\12345678\<filename>
+    char           fqfn[FF_LFN_BUF + 13];  // 0:\12345678\<filename>
     FIL            File;
     FILINFO        fno;
     DIR            dirFp;
@@ -2303,7 +2324,7 @@ uint8_t svcFindFile(char *file, char *searchFile, uint32_t searchNo)
                     }
           
                     // If we are searching on file number and the latest directory entry retrieval matches, exit and return the filename.
-                    if(searchNo != 0xFFFFFFFF && fileNo == (uint8_t)searchNo)
+                    if(searchNo != 0xFF && fileNo == (uint8_t)searchNo)
                     {
                         found = 1;
                     } else
@@ -2419,7 +2440,7 @@ uint8_t svcReadDirCache(uint8_t mode)
 
 // A method to find a file using the cached directory. If the cache is not available (ie. no memory) use the standard method.
 //
-uint8_t svcFindFileCache(char *file, char *searchFile, uint32_t searchNo)
+uint8_t svcFindFileCache(char *file, char *searchFile, uint8_t searchNo)
 {
     // Locals
     uint8_t        fileNo    = 0;
@@ -2435,7 +2456,7 @@ uint8_t svcFindFileCache(char *file, char *searchFile, uint32_t searchNo)
     } else
     {
         // If we are searching on file number and there is no filter in place, see if it is valid and exit with data.
-        if(searchNo != 0xFFFFFFFF && strcmp((char *)svcControl.wildcard, TZSVC_DEFAULT_WILDCARD) == 0)
+        if(searchNo != 0xFF && strcmp((char *)svcControl.wildcard, TZSVC_DEFAULT_WILDCARD) == 0)
         {
             if(searchNo < osControl.dirMap.entries && osControl.dirMap.file[searchNo])
             {
@@ -2464,7 +2485,7 @@ uint8_t svcFindFileCache(char *file, char *searchFile, uint32_t searchNo)
                     }
 
                     // If we are searching on file number then see if it matches (after filter has been applied above).
-                    if(searchNo != 0xFFFFFFFF && fileNo == (uint8_t)searchNo)
+                    if(searchNo != 0xFF && fileNo == (uint8_t)searchNo)
                     {
                         found = 1;
                     } else
@@ -2502,7 +2523,7 @@ uint8_t svcCacheDir(const char *directory, uint8_t force)
     // Locals
     uint8_t        fileNo    = 0;
     unsigned int   readSize;
-    char           fqfn[FF_SFN_BUF + 13];  // 0:\12345678\<filename>
+    char           fqfn[FF_LFN_BUF + 13];  // 0:\12345678\<filename>
     FIL            File;
     FILINFO        fno;
     DIR            dirFp;
@@ -2618,7 +2639,7 @@ uint8_t svcReadFile(uint8_t mode)
     static uint8_t    fileSector = 0;         // Sector number being read.
     FRESULT           result    = FR_OK;
     unsigned int      readSize;
-    char              fqfn[FF_SFN_BUF + 13];  // 0:\12345678\<filename>
+    char              fqfn[FF_LFN_BUF + 13];  // 0:\12345678\<filename>
 
     // Find the required file.
     // Request to open? Validate that we dont already have an open file then find and open the file.
@@ -2693,7 +2714,7 @@ uint8_t svcLoadFile(void)
     // Locals - dont use global as this is a seperate thread.
     //
     FRESULT           result    = FR_OK;
-    char              fqfn[FF_SFN_BUF + 13];  // 0:\12345678\<filename>
+    char              fqfn[FF_LFN_BUF + 13];  // 0:\12345678\<filename>
 
     // Setup the defaults
     //
@@ -2705,6 +2726,18 @@ uint8_t svcLoadFile(void)
     {
         // Call method to load an MZF file.
         result = loadMZFZ80Memory(fqfn, 0xFFFFFFFF, 0, 1);
+
+        // Store the filename, used in reload or immediate saves.
+        //
+        osControl.lastFile = (uint8_t *)realloc(osControl.lastFile, strlen(fqfn)+1);
+        if(osControl.lastFile == NULL)
+        {
+            printf("Out of memory saving last file name, dependent applications (ie. CP/M) wont work!\n");
+            result = FR_NOT_ENOUGH_CORE;
+        } else
+        {
+            strcpy((char *)osControl.lastFile, fqfn);
+        }
     } else
     {
         result = FR_NO_FILE;
@@ -2722,7 +2755,7 @@ uint8_t svcSaveFile(void)
     // Locals - dont use global as this is a seperate thread.
     //
     FRESULT           result    = FR_OK;
-    char              fqfn[FF_SFN_BUF + 13];  // 0:\12345678\<filename>
+    char              fqfn[FF_LFN_BUF + 13];  // 0:\12345678\<filename>
     char              asciiFileName[MZF_FILENAME_LEN+1];
     t_svcDirEnt       mzfHeader;
 
@@ -2757,7 +2790,7 @@ uint8_t svcEraseFile(void)
     // Locals - dont use global as this is a seperate thread.
     //
     FRESULT           result    = FR_OK;
-    char              fqfn[FF_SFN_BUF + 13];  // 0:\12345678\<filename>
+    char              fqfn[FF_LFN_BUF + 13];  // 0:\12345678\<filename>
 
     // Setup the defaults
     //
@@ -2779,6 +2812,198 @@ uint8_t svcEraseFile(void)
     return(result == FR_OK ? TZSVC_STATUS_OK : TZSVC_STATUS_FILE_ERROR);
 }
 
+// Method to add a SD disk file as a CP/M disk drive for read/write by CP/M.
+//
+uint8_t svcAddCPMDrive(void)
+{
+    // Locals
+    char           fqfn[FF_LFN_BUF + 13];  // 0:\12345678\<filename>
+    FRESULT        result    = FR_OK;
+    // Sanity checks.
+    //
+    if(svcControl.fileNo >= CPM_MAX_DRIVES)
+        return(TZSVC_STATUS_FILE_ERROR);
+
+    // Disk already allocated? May be a reboot or drive reassignment so free up the memory to reallocate.
+    //
+    if(osControl.cpmDriveMap.drive[svcControl.fileNo] != NULL)
+    {
+        if(osControl.cpmDriveMap.drive[svcControl.fileNo]->fileName != NULL)
+        {
+            free(osControl.cpmDriveMap.drive[svcControl.fileNo]->fileName);
+            osControl.cpmDriveMap.drive[svcControl.fileNo]->fileName = 0;
+        }
+        free(osControl.cpmDriveMap.drive[svcControl.fileNo]);
+        osControl.cpmDriveMap.drive[svcControl.fileNo] = 0;
+    }
+
+    // Build filename for the drive.
+    //
+    sprintf(fqfn, CPM_DRIVE_TMPL, svcControl.fileNo);
+    osControl.cpmDriveMap.drive[svcControl.fileNo] = (t_cpmDrive *)malloc(sizeof(t_cpmDrive));
+    if(osControl.cpmDriveMap.drive[svcControl.fileNo] == NULL)
+    {
+        printf("Out of memory adding CP/M drive:%s\n", fqfn);
+        result = FR_NOT_ENOUGH_CORE;
+    } else
+    {
+        osControl.cpmDriveMap.drive[svcControl.fileNo]->fileName = (uint8_t *)malloc(strlen(fqfn)+1);
+        if(osControl.cpmDriveMap.drive[svcControl.fileNo]->fileName == NULL)
+        {
+            printf("Out of memory adding filename to CP/M drive:%s\n", fqfn);
+            result = FR_NOT_ENOUGH_CORE;
+        } else
+        {
+            strcpy((char *)osControl.cpmDriveMap.drive[svcControl.fileNo]->fileName, fqfn);
+          
+            // Open the file to verify it exists and is valid, also to assign the file handle.
+            //
+            result = f_open(&osControl.cpmDriveMap.drive[svcControl.fileNo]->File, (char *)osControl.cpmDriveMap.drive[svcControl.fileNo]->fileName, FA_OPEN_ALWAYS | FA_WRITE | FA_READ);
+
+            // If no error occurred, read in the header.
+            //
+            if(!result)
+            {
+                osControl.cpmDriveMap.drive[svcControl.fileNo]->lastTrack = 0;
+                osControl.cpmDriveMap.drive[svcControl.fileNo]->lastSector = 0;
+            } else
+            {
+                // Error opening file so free up and release slot, return error.
+                free(osControl.cpmDriveMap.drive[svcControl.fileNo]->fileName);
+                osControl.cpmDriveMap.drive[svcControl.fileNo]->fileName = 0;
+                free(osControl.cpmDriveMap.drive[svcControl.fileNo]);
+                osControl.cpmDriveMap.drive[svcControl.fileNo] = 0;
+                result = FR_NOT_ENOUGH_CORE;
+            }
+        }
+    }
+
+    // Return values: 0 - Success : maps to TZSVC_STATUS_OK
+    //                1 - Fail    : maps to TZSVC_STATUS_FILE_ERROR
+    return(result == FR_OK ? TZSVC_STATUS_OK : TZSVC_STATUS_FILE_ERROR);
+}
+
+// Method to read one of the opened, attached CPM drive images according to the Track and Sector provided.
+// Inputs:
+//     svcControl.trackNo  = Track to read from.
+//     svcControl.sectorNo = Sector to read from.
+//     svcControl.fileNo   = CPM virtual disk number, which should have been attached with the svcAddCPMDrive method.
+// Outputs:
+//     svcControl.sector   = 512 bytes read from file.
+//
+uint8_t svcReadCPMDrive(void)
+{
+    // Locals.
+    FRESULT           result    = FR_OK;
+    uint32_t          fileOffset;
+    unsigned int      readSize;
+
+    // Sanity checks.
+    //
+    if(svcControl.fileNo >= CPM_MAX_DRIVES || osControl.cpmDriveMap.drive[svcControl.fileNo] == NULL)
+    {
+        printf("svcReadCPMDrive: Illegal input values: fileNo=%d, driveMap=%08lx\n", svcControl.fileNo,  (uint32_t)osControl.cpmDriveMap.drive[svcControl.fileNo]);
+        return(TZSVC_STATUS_FILE_ERROR);
+    }
+
+    // Calculate the offset into the file.
+    fileOffset = ((svcControl.trackNo * CPM_SECTORS_PER_TRACK) + svcControl.sectorNo) * SECTOR_SIZE;
+
+    // Seek to the correct location as directed by the track/sector.
+    result = f_lseek(&osControl.cpmDriveMap.drive[svcControl.fileNo]->File, fileOffset);
+    if(!result)
+        result = f_read(&osControl.cpmDriveMap.drive[svcControl.fileNo]->File, (char *)svcControl.sector, SECTOR_SIZE, &readSize);
+   
+    // No errors but insufficient bytes read, either the image is bad or there was an error!
+    if(!result && readSize != SECTOR_SIZE)
+    {
+        result = FR_DISK_ERR;
+    } else
+    {
+        osControl.cpmDriveMap.drive[svcControl.fileNo]->lastTrack  = svcControl.trackNo;
+        osControl.cpmDriveMap.drive[svcControl.fileNo]->lastSector = svcControl.sectorNo;
+    }
+
+    // Return values: 0 - Success : maps to TZSVC_STATUS_OK
+    //                1 - Fail    : maps to TZSVC_STATUS_FILE_ERROR
+    return(result == FR_OK ? TZSVC_STATUS_OK : TZSVC_STATUS_FILE_ERROR);
+}
+
+// Method to write to one of the opened, attached CPM drive images according to the Track and Sector provided.
+// Inputs:
+//     svcControl.trackNo  = Track to write into.
+//     svcControl.sectorNo = Sector to write into.
+//     svcControl.fileNo   = CPM virtual disk number, which should have been attached with the svcAddCPMDrive method.
+//     svcControl.sector   = 512 bytes to write into the file.
+// Outputs:
+//
+uint8_t svcWriteCPMDrive(void)
+{
+    // Locals.
+    FRESULT           result    = FR_OK;
+    uint32_t          fileOffset;
+    unsigned int      writeSize;
+
+    // Sanity checks.
+    //
+    if(svcControl.fileNo >= CPM_MAX_DRIVES || osControl.cpmDriveMap.drive[svcControl.fileNo] == NULL)
+    {
+        printf("svcWriteCPMDrive: Illegal input values: fileNo=%d, driveMap=%08lx\n", svcControl.fileNo,  (uint32_t)osControl.cpmDriveMap.drive[svcControl.fileNo]);
+        return(TZSVC_STATUS_FILE_ERROR);
+    }
+
+    // Calculate the offset into the file.
+    fileOffset = ((svcControl.trackNo * CPM_SECTORS_PER_TRACK) + svcControl.sectorNo) * SECTOR_SIZE;
+
+    // Seek to the correct location as directed by the track/sector.
+    result = f_lseek(&osControl.cpmDriveMap.drive[svcControl.fileNo]->File, fileOffset);
+    if(!result)
+    {
+        printf("Writing offset=%08lx\n", fileOffset);
+        for(uint16_t idx=0; idx < SECTOR_SIZE; idx++)
+        {
+            printf("%02x ", svcControl.sector[idx]);
+            if(idx % 32 == 0)
+                printf("\n");
+        }
+        printf("\n");
+
+        result = f_write(&osControl.cpmDriveMap.drive[svcControl.fileNo]->File, (char *)svcControl.sector, SECTOR_SIZE, &writeSize);
+        if(!result)
+        {
+            f_sync(&osControl.cpmDriveMap.drive[svcControl.fileNo]->File);
+        }
+    }
+  
+    // No errors but insufficient bytes written, either the image is bad or there was an error!
+    if(!result && writeSize != SECTOR_SIZE)
+    {
+        result = FR_DISK_ERR;
+    } else
+    {
+        osControl.cpmDriveMap.drive[svcControl.fileNo]->lastTrack  = svcControl.trackNo;
+        osControl.cpmDriveMap.drive[svcControl.fileNo]->lastSector = svcControl.sectorNo;
+    }
+
+    // Return values: 0 - Success : maps to TZSVC_STATUS_OK
+    //                1 - Fail    : maps to TZSVC_STATUS_FILE_ERROR
+    return(result == FR_OK ? TZSVC_STATUS_OK : TZSVC_STATUS_FILE_ERROR);
+}
+
+// Simple method to get the service record address which is dependent upon memory mode which in turn is dependent upon software being run.
+//
+uint32_t getServiceAddr(void)
+{
+    // Locals.
+    uint32_t addr       = TZSVC_CMD_STRUCT_ADDR_TZFS;
+    uint8_t  memoryMode = readCtrlLatch();
+
+    // Currently only CPM has a different service record address.
+    if(memoryMode == TZMM_CPM || memoryMode == TZMM_CPM2)
+        addr = TZSVC_CMD_STRUCT_ADDR_CPM;
+
+    return(addr);
+}
 
 // Method to process a service request from the z80 running TZFS or CPM.
 //
@@ -2790,8 +3015,22 @@ void processServiceRequest(void)
     uint8_t    status          = 0;
     uint32_t   copySize        = TZSVC_CMD_STRUCT_SIZE;
 
+    // Update the service control record address according to memory mode.
+    //
+    z80Control.svcControlAddr = getServiceAddr();
+
     // Get the command and associated parameters.
-    copyFromZ80((uint8_t *)&svcControl, TZSVC_CMD_STRUCT_ADDR, TZSVC_CMD_SIZE, 0);
+    copyFromZ80((uint8_t *)&svcControl, z80Control.svcControlAddr, TZSVC_CMD_SIZE, 0);
+
+    // Need to get the remainder of the data for the write operations.
+    if(svcControl.cmd == TZSVC_CMD_WRITESDDRIVE)
+    {
+        copyFromZ80((uint8_t *)&svcControl.sector, z80Control.svcControlAddr+TZSVC_CMD_SIZE, TZSVC_SECTOR_SIZE, 0);
+    }
+
+    // Check this is a valid request.
+    if(svcControl.result != TZSVC_STATUS_REQUEST)
+        return;
 
     // Set status to processing. Z80 can use this to decide if the K64F received its request after a given period of time.
     setZ80SvcStatus(TZSVC_STATUS_PROCESSING);
@@ -2820,23 +3059,12 @@ void processServiceRequest(void)
             status=svcReadFile(TZSVC_NEXT);
             break;
 
-        // Create or write a file stream and save the passed block of data into it.
-        case TZSVC_CMD_WRITEFILE:
-        case TZSVC_CMD_NEXTWRITEFILE:
-            // Need to get the remainder of the data for the write operation.
-            copyFromZ80((uint8_t *)&svcControl.sector, TZSVC_CMD_STRUCT_ADDR, TZSVC_SECTOR_SIZE, 0);
-
-            // No need to copy the full record back to the Z80 for a write operation, just the command section.
-            //
-            copySize = TZSVC_CMD_SIZE;
-            break;
-
         // Close an open dir/file.
         case TZSVC_CMD_CLOSE:
             svcReadDir(TZSVC_CLOSE);
             svcReadFile(TZSVC_CLOSE);
            
-            // No need to copy the full record back to the Z80 for a close operation, just the command section.
+            // Only need to copy the command section back to the Z80 for a close operation.
             //
             copySize = TZSVC_CMD_SIZE;
             break;
@@ -2879,6 +3107,36 @@ void processServiceRequest(void)
             }
             break;
 
+        // Load the CPM CCP+BDOS from file into the address given.
+        case TZSVC_CMD_LOADBDOS:
+            if((status=loadZ80Memory((const char *)osControl.lastFile, MZF_HEADER_SIZE, svcControl.loadAddr+0x40000, svcControl.loadSize, 0, 1)) != FR_OK)
+            {
+                printf("Error: Failed to load BDOS:%s into tranZPUter memory.\n", (char *)osControl.lastFile);
+            }
+            break;
+
+        // Add a CP/M disk to the system for read/write access by CP/M on the Sharp MZ80A.
+        //
+        case TZSVC_CMD_ADDSDDRIVE:
+            status=svcAddCPMDrive();
+            break;
+         
+        // Read an assigned CP/M drive sector giving an LBA address and the drive number.
+        //
+        case TZSVC_CMD_READSDDRIVE:
+            status=svcReadCPMDrive();
+            break;
+          
+        // Write a sector to an assigned CP/M drive giving an LBA address and the drive number.
+        //
+        case TZSVC_CMD_WRITESDDRIVE:
+            status=svcWriteCPMDrive();
+         
+            // Only need to copy the command section back to the Z80 for a write operation.
+            //
+            copySize = TZSVC_CMD_SIZE;
+            break;
+
         default:
             break;
     }
@@ -2886,10 +3144,7 @@ void processServiceRequest(void)
     // Update the status in the service control record then copy it across to the Z80.
     //
     svcControl.result = status;
-    copyToZ80(TZSVC_CMD_STRUCT_ADDR, (uint8_t *)&svcControl, copySize, 0);
-
-    // Return status.
-    setZ80SvcStatus(status);
+    copyToZ80(z80Control.svcControlAddr, (uint8_t *)&svcControl, copySize, 0);
 
     // Need to refresh the directory? Do this at the end of the routine so the Sharp MZ80A isnt held up.
     if(refreshCacheDir)
