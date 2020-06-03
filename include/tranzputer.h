@@ -35,6 +35,7 @@
 
 // Configurable constants.
 //
+#define DECODE_Z80_IO                0                                   // Flag to enable code, via interrupt, to capture Z80 actions on I/O ports an Memory mapped I/O.
 #define REFRESH_BYTE_COUNT           8                                   // This constant controls the number of bytes read/written to the z80 bus before a refresh cycle is needed.
 #define RFSH_BYTE_CNT                256                                 // Number of bytes we can write before needing a full refresh for the DRAM.
 
@@ -65,6 +66,7 @@
 #define IO_TZ_SET2MHZ                0x64                                // Switch to system CPU frequency.
 #define IO_TZ_CLKSELRD               0x66                                // Read the status of the clock select, ie. which clock is connected to the CPU.
 #define IO_TZ_SVCREQ                 0x68                                // Service request from the Z80 to be provided by the K64F.
+#define IO_TZ_SYSREQ                 0x6A                                // System request from the Z80 to be provided by the K64F.
 
 // Sharp MZ80A constants.
 //
@@ -129,8 +131,8 @@
 #define TZSVC_DEFAULT_EXT            "MZF"                               // Default file extension for MZF files.
 #define TZSVC_DEFAULT_WILDCARD       "*"                                 // Default wildcard file matching.
 #define TZSVC_RESULT_OFFSET          0x01                                // Offset into structure of the result byte.
-#define TZSVC_DIRNAME_SIZE           8                                   // Limit is size of FAT32 directory name.
-#define TZSVC_WILDCARD_SIZE          8                                   // Very basic pattern matching so small size.
+#define TZSVC_DIRNAME_SIZE           20                                  // Limit is size of FAT32 directory name.
+#define TZSVC_WILDCARD_SIZE          20                                  // Very basic pattern matching so small size.
 #define TZSVC_FILENAME_SIZE          MZF_FILENAME_LEN                    // Length of a Sharp MZF filename.
 #define TZSVC_SECTOR_SIZE            512                                 // SD Card sector buffer size.
 #define TZSVC_STATUS_OK              0x00                                // Flag to indicate the K64F processing completed successfully.
@@ -155,7 +157,7 @@
 
 // Pin Constants - Pins assigned at the hardware level to specific tasks/signals.
 //
-#define MAX_TRANZPUTER_PINS          50
+#define MAX_TRANZPUTER_PINS          52
 #define Z80_MEM0_PIN                 46
 #define Z80_MEM1_PIN                 47
 #define Z80_MEM2_PIN                 48
@@ -206,6 +208,8 @@
 #define CTL_CLK_PIN                  14
 #define CTL_CLKSLCT_PIN              19
 #define TZ_BUSACK_PIN                55
+#define TZ_SVCREQ_PIN                56
+#define TZ_SYSREQ_PIN                57
 
 // IRQ mask values for the different types of IRQ trigger.
 //
@@ -348,14 +352,16 @@ enum pinIdxToPinNumMap {
     Z80_RESET                        = 40,
     MB_SYSCLK                        = 41,
     TZ_BUSACK                        = 42,
+    TZ_SVCREQ                        = 43,
+    TZ_SYSREQ                        = 44,
 
-    CTL_BUSACK                       = 43,
-    CTL_BUSRQ                        = 44,
-    CTL_RFSH                         = 45,
-    CTL_HALT                         = 46,
-    CTL_M1                           = 47,
-    CTL_CLK                          = 48,
-    CTL_CLKSLCT                      = 49
+    CTL_BUSACK                       = 45,
+    CTL_BUSRQ                        = 46,
+    CTL_RFSH                         = 47,
+    CTL_HALT                         = 48,
+    CTL_M1                           = 49,
+    CTL_CLK                          = 50,
+    CTL_CLKSLCT                      = 51 
 };
 
 // Possible control modes that the K64F can be in, do nothing where the Z80 runs normally, control the Z80 and mainboard, or control the Z80 and tranZPUter.
@@ -449,6 +455,9 @@ typedef struct {
     enum BUS_DIRECTION               busDir;                             // Direction the bus has been configured for.
 
     uint8_t                          resetEvent;                         // A Z80_RESET event occurred, probably user pressing RESET button.
+    uint8_t                          svcRequest;                         // A service request has been made by the Z80 (1).
+    uint8_t                          sysRequest;                         // A system request has been made by the Z80 (1).
+    #if DECODE_Z80_IO == 1
     uint8_t                          ioAddr;                             // Address of a Z80 IO instruction.
     uint8_t                          ioData;                             // Data of a Z80 IO instruction.
     uint8_t                          ioEvent;                            // Event flag to indicate that an IO instruction was captured.
@@ -458,6 +467,7 @@ typedef struct {
     volatile uint32_t                portA;                              // ISR store of GPIO Port A used for signal decoding.
     volatile uint32_t                portB;                              // ISR store of GPIO Port B used for signal decoding.
     volatile uint32_t                portC;                              // ISR store of GPIO Port C used for signal decoding.
+    #endif
     volatile uint32_t                portD;                              // ISR store of GPIO Port D used for signal decoding.
     volatile uint32_t                portE;                              // ISR store of GPIO Port E used for signal decoding.
   #endif
@@ -566,7 +576,7 @@ FRESULT  loadMZFZ80Memory(const char *, uint32_t, uint8_t, uint8_t);
 // Getter/Setter methods!
 uint8_t  isZ80Reset(void);
 uint8_t  isZ80MemorySwapped(void);
-uint8_t  getZ80IO(uint8_t *, uint8_t *);
+uint8_t  getZ80IO(uint8_t *);
 void     clearZ80Reset(void);
 void     convertSharpFilenameToAscii(char *, char *, uint8_t);
 

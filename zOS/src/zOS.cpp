@@ -239,7 +239,6 @@ void tranZPUterControl(void)
 {
     // Locals.
     uint8_t        ioAddr;
-    uint8_t        ioData;
   
     // Loop waiting on events and processing.
     //
@@ -262,12 +261,8 @@ void tranZPUterControl(void)
 
         // Has there been an IO instruction for a service request?
         //
-        if(getZ80IO(&ioAddr, &ioData) == 1)
+        if(getZ80IO(&ioAddr) == 1)
         {
-            // Interrupt triggering has artifcats, ignore them!
-            if(ioData == 0xff)
-                continue;
-
             switch(ioAddr)
             {
                 // Service request. Actual data about the request is stored in the Z80 memory, so read the request and process.

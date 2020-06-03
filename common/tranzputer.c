@@ -99,15 +99,21 @@ static t_asciiMap asciiMap[] = {
     { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }  // 0XFF
 };
 
-// This method is called everytime an active irq triggers on Port D. For this design, this means the IORQ line.
-// Store all the ports as they are needed to capture the Address and Data of the asserted z80 I/O transaction.
+// This method is called everytime an active irq triggers on Port E. For this design, this means the two IO CS
+// lines, TZ_SVCREQ and TZ_SYSREQ. The SVCREQ is used when the Z80 requires a service, the SYSREQ is yet to
+// be utilised.
 //
-static void __attribute((naked, noinline)) irqPortD(void)
+//
+static void __attribute((naked, noinline)) irqPortE(void)
 {
     // Save register we use.
     asm volatile     ("push     {r0-r6,lr}");
 
+    // Short circuit interrupt when not needed.
+  //asm volatile goto("b        %l0" :::: irqPortE_Exit);
+
     // Capture GPIO ports - this is necessary in order to make a clean capture and then decode.
+  #if DECODE_Z80_IO == 1
     asm volatile     ("ldr      r5, =0x400ff010");  // GPIOA_PDIR
     asm volatile     ("ldr      r0, [r5, #0]");
     asm volatile     ("ldr      r5, =0x400ff050");  // GPIOB_PDIR
@@ -116,15 +122,76 @@ static void __attribute((naked, noinline)) irqPortD(void)
     asm volatile     ("ldr      r2, [r5, #0]");
     asm volatile     ("ldr      r5, =0x400ff0d0");  // GPIOD_PDIR
     asm volatile     ("ldr      r3, [r5, #0]");
+  #endif
     asm volatile     ("ldr      r5, =0x400ff110");  // GPIOE_PDIR
     asm volatile     ("ldr      r4, [r5, #0]");
 
     // Now save the GPIO values into the structure.
+  #if DECODE_Z80_IO == 1
     asm volatile     ("str      r0, %0" : "+m" (z80Control.portA) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
     asm volatile     ("str      r1, %0" : "+m" (z80Control.portB) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
     asm volatile     ("str      r2, %0" : "+m" (z80Control.portC) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
     asm volatile     ("str      r3, %0" : "+m" (z80Control.portD) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
     asm volatile     ("str      r4, %0" : "+m" (z80Control.portE) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
+  #endif
+ 
+    // Is TZ_SVCREQ (E10) active (low), set flag and exit if it is.
+    asm volatile     ("movs     r3, #1");
+    asm volatile     ("ror      r4, r4, #11" );
+    asm volatile goto("bmi      %l0" ::: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12" : ebr0);
+    asm volatile     ("strb     r3, %0" : "+m" (z80Control.svcRequest) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
+
+ebr0:
+    // Is TZ_SYSREQ (E11) active (low), set flag and exit if it is.
+    asm volatile     ("rrx      r4, r4" );
+    asm volatile goto("bcs      %l0" ::: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12" : irqPortE_Exit);
+    asm volatile     ("strb     r3, %0" : "+m" (z80Control.sysRequest) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
+
+irqPortE_Exit:
+    // Reset the interrupt, PORTE_ISFR <= PORTE_ISFR
+    asm volatile     ("ldr      r3, =0x4004d0a0");
+    asm volatile     ("ldr      r2, [r3, #0]");
+    asm volatile     ("str      r2, [r3, #0]");
+
+    asm volatile     ("pop      {r0-r6,pc}");
+    return;
+}
+
+// This method is called everytime an active irq triggers on Port D. For this design, this means the IORQ line.
+// Store all the ports as they are needed to capture the Address and Data of the asserted z80 I/O transaction.
+//
+static void __attribute((naked, noinline)) irqPortD(void)
+{
+    // Save register we use.
+    asm volatile     ("push     {r0-r6,lr}");
+
+    // Short circuit interrupt when not needed.
+  //asm volatile goto("b        %l0" :::: irqPortC_Exit);
+
+    // Capture GPIO ports - this is necessary in order to make a clean capture and then decode.
+  #if DECODE_Z80_IO == 1
+    asm volatile     ("ldr      r5, =0x400ff010");  // GPIOA_PDIR
+    asm volatile     ("ldr      r0, [r5, #0]");
+    asm volatile     ("ldr      r5, =0x400ff050");  // GPIOB_PDIR
+    asm volatile     ("ldr      r1, [r5, #0]");
+    asm volatile     ("ldr      r5, =0x400ff090");  // GPIOC_PDIR
+    asm volatile     ("ldr      r2, [r5, #0]");
+  #endif
+    asm volatile     ("ldr      r5, =0x400ff0d0");  // GPIOD_PDIR
+    asm volatile     ("ldr      r3, [r5, #0]");
+  #if DECODE_Z80_IO == 1
+    asm volatile     ("ldr      r5, =0x400ff110");  // GPIOE_PDIR
+    asm volatile     ("ldr      r4, [r5, #0]");
+  #endif
+
+    // Now save the GPIO values into the structure.
+  #if DECODE_Z80_IO == 1
+    asm volatile     ("str      r0, %0" : "+m" (z80Control.portA) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
+    asm volatile     ("str      r1, %0" : "+m" (z80Control.portB) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
+    asm volatile     ("str      r2, %0" : "+m" (z80Control.portC) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
+    asm volatile     ("str      r3, %0" : "+m" (z80Control.portD) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
+    asm volatile     ("str      r4, %0" : "+m" (z80Control.portE) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
+  #endif
  
     // Is Z80_RESET active, set flag and exit.
     asm volatile     ("lsls     r5, r3, #16" );
@@ -134,6 +201,7 @@ static void __attribute((naked, noinline)) irqPortD(void)
     asm volatile goto("b        %l0" :::: irqPortD_Exit);
 
 cbr0:
+  #if DECODE_Z80_IO == 1
     // Convert lower 8 address bits into a byte and store.
     asm volatile     ("lsrs     r3, r1, #4");        // (z80Control.portB >> 4)&0x80)
     asm volatile     ("and.w    r3, r3, #128");
@@ -160,9 +228,9 @@ cbr0:
     asm volatile     ("orrs     r3, r5");
 
     // Ignore IO requests which arent service related.
-    asm volatile     ("movw     r5, " XSTR(IO_TZ_SVCREQ) "");
-    asm volatile     ("cmp      r3, r5");
-    asm volatile goto("bne      %l0" :::: irqPortD_Exit);
+  //asm volatile     ("movw     r5, " XSTR(IO_TZ_SVCREQ) "");
+  //asm volatile     ("cmp      r3, r5");
+  //asm volatile goto("bne      %l0" :::: irqPortD_Exit);
 
     // Not memory mode so store the address.
     asm volatile     ("str      r3, %0" : "=m" (z80Control.ioAddr) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
@@ -197,6 +265,7 @@ cbr0:
     // Process the IO request by setting the ioEvent flag.
     asm volatile     ("movs     r3, #1");
     asm volatile     ("str      r3, %0" : "=m" (z80Control.ioEvent) :: "r0","r1","r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
+  #endif
 
 irqPortD_Exit:
     // Reset the interrupt, PORTD_ISFR <= PORTD_ISFR
@@ -217,8 +286,9 @@ static void __attribute((naked, noinline)) irqPortC(void)
     asm volatile     ("push     {r0-r6,lr}");
 
     // Short circuit interrupt when not needed.
-    asm volatile goto("b        %l0" :::: irqPortC_Exit);
+  //asm volatile goto("b        %l0" :::: irqPortC_Exit);
 
+  #if DECODE_Z80_IO == 1
     // Capture GPIO ports - this is necessary in order to make a clean capture and then decode.
     asm volatile     ("ldr      r5, =0x400ff010");  // GPIOA_PDIR
     asm volatile     ("ldr      r0, [r5, #0]");
@@ -356,6 +426,8 @@ br5:
     asm volatile     ("strb     r0, %0" : "+m" (z80Control.scroll) :: "r0");
 
 irqPortC_Exit:
+  #endif
+
     // Reset the interrupt, PORTC_ISFR <= PORTC_ISFR
     asm volatile     ("ldr      r3, =0x4004b0a0");
     asm volatile     ("ldr      r2, [r3, #0]");
@@ -370,19 +442,30 @@ irqPortC_Exit:
 //
 static void setupIRQ(void)
 {
-     __disable_irq();
+    __disable_irq();
+    // Install the method to be called when PortE triggers.
+    _VectorsRam[IRQ_PORTE + 16] = irqPortE;
+
     // Install the method to be called when PortD triggers.
     _VectorsRam[IRQ_PORTD + 16] = irqPortD;
    
     // Install the method to be called when PortC triggers.
     _VectorsRam[IRQ_PORTC + 16] = irqPortC;
-     __enable_irq();
+    __enable_irq();
 
+    // Setup the IRQ for TZ_SVCREQ.
+    installIRQ(TZ_SVCREQ, IRQ_MASK_FALLING);
+    
+    // Setup the IRQ for TZ_SYSREQ.
+    installIRQ(TZ_SYSREQ, IRQ_MASK_FALLING);
+
+  #if DECODE_Z80_IO == 1
     // Setup the IRQ for Z80_IORQ.
     installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
    
     // Setup the IRQ for Z80_MREQ.
-  //installIRQ(Z80_MREQ, IRQ_MASK_FALLING);
+    installIRQ(Z80_MREQ, IRQ_MASK_FALLING);
+  #endif
    
     // Setup the IRQ for Z80_RESET.
     installIRQ(Z80_RESET, IRQ_MASK_FALLING);
@@ -392,11 +475,19 @@ static void setupIRQ(void)
 //
 static void restoreIRQ(void)
 {
+    // Setup the IRQ for TZ_SVCREQ.
+    installIRQ(TZ_SVCREQ, IRQ_MASK_FALLING);
+    
+    // Setup the IRQ for TZ_SYSREQ.
+    installIRQ(TZ_SYSREQ, IRQ_MASK_FALLING);
+
+  #if DECODE_Z80_IO == 1
     // Setup the IRQ for Z80_IORQ.
     installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
    
     // Setup the IRQ for Z80_MREQ.
     installIRQ(Z80_MREQ, IRQ_MASK_FALLING);
+  #endif
   
     // Setup the IRQ for Z80_RESET.
     installIRQ(Z80_RESET, IRQ_MASK_FALLING);
@@ -417,7 +508,6 @@ void setupZ80Pins(uint8_t initTeensy, volatile uint32_t *millisecondTick)
     //
     if(firstCall == 1)
     {
-printf("FirstCall\n");
         if(initTeensy)
             _init_Teensyduino_internal_();
 
@@ -474,6 +564,8 @@ printf("FirstCall\n");
     pinMap[Z80_RESET]   = Z80_RESET_PIN;
     pinMap[MB_SYSCLK]   = SYSCLK_PIN;
     pinMap[TZ_BUSACK]   = TZ_BUSACK_PIN;
+    pinMap[TZ_SVCREQ]   = TZ_SVCREQ_PIN;
+    pinMap[TZ_SYSREQ]   = TZ_SYSREQ_PIN;
 
     pinMap[CTL_BUSACK]  = CTL_BUSACK_PIN;
     pinMap[CTL_BUSRQ]   = CTL_BUSRQ_PIN;
@@ -526,12 +618,16 @@ printf("FirstCall\n");
         // Control structure elements only in zOS.
         //
         z80Control.resetEvent     = 0;
+        z80Control.svcRequest     = 0;
+        z80Control.sysRequest     = 0;
+      #if DECODE_Z80_IO == 1
         z80Control.ioAddr         = 0;
         z80Control.ioData         = 0;
         z80Control.ioEvent        = 0;
         z80Control.memorySwap     = 0;
         z80Control.crtMode        = 0;
         z80Control.scroll         = 0;
+      #endif
 
         // Setup the Interrupts for IORQ and MREQ.
         setupIRQ();
@@ -1857,23 +1953,33 @@ uint8_t isZ80Reset(void)
 // Method to test to see if the main memory has been swapped from 0000-0FFF to C000-CFFF
 uint8_t isZ80MemorySwapped(void)
 {
+#if DECODE_Z80_IO == 1
     // Return the value which would have been updated in the interrupt routine.
     return(z80Control.memorySwap == 1);
+#else
+    return(0);
+#endif
 }
 
 // Method to get an IO instruction event should one have occurred since last poll.
 //
-uint8_t getZ80IO(uint8_t *addr, uint8_t *data)
+uint8_t getZ80IO(uint8_t *addr)
 {
     // Locals.
-    uint8_t retcode = z80Control.ioEvent;
+    uint8_t retcode = 1;
 
-    // Load up the variables if an event has occurred.  
-    if(retcode == 1)
+    if(z80Control.svcRequest == 1)
     {
-        *addr = z80Control.ioAddr;
-        *data = z80Control.ioData;
-        z80Control.ioEvent = 0;
+        *addr = IO_TZ_SVCREQ;
+        z80Control.svcRequest = 0;
+    } else
+    if(z80Control.sysRequest == 1)
+    {
+        *addr = IO_TZ_SYSREQ;
+        z80Control.sysRequest = 0;
+    } else
+    {
+        retcode = 0;
     }
 
     return(retcode);
@@ -2022,11 +2128,7 @@ static uint32_t getNextChar(const char** ptr)
     uint8_t chr;
 
     // Get a byte
-    do {
-        chr = (uint8_t)*(*ptr)++;
-
-    // Skip over CR.
-    } while(chr == 0x0D);
+    chr = (uint8_t)*(*ptr)++;
 
     // To upper ASCII char
     if(islower(chr)) chr -= 0x20;
@@ -2091,6 +2193,9 @@ static int matchFileWithWildcard(const char *pattern, const char *fileName, int 
             // Get a name char 
             nc = getNextChar(&np);
 
+            // Sharp uses null or CR to terminate a pattern and a filename, which is not determinate!
+            if((pc == 0x00 || pc == 0x0d) && (nc == 0x00 || nc == 0x0d)) return 1;
+
             // Branch mismatched?
             if (pc != nc) break;
 
@@ -2102,7 +2207,7 @@ static int matchFileWithWildcard(const char *pattern, const char *fileName, int 
         getNextChar(&fileName);
 
     /* Retry until end of name if infinite search is specified */
-    } while (infinite && nc != 0x00 && nc != 0x0d);
+    } while (infinite && nc != 0x00 && nc != 0x0d && (np - fileName) < MZF_FILENAME_LEN);
 
     return 0;
 }
