@@ -66,4 +66,9 @@ c
 teensy3/TeensyThreads/
 x
 zOS/main.hex
-
+zOS/*.i
+zOS/*.ii
+zOS/*.s
+zputa/*.i
+zputa/*.ii
+zputa/*.s

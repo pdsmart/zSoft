@@ -36,6 +36,10 @@
 // Configurable constants.
 //
 #define DECODE_Z80_IO                0                                   // Flag to enable code, via interrupt, to capture Z80 actions on I/O ports an Memory mapped I/O.
+                                                                         // 0 = No code other than direct service request interrupts.
+                                                                         // 1 = Decode Z80 I/O address operations.
+                                                                         // 2 = Decode Z80 I/O operations with data.
+                                                                         // 3 = NZ700 memory mode decode - This doesnt work per original, the memory change occurs one instruction after the OUT instruction due to the way the Z80 functions in respect to BUSRQ.
 #define REFRESH_BYTE_COUNT           8                                   // This constant controls the number of bytes read/written to the z80 bus before a refresh cycle is needed.
 #define RFSH_BYTE_CNT                256                                 // Number of bytes we can write before needing a full refresh for the DRAM.
 
@@ -91,6 +95,7 @@
 #define MZ_CRT_INVERSE               0xE018                              // Address when read sets the CRT to inverted display mode.
 #define MZ_ROM_SA1510_40C            "0:\\TZFS\\SA1510.ROM"              // Original 40 character Monitor ROM.
 #define MZ_ROM_SA1510_80C            "0:\\TZFS\\SA1510-8.ROM"            // Original Monitor ROM patched for 80 character screen mode.
+#define MZ_ROM_1Z_013A               "0:\\TZFS\\1Z-013A.ROM"             // Original 40 character Monitor ROM for the Sharp MZ700.
 #define MZ_ROM_TZFS                  "0:\\TZFS\\TZFS.ROM"                // tranZPUter Filing System ROM.
 
 // CP/M constants.
@@ -213,11 +218,11 @@
 
 // IRQ mask values for the different types of IRQ trigger.
 //
-#define IRQ_MASK_CHANGE              0x0B0040
-#define IRQ_MASK_RISING              0x040040
-#define IRQ_MASK_FALLING             0x0A0040
-#define IRQ_MASK_LOW                 0x080040
-#define IRQ_MASK_HIGH                0x0C0040
+#define IRQ_MASK_CHANGE              0x10B0000
+#define IRQ_MASK_RISING              0x1090000 //0x040040
+#define IRQ_MASK_FALLING             0x10A0000
+#define IRQ_MASK_LOW                 0x1080000
+#define IRQ_MASK_HIGH                0x10C0000
 
 // Customised pin manipulation methods implemented as stripped down macros. The original had too much additional overhead with procedure call and validation tests,
 // speed is of the essence for this project as pins change mode and value constantly.
@@ -258,6 +263,10 @@
                                        pinSet(Z80_A11, ((a >> 11) & 0x1)); pinSet(Z80_A10, ((a >> 10) & 0x1));\
                                        pinSet(Z80_A9,  ((a >>  9) & 0x1)); pinSet(Z80_A8,  ((a >>  8) & 0x1));\
                                        pinSet(Z80_A7,  ((a >>  7) & 0x1)); pinSet(Z80_A6,  ((a >>  6) & 0x1));\
+                                       pinSet(Z80_A5,  ((a >>  5) & 0x1)); pinSet(Z80_A4,  ((a >>  4) & 0x1));\
+                                       pinSet(Z80_A3,  ((a >>  3) & 0x1)); pinSet(Z80_A2,  ((a >>  2) & 0x1));\
+                                       pinSet(Z80_A1,  ((a >>  1) & 0x1)); pinSet(Z80_A0,  ((a      ) & 0x1)); }
+#define setZ80AddrLower(a)           { pinSet(Z80_A7,  ((a >>  7) & 0x1)); pinSet(Z80_A6,  ((a >>  6) & 0x1));\
                                        pinSet(Z80_A5,  ((a >>  5) & 0x1)); pinSet(Z80_A4,  ((a >>  4) & 0x1));\
                                        pinSet(Z80_A3,  ((a >>  3) & 0x1)); pinSet(Z80_A2,  ((a >>  2) & 0x1));\
                                        pinSet(Z80_A1,  ((a >>  1) & 0x1)); pinSet(Z80_A0,  ((a      ) & 0x1)); }
@@ -439,6 +448,19 @@ typedef struct __attribute__((__packed__)) {
     t_sharpToSDMap                   *file[TZSVC_MAX_DIR_ENTRIES];       // File mapping of SD file to its Sharp MZ80A name.
 } t_dirMap;
 
+
+// Structure to maintain all MZ700 hardware control information in order to emulate the machine.
+//
+typedef struct {
+    uint32_t                         config;                             // Compacted control register, 
+    //uint8_t                          memoryMode;                         // The memory mode the MZ700 is currently running under, this is determined by the memory control commands from the MZ700.
+    //uint8_t                          lockMemoryMode;                     // The preserved memory mode when entering the locked state.
+    //uint8_t                          inhibit;                            // The inhibit flag, blocks the upper 0xD000:0xFFFF region from being accessed, affects the memoryMode temporarily.
+    //uint8_t                          update;                             // Update flag, indicates to the ISR that a memory mode update is needed.
+    //uint8_t                          b0000;                              // Block 0000:0FFF mode.
+    //uint8_t                          bD000;                              // Block D000:FFFF mode.
+} t_mz700;
+
 // Structure to maintain all the control and management variables of the Z80 and underlying hardware so that the state of run is well known by any called method.
 //
 typedef struct {
@@ -457,19 +479,24 @@ typedef struct {
     uint8_t                          resetEvent;                         // A Z80_RESET event occurred, probably user pressing RESET button.
     uint8_t                          svcRequest;                         // A service request has been made by the Z80 (1).
     uint8_t                          sysRequest;                         // A system request has been made by the Z80 (1).
-    #if DECODE_Z80_IO == 1
+    #if DECODE_Z80_IO >= 1
     uint8_t                          ioAddr;                             // Address of a Z80 IO instruction.
-    uint8_t                          ioData;                             // Data of a Z80 IO instruction.
     uint8_t                          ioEvent;                            // Event flag to indicate that an IO instruction was captured.
+    t_mz700                          mz700;                              // MZ700 emulation control to detect IO commands and adjust the memory map accordingly.
+    #endif
+    #if DECODE_Z80_IO >= 3
+    uint8_t                          ioData;                             // Data of a Z80 IO instruction.
+    #endif
+    #if DECODE_Z80_IO >= 3
     uint8_t                          memorySwap;                         // A memory Swap event has occurred, 0000-0FFF -> C000-CFFF (1), or C000-CFFF -> 0000-0FFF (0)
     uint8_t                          crtMode;                            // A CRT event has occurred, Normal mode (0) or Reverse Mode (1)
     uint8_t                          scroll;                             // Hardware scroll offset.
     volatile uint32_t                portA;                              // ISR store of GPIO Port A used for signal decoding.
     volatile uint32_t                portB;                              // ISR store of GPIO Port B used for signal decoding.
     volatile uint32_t                portC;                              // ISR store of GPIO Port C used for signal decoding.
-    #endif
     volatile uint32_t                portD;                              // ISR store of GPIO Port D used for signal decoding.
     volatile uint32_t                portE;                              // ISR store of GPIO Port E used for signal decoding.
+    #endif
   #endif
 } t_z80Control;
 
@@ -545,69 +572,70 @@ extern uint8_t                        pinMap[MAX_TRANZPUTER_PINS];
 // Prototypes.
 //
 #if defined __APP__
-void     yield(void);
+void          yield(void);
 #endif
-void     setupZ80Pins(uint8_t, volatile uint32_t *);
-void     resetZ80(void);
-uint8_t  reqZ80Bus(uint32_t);
-uint8_t  reqMainboardBus(uint32_t);
-uint8_t  reqTranZPUterBus(uint32_t);
-void     setupSignalsForZ80Access(enum BUS_DIRECTION);
-void     releaseZ80(void);
-void     refreshZ80(void);
-void     setCtrlLatch(uint8_t);
-uint8_t  copyFromZ80(uint8_t *, uint32_t, uint32_t, uint8_t);
-uint8_t  copyToZ80(uint32_t, uint8_t *, uint32_t, uint8_t);
-uint8_t  writeZ80Memory(uint16_t, uint8_t);
-uint8_t  readZ80Memory(uint16_t);
-uint8_t  writeZ80IO(uint16_t, uint8_t);
-uint8_t  readZ80IO(uint16_t);
-void     fillZ80Memory(uint32_t, uint32_t, uint8_t, uint8_t);
-void     captureVideoFrame(enum VIDEO_FRAMES, uint8_t);
-void     refreshVideoFrame(enum VIDEO_FRAMES, uint8_t, uint8_t);
-FRESULT  loadVideoFrameBuffer(char *, enum VIDEO_FRAMES);
-FRESULT  saveVideoFrameBuffer(char *, enum VIDEO_FRAMES);   
-char     *getVideoFrame(enum VIDEO_FRAMES);
-char     *getAttributeFrame(enum VIDEO_FRAMES);
-FRESULT  loadZ80Memory(const char *, uint32_t, uint32_t, uint32_t, uint8_t, uint8_t);
-FRESULT  saveZ80Memory(const char *, uint32_t, uint32_t, t_svcDirEnt *, uint8_t);
-FRESULT  loadMZFZ80Memory(const char *, uint32_t, uint8_t, uint8_t);
+void          setupZ80Pins(uint8_t, volatile uint32_t *);
+void          resetZ80(void);
+uint8_t       reqZ80Bus(uint32_t);
+uint8_t       reqMainboardBus(uint32_t);
+uint8_t       reqTranZPUterBus(uint32_t);
+void          setupSignalsForZ80Access(enum BUS_DIRECTION);
+void          releaseZ80(void);
+void          refreshZ80(void);
+void          setCtrlLatch(uint8_t);
+uint8_t       copyFromZ80(uint8_t *, uint32_t, uint32_t, uint8_t);
+uint8_t       copyToZ80(uint32_t, uint8_t *, uint32_t, uint8_t);
+uint8_t       writeZ80Memory(uint16_t, uint8_t);
+uint8_t       readZ80Memory(uint16_t);
+uint8_t       writeZ80IO(uint16_t, uint8_t);
+uint8_t       writeZ80io(uint8_t data);
+uint8_t       readZ80IO(uint16_t);
+void          fillZ80Memory(uint32_t, uint32_t, uint8_t, uint8_t);
+void          captureVideoFrame(enum VIDEO_FRAMES, uint8_t);
+void          refreshVideoFrame(enum VIDEO_FRAMES, uint8_t, uint8_t);
+FRESULT       loadVideoFrameBuffer(char *, enum VIDEO_FRAMES);
+FRESULT       saveVideoFrameBuffer(char *, enum VIDEO_FRAMES);   
+char          *getVideoFrame(enum VIDEO_FRAMES);
+char          *getAttributeFrame(enum VIDEO_FRAMES);
+FRESULT       loadZ80Memory(const char *, uint32_t, uint32_t, uint32_t, uint8_t, uint8_t);
+FRESULT       saveZ80Memory(const char *, uint32_t, uint32_t, t_svcDirEnt *, uint8_t);
+FRESULT       loadMZFZ80Memory(const char *, uint32_t, uint8_t, uint8_t);
 
 // Getter/Setter methods!
-uint8_t  isZ80Reset(void);
-uint8_t  isZ80MemorySwapped(void);
-uint8_t  getZ80IO(uint8_t *);
-void     clearZ80Reset(void);
-void     convertSharpFilenameToAscii(char *, char *, uint8_t);
+uint8_t       isZ80Reset(void);
+uint8_t       isZ80MemorySwapped(void);
+uint8_t       getZ80IO(uint8_t *);
+void          clearZ80Reset(void);
+void          convertSharpFilenameToAscii(char *, char *, uint8_t);
 
 // tranZPUter OS i/f methods.
-uint8_t  setZ80SvcStatus(uint8_t);
-void     svcSetDefaults(void);
-uint8_t  svcReadDir(uint8_t);
-uint8_t  svcFindFile(char *, char *, uint8_t);
-uint8_t  svcReadDirCache(uint8_t);
-uint8_t  svcFindFileCache(char *, char *, uint8_t);
-uint8_t  svcCacheDir(const char *, uint8_t);
-uint8_t  svcReadFile(uint8_t);
-uint8_t  svcLoadFile(void);
-uint8_t  svcEraseFile(void);
-uint8_t  svcAddCPMDrive(void);
-uint8_t  svcReadCPMDrive(void);
-uint8_t  svcWriteCPMDrive(void);
-uint32_t getServiceAddr(void);
-void     processServiceRequest(void);
-void     loadTranZPUterDefaultROMS(void);
-void     tranZPUterControl(void);
-uint8_t  testTZFSAutoBoot(void);
-void     setupTranZPUter(void);
+uint8_t       setZ80SvcStatus(uint8_t);
+void          svcSetDefaults(void);
+uint8_t       svcReadDir(uint8_t);
+uint8_t       svcFindFile(char *, char *, uint8_t);
+uint8_t       svcReadDirCache(uint8_t);
+uint8_t       svcFindFileCache(char *, char *, uint8_t);
+uint8_t       svcCacheDir(const char *, uint8_t);
+uint8_t       svcReadFile(uint8_t);
+uint8_t       svcLoadFile(void);
+uint8_t       svcEraseFile(void);
+uint8_t       svcAddCPMDrive(void);
+uint8_t       svcReadCPMDrive(void);
+uint8_t       svcWriteCPMDrive(void);
+uint32_t      getServiceAddr(void);
+void          processServiceRequest(void);
+void          loadTranZPUterDefaultROMS(void);
+void          tranZPUterControl(void);
+uint8_t       testTZFSAutoBoot(void);
+void          setupTranZPUter(void);
 
 #if defined __APP__
-int      memoryDumpZ80(uint32_t, uint32_t, uint32_t, uint8_t, uint8_t);
+int           memoryDumpZ80(uint32_t, uint32_t, uint32_t, uint8_t, uint8_t);
 #endif
 
 // Debug methods.
 #if defined __APP__ && defined __TZPU_DEBUG__
-void     displaySignals(void);
+void          displaySignals(void);
 #endif
 
 #ifdef __cplusplus

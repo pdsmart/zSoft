@@ -123,7 +123,7 @@ SIZE            = $(BASE)-size
 #************************************************************************
 
 # CPPFLAGS = compiler options for C and C++
-CPPFLAGS       = -Wall -g -Os -mthumb -fno-builtin -ffunction-sections -fdata-sections -nostdlib -MMD $(OPTIONS) -DTEENSYDUINO=144 -DF_CPU=$(TEENSY_CORE_SPEED)
+CPPFLAGS       = -Wall -g -save-temps -Os -mthumb -fno-builtin -ffunction-sections -fdata-sections -nostdlib -MMD $(OPTIONS) -DTEENSYDUINO=144 -DF_CPU=$(TEENSY_CORE_SPEED)
 CPPFLAGS      += -Isrc -Iteensy3 -I$(COMMON_DIR) -I$(FATFS_DIR) -I$(TEENSY3_DIR) -I$(INCLUDE_DIR)
 CPPFLAGS      += -D__K64F__ -D__ZOS__ -DDEBUG -D__SD_CARD__ -DOS_BASEADDR=$(OS_BASEADDR) -DOS_APPADDR=$(OS_APPADDR) 
 #CPPFLAGS      += -fno-use-cxa-atexit
