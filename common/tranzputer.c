@@ -7,9 +7,19 @@
 //                  This file contains methods which allow applications to access and control the
 //                  traZPUter board and the underlying Sharp MZ80A host.
 //                  I had considered writing this module in C++ but decided upon C as speed is more
-//                  important and C++ always adds a little additional overhead. Some of the methods need
-//                  to be written as embedded assembler but this is for a later time when using the
-//                  tranZPUter on faster motherboards.
+//                  important and C++ always adds a little additional overhead. 
+//                  Even in C a fair bit of overhead is added by the compiler even after optimisation,
+//                  thus the Interrupt Service Routines have been coded as inline assembler to gain
+//                  extra cycles, one of the big problems is capturing the Z80 signals and data
+//                  in order to action commands such as memory switch. Part of the problem is the
+//                  non-uniform allocation of pins - part my problem in the hardware, part Teensy
+//                  in the model of K64F and the pins available which means several GPIO registers
+//                  must be read and pieced together to form a 16bit address bus and 8 bit data
+//                  bus. Fine under normal situations but not ISR, an example is setting the memory 
+//                  mode control switch - in C it takes 20uS, after stripping it down of nicities
+//                  such as maps, this comes down to 13uS and further optimisations can be made in 
+//                  assembler but 13uS is a long long time even for a 2MHz CPU and when cranked up
+//                  to 8MHz it becomes a challenge!
 //                 
 //                  NB. This library is NOT thread safe. In zOS, one thread is running continually in
 //                  this code but is suspended if zOS launches an application which will call this
@@ -548,13 +558,14 @@ static void __attribute((naked, noinline)) irqPortD(void)
                  "              irqd3:                                      \n"
                 );
 
+ #if 0
                                           // Now save the GPIO values into the structure. Seperate statements to get around the optimizer trying to use 5 scratch registers.
-  //  asm volatile("                        str      r4, %[val1]              \n" : [val1] "=m" (z80Control.portA) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
- //   asm volatile("                        str      r5, %[val2]              \n" : [val2] "=m" (z80Control.portB) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
- //   asm volatile("                        str      r6, %[val3]              \n" : [val3] "=m" (z80Control.portC) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
- //   asm volatile("                        str      r7, %[val4]              \n" : [val4] "=m" (z80Control.portD) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
- //   asm volatile("                        str      r8, %[val5]              \n" : [val5] "=m" (z80Control.portE) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
-
+    asm volatile("                        str      r4, %[val1]              \n" : [val1] "=m" (z80Control.portA) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
+    asm volatile("                        str      r5, %[val2]              \n" : [val2] "=m" (z80Control.portB) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
+    asm volatile("                        str      r6, %[val3]              \n" : [val3] "=m" (z80Control.portC) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
+    asm volatile("                        str      r7, %[val4]              \n" : [val4] "=m" (z80Control.portD) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
+    asm volatile("                        str      r8, %[val5]              \n" : [val5] "=m" (z80Control.portE) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
+  #endif
 
     // Convert lower 8 address bits into a byte and store.
     asm volatile("                        lsrs     r0, r5, #4               \n"          // (z80Control.portB >> 4)&0x80)
@@ -3872,7 +3883,6 @@ void processServiceRequest(void)
 
         // Set the alternate frequency. The TZFS command provides the frequency in KHz so multiply up to Hertz before changing.
         case TZSVC_CMD_CPU_CHGFREQ:
-printf("Changing to Freq:%ld\n", (svcControl.cpuFreq * 1000));
             setZ80CPUFrequency(svcControl.cpuFreq * 1000, 1);
             break;
 

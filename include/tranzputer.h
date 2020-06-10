@@ -35,7 +35,7 @@
 
 // Configurable constants.
 //
-#define DECODE_Z80_IO                3                                   // Flag to enable code, via interrupt, to capture Z80 actions on I/O ports an Memory mapped I/O.
+#define DECODE_Z80_IO                0                                   // Flag to enable code, via interrupt, to capture Z80 actions on I/O ports an Memory mapped I/O.
                                                                          // 0 = No code other than direct service request interrupts.
                                                                          // 1 = Decode Z80 I/O address operations.
                                                                          // 2 = Decode Z80 I/O operations with data.
