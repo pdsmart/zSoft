@@ -93,9 +93,12 @@
 #define MZ_MEMORY_RESET              0xE010                              // Address when read resets the memory to the default location 0000-0FFF.
 #define MZ_CRT_NORMAL                0xE014                              // Address when read sets the CRT to normal display mode.
 #define MZ_CRT_INVERSE               0xE018                              // Address when read sets the CRT to inverted display mode.
+#define MZ_80A_CPU_FREQ              2000000                             // CPU Speed of the Sharp MZ-80A
+#define MZ_700_CPU_FREQ              3580000                             // CPU Speed of the Sharp MZ-700
 #define MZ_ROM_SA1510_40C            "0:\\TZFS\\SA1510.ROM"              // Original 40 character Monitor ROM.
 #define MZ_ROM_SA1510_80C            "0:\\TZFS\\SA1510-8.ROM"            // Original Monitor ROM patched for 80 character screen mode.
-#define MZ_ROM_1Z_013A               "0:\\TZFS\\1Z-013A.ROM"             // Original 40 character Monitor ROM for the Sharp MZ700.
+#define MZ_ROM_1Z_013A_40C           "0:\\TZFS\\1Z-013A.ROM"             // Original 40 character Monitor ROM for the Sharp MZ700.
+#define MZ_ROM_1Z_013A_80C           "0:\\TZFS\\1Z-013A-8.ROM"           // Original Monitor ROM patched for the Sharp MZ700 patched for 80 column mode.
 #define MZ_ROM_TZFS                  "0:\\TZFS\\TZFS.ROM"                // tranZPUter Filing System ROM.
 
 // CP/M constants.
@@ -128,10 +131,15 @@
 #define TZSVC_CMD_CHANGEDIR          0x09                                // Service command to change active directory on the SD card.
 #define TZSVC_CMD_LOAD40BIOS         0x20                                // Service command requesting that the 40 column version of the SA1510 BIOS is loaded.
 #define TZSVC_CMD_LOAD80BIOS         0x21                                // Service command requesting that the 80 column version of the SA1510 BIOS is loaded.
+#define TZSVC_CMD_LOAD700BIOS40      0x22                                // Service command requesting that the MZ700 1Z-013A 40 column BIOS is loaded.
+#define TZSVC_CMD_LOAD700BIOS80      0x23                                //Service command requesting that the MZ700 1Z-013A 80 column patched BIOS is loaded.
 #define TZSVC_CMD_LOADBDOS           0x30                                // Service command to reload CPM BDOS+CCP.
 #define TZSVC_CMD_ADDSDDRIVE         0x31                                // Service command to attach a CPM disk to a drive number.
 #define TZSVC_CMD_READSDDRIVE        0x32                                // Service command to read an attached SD file as a CPM disk drive.
 #define TZSVC_CMD_WRITESDDRIVE       0x33                                // Service command to write to a CPM disk drive which is an attached SD file.
+#define TZSVC_CMD_CPU_BASEFREQ       0x40                                // Service command to switch to the mainboard frequency.
+#define TZSVC_CMD_CPU_ALTFREQ        0x41                                // Service command to switch to the alternate frequency provided by the K64F.
+#define TZSVC_CMD_CPU_CHGFREQ        0x42                                // Service command to set the alternate frequency in hertz.
 #define TZSVC_DEFAULT_DIR            "MZF"                               // Default directory where MZF files are stored.
 #define TZSVC_DEFAULT_EXT            "MZF"                               // Default file extension for MZF files.
 #define TZSVC_DEFAULT_WILDCARD       "*"                                 // Default wildcard file matching.
@@ -525,7 +533,10 @@ typedef struct __attribute__((__packed__)) {
     uint16_t                         trackNo;                            // For virtual drives with track and sector this is the track number
     uint16_t                         sectorNo;                           // For virtual drives with tracl and sector this is the sector number.
     uint8_t                          fileNo;                             // File number of a file within the last directory listing to open/update.
-    uint16_t                         loadAddr;                           // Load address for ROM/File images which need to be dynamic.
+    union {
+        uint16_t                     loadAddr;                           // Load address for ROM/File images which need to be dynamic.
+        uint16_t                     cpuFreq;                            // CPU Frequency in KHz - used for setting of the alternate CPU clock frequency.
+    };
     uint16_t                         loadSize;                           // Size for ROM/File to be loaded.
     uint8_t                          directory[TZSVC_DIRNAME_SIZE];      // Directory in which to look for a file. If no directory is given default to MZF.
     uint8_t                          filename[TZSVC_FILENAME_SIZE];      // File to open or create.

@@ -1700,19 +1700,23 @@ void setCtrlLatch(uint8_t latchVal)
 
 // Method to change the secondary CPU frequency and optionally enable/disable it.
 // Input: frequency = desired frequency in Hertz.
-//        action    = 0 - take no action, just change frequency, 1 - enable the secondary CPU frequency, 2 - disable the secondary CPU frequency.
+//        action    = 0 - take no action, just change frequency, 1 - set and enable the secondary CPU frequency, 2 - set and disable the secondary CPU frequency,
+//                    3 - enable the secondary CPU frequency, 4 - disable the secondary CPU frequency
 // Output: actual set frequency in Hertz.
 //
 uint32_t setZ80CPUFrequency(float frequency, uint8_t action)
 {
     // Locals.
     //
-    uint32_t actualFreq;
+    uint32_t actualFreq = 0;
 
     // Setup the alternative clock frequency on the CTL_CLK pin.
     //
-    actualFreq=analogWriteFrequency(CTL_CLK_PIN, frequency);
-    analogWrite(CTL_CLK_PIN, 128);
+    if(action < 3)
+    {
+        actualFreq=analogWriteFrequency(CTL_CLK_PIN, frequency);
+        analogWrite(CTL_CLK_PIN, 128);
+    }
 
     // Process action, enable, disable or do nothing (just freq change).
     //
@@ -1725,7 +1729,7 @@ uint32_t setZ80CPUFrequency(float frequency, uint8_t action)
             // Setup the pins to perform a write operation.
             //
             setupSignalsForZ80Access(WRITE);
-            writeZ80IO((action == 1 ? IO_TZ_SETXMHZ : IO_TZ_SET2MHZ), 0);
+            writeZ80IO((action == 1 || action == 3 ? IO_TZ_SETXMHZ : IO_TZ_SET2MHZ), 0);
             releaseZ80();
          }
     }
@@ -2619,14 +2623,6 @@ void loadTranZPUterDefaultROMS(void)
     {
         printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_SA1510_40C);
     }
-  //if((result=loadZ80Memory((const char *)MZ_ROM_1Z_013A, 0, MZ_MROM_ADDR, 0, 0, 1)) != FR_OK)
-  //{
-  //   printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_1Z_013A);
-  //}
-  if((result=loadZ80Memory((const char *)MZ_ROM_1Z_013A, 0, 0x60000, 0, 0, 1)) != FR_OK)
-  {
-      printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_1Z_013A);
-  }
     if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0,      MZ_UROM_ADDR,            0x1800, 0, 1) != FR_OK))
     {
         printf("Error: Failed to load bank 1 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
@@ -3796,6 +3792,9 @@ void processServiceRequest(void)
             {
                 printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_SA1510_40C);
             }
+          
+            // Change frequency to default.
+            setZ80CPUFrequency(MZ_80A_CPU_FREQ, 2);
             break;
           
         // Load the 80 column version of the SA1510 bios into memory.
@@ -3804,6 +3803,31 @@ void processServiceRequest(void)
             {
                 printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_SA1510_80C);
             }
+           
+            // Change frequency to default.
+            setZ80CPUFrequency(MZ_80A_CPU_FREQ, 2);
+            break;
+           
+        // Load the 40 column MZ700 1Z-013A bios into memory.
+        case TZSVC_CMD_LOAD700BIOS40:
+            if((status=loadZ80Memory((const char *)MZ_ROM_1Z_013A_40C, 0, MZ_MROM_ADDR, 0, 0, 1)) != FR_OK)
+            {
+                printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_1Z_013A_40C);
+            }
+
+            // Change frequency to match Sharp MZ-700
+            setZ80CPUFrequency(MZ_700_CPU_FREQ, 1);
+            break;
+
+        // Load the 80 column MZ700 1Z-013A bios into memory.
+        case TZSVC_CMD_LOAD700BIOS80:
+            if((status=loadZ80Memory((const char *)MZ_ROM_1Z_013A_80C, 0, MZ_MROM_ADDR, 0, 0, 1)) != FR_OK)
+            {
+                printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_1Z_013A_80C);
+            }
+          
+            // Change frequency to match Sharp MZ-700
+            setZ80CPUFrequency(MZ_700_CPU_FREQ, 1);
             break;
 
         // Load the CPM CCP+BDOS from file into the address given.
@@ -3834,6 +3858,22 @@ void processServiceRequest(void)
             // Only need to copy the command section back to the Z80 for a write operation.
             //
             copySize = TZSVC_CMD_SIZE;
+            break;
+
+        // Switch to the mainboard frequency (default).
+        case TZSVC_CMD_CPU_BASEFREQ:
+            setZ80CPUFrequency(0, 4);
+            break;
+
+        // Switch to the alternate frequency managed by the K64F counters.
+        case TZSVC_CMD_CPU_ALTFREQ:
+            setZ80CPUFrequency(0, 3);
+            break;
+
+        // Set the alternate frequency. The TZFS command provides the frequency in KHz so multiply up to Hertz before changing.
+        case TZSVC_CMD_CPU_CHGFREQ:
+printf("Changing to Freq:%ld\n", (svcControl.cpuFreq * 1000));
+            setZ80CPUFrequency(svcControl.cpuFreq * 1000, 1);
             break;
 
         default:
