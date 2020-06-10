@@ -1920,7 +1920,7 @@ void init_pins(void);
 void analogWrite(uint8_t pin, int val);
 uint32_t analogWriteRes(uint32_t bits);
 static inline uint32_t analogWriteResolution(uint32_t bits) { return analogWriteRes(bits); }
-void analogWriteFrequency(uint8_t pin, float frequency);
+uint32_t analogWriteFrequency(uint8_t pin, float frequency);
 void analogWriteDAC0(int val);
 void analogWriteDAC1(int val);
 #ifdef __cplusplus

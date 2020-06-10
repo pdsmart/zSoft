@@ -934,7 +934,7 @@ uint32_t analogWriteRes(uint32_t bits)
 }
 
 
-void analogWriteFrequency(uint8_t pin, float frequency)
+uint32_t  analogWriteFrequency(uint8_t pin, float frequency)
 {
 	uint32_t prescale, mod, ftmClock, ftmClockSource;
 	float minfreq;

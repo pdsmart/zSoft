@@ -35,7 +35,7 @@
 
 // Configurable constants.
 //
-#define DECODE_Z80_IO                0                                   // Flag to enable code, via interrupt, to capture Z80 actions on I/O ports an Memory mapped I/O.
+#define DECODE_Z80_IO                3                                   // Flag to enable code, via interrupt, to capture Z80 actions on I/O ports an Memory mapped I/O.
                                                                          // 0 = No code other than direct service request interrupts.
                                                                          // 1 = Decode Z80 I/O address operations.
                                                                          // 2 = Decode Z80 I/O operations with data.
@@ -583,6 +583,7 @@ void          setupSignalsForZ80Access(enum BUS_DIRECTION);
 void          releaseZ80(void);
 void          refreshZ80(void);
 void          setCtrlLatch(uint8_t);
+uint32_t      setZ80CPUFrequency(float, uint8_t);
 uint8_t       copyFromZ80(uint8_t *, uint32_t, uint32_t, uint8_t);
 uint8_t       copyToZ80(uint32_t, uint8_t *, uint32_t, uint8_t);
 uint8_t       writeZ80Memory(uint16_t, uint8_t);

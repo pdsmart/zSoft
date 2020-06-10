@@ -1004,6 +1004,7 @@ void _ZPUTA_Vectors(void)
     __asm__ volatile ("b refreshZ80");
     __asm__ volatile ("b refreshZ80AllRows");
     __asm__ volatile ("b setCtrlLatch");
+    __asm__ volatile ("b setZ80CPUFrequency");
     __asm__ volatile ("b copyFromZ80");
     __asm__ volatile ("b copyToZ80");
     __asm__ volatile ("b fillZ80Memory");

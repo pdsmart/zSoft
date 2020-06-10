@@ -813,8 +813,8 @@ enum IRQ_NUMBER_t {
 #elif (F_CPU == 120000000)
  #define F_PLL 120000000
  #ifndef F_BUS
- #define F_BUS 60000000
- //#define F_BUS 120000000
+ //#define F_BUS 60000000
+ #define F_BUS 120000000
  #endif
  #define F_MEM 24000000
 #elif (F_CPU == 96000000)

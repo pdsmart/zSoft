@@ -107,7 +107,8 @@ extern "C" {
 #define CMD_TZ_LOAD               151              // tranZPUter memory load/save tool.
 #define CMD_TZ_DUMP               152              // tranZPUter memory dump tool.
 #define CMD_TZ_CLEAR              153              // tranZPUter memory clear tool.
-#define CMD_TZ_RESET              154              // tranZPUter memory reset tool.
+#define CMD_TZ_CLK                154              // tranZPUter secondary frequency set tool.
+#define CMD_TZ_RESET              155              // tranZPUter memory reset tool.
 #define CMD_BADKEY                 -1
 #define CMD_NOKEY                   0 
 #define CMD_GROUP_DISK              1
@@ -390,6 +391,7 @@ static t_cmdstruct cmdTable[] = {
     { "tzload",     BUILTIN_DEFAULT,          CMD_TZ_LOAD,          CMD_GROUP_TZ },
     { "tzdump",     BUILTIN_DEFAULT,          CMD_TZ_DUMP,          CMD_GROUP_TZ },
     { "tzclear",    BUILTIN_DEFAULT,          CMD_TZ_CLEAR,         CMD_GROUP_TZ },
+    { "tzclk",      BUILTIN_DEFAULT,          CMD_TZ_CLK,           CMD_GROUP_TZ },
     { "tzreset",    BUILTIN_DEFAULT,          CMD_TZ_RESET,         CMD_GROUP_TZ },
   #endif
 };
@@ -498,6 +500,7 @@ static t_helpstruct helpTable[] = {
     { CMD_TZ_LOAD,          "--help",                             "Memory load/save tool" },
     { CMD_TZ_DUMP,          "--help",                             "Memory dump tool" },
     { CMD_TZ_CLEAR,         "--help",                             "Memory clearing tool" },
+    { CMD_TZ_CLK,           "--help",                             "CPU Freq set tool" },
     { CMD_TZ_RESET,         "--help",                             "Remote reset tool" },
   #endif
 };

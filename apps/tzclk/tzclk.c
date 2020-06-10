@@ -1,10 +1,12 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// Name:            tzclear.c
+// Name:            tzclk.c
 // Created:         May 2020
 // Author(s):       Philip Smart
-// Description:     A TranZPUter helper utility, allowing the realtime clearing of the tranZPUter
-//                  or host mainboard memory.
+// Description:     A TranZPUter helper utility, allowing the realtime change of the secondary CPU
+//                  clock frequency. Access to the mainboard still occurs at the original mainboard
+//                  frequency but when the secondary clock is eaabled, it is used when using tranZPUter
+//                  onboard hardware such as the static RAM.
 // Credits:         
 // Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
 //
@@ -68,15 +70,15 @@
 //
 #include <app.h>
 #include <tranzputer.h>
-#include "tzclear.h"
+#include "tzclk.h"
 
 // Utility functions.
 #include <tools.c>
 
 // Version info.
 #define VERSION              "v1.0"
-#define VERSION_DATE         "15/05/2020"
-#define APP_NAME             "TZCLEAR"
+#define VERSION_DATE         "08/06/2020"
+#define APP_NAME             "TZCLK"
 
 // Simple help screen to remmber how this utility works!!
 //
@@ -85,16 +87,14 @@ void usage(void)
     printf("%s %s\n", APP_NAME, VERSION);
     printf("\nCommands:-\n");
     printf("  -h | --help              This help text.\n");
-    printf("  -a | --start             Start address.\n");
+    printf("  -f | --freq              Desired CPU clock frequency.\n");
     printf("\nOptions:-\n");
-    printf("  -e | --end               End address (alternatively use --size).\n");
-    printf("  -s | --size              Size of memory block to clear (alternatively use --end).\n");
-    printf("  -b | --byte              Byte value to place into each cleared memory location, defaults to 0x00.\n");
-    printf("  -m | --mainboard         Operations will take place on the MZ80A mainboard. Default without this flag is to target the tranZPUter memory.\n");
+    printf("  -e | --enable            Enable the secondary CPU clock.\n");
+    printf("  -d | --disable           Disable the secondary CPU clock.\n");
     printf("  -v | --verbose           Output more messages.\n");
 
     printf("\nExamples:\n");
-    printf("  tzclear -a 0x000000 -s 0x200 -b 0xAA  # Clears memory locations in the tranZPUter memory from 0x000000 to 0x000200 using value 0xAA.\n");
+    printf("  tzclk --freq 4000000 --enable  # Set the secondary CPU clock frequency to 4MHz and enable its use on the tranZPUter board.\n");
 }
 
 // Main entry and start point of a zOS/ZPUTA Application. Only 2 parameters are catered for and a 32bit return code, additional parameters can be added by changing the appcrt0.s
@@ -107,13 +107,12 @@ uint32_t app(uint32_t param1, uint32_t param2)
 {
     // Initialisation.
     //
-    uint32_t   startAddr         = 0xFFFFFFFF;
-    uint32_t   endAddr           = 0xFFFFFFFF;
-    uint32_t   memSize           = 0xFFFFFFFF;
-    uint8_t    byte              = 0x00;
+    uint32_t   cpuFreq           = 0;
+    uint32_t   actualFreq        = 0;
     int        argc              = 0;
     int        help_flag         = 0;
-    int        mainboard_flag    = 0;
+    int        enable_flag       = 0;
+    int        disable_flag      = 0;
     int        verbose_flag      = 0;
     int        opt; 
     int        option_index      = 0; 
@@ -142,11 +141,9 @@ uint32_t app(uint32_t param1, uint32_t param2)
     static struct option long_options[] =
     {
         {"help",          no_argument,       0,   'h'},
-        {"start",         required_argument, 0,   'a'},
-        {"end",           required_argument, 0,   'e'},
-        {"size",          required_argument, 0,   's'},
-        {"byte",          required_argument, 0,   'b'},
-        {"mainboard",     no_argument,       0,   'm'},
+        {"freq",          required_argument, 0,   'f'},
+        {"enable",        no_argument,       0,   'e'},
+        {"disable",       no_argument,       0,   'd'},
         {"verbose",       no_argument,       0,   'v'},
         {0,               0,                 0,    0}
     };
@@ -161,44 +158,21 @@ uint32_t app(uint32_t param1, uint32_t param2)
                 help_flag = 1;
                 break;
 
-            case 'm':
-                mainboard_flag = 1;
+            case 'e':
+                enable_flag = 1;
                 break;
 
-            case 'a':
+            case 'd':
+                disable_flag = 1;
+                break;
+
+            case 'f':
                 if(xatoi(&argv[optind-1], &val) == 0)
                 {
                     printf("Illegal numeric:%s\n", argv[optind-1]);
                     return(5);
                 }
-                startAddr = (uint32_t)val;
-                break;
-
-            case 'e':
-                if(xatoi(&argv[optind-1], &val) == 0)
-                {
-                    printf("Illegal numeric:%s\n", argv[optind-1]);
-                    return(6);
-                }
-                endAddr = (uint32_t)val;
-                break;
-
-            case 's':
-                if(xatoi(&argv[optind-1], &val) == 0)
-                {
-                    printf("Illegal numeric:%s\n", argv[optind-1]);
-                    return(7);
-                }
-                memSize = (uint32_t)val;
-                break;
-
-            case 'b':
-                if(xatoi(&argv[optind-1], &val) == 0)
-                {
-                    printf("Illegal numeric:%s\n", argv[optind-1]);
-                    return(6);
-                }
-                byte = (uint8_t)val;
+                cpuFreq = (uint32_t)val;
                 break;
 
             case 'v':
@@ -220,36 +194,20 @@ uint32_t app(uint32_t param1, uint32_t param2)
         usage();
         return(0);
     }
-    if(startAddr == 0xFFFFFFFF)
+    if(cpuFreq == 2000000)
     {
-        printf("Please define the start address, size will default to 0x100.\n");
+        printf("Please specify the CPU frequency with the --freq flag.\n");
         return(10);
     }
-    if(endAddr == 0xFFFFFFFF && memSize == 0xFFFFFFFF)
+    if(enable_flag == 1 && disable_flag == 1)
     {
-        memSize = 0x100;
-    } else if(memSize == 0xFFFFFFFF)
-    {
-        memSize = endAddr - startAddr;
-    }
-    if(mainboard_flag == 1 && (startAddr > 0x10000 || startAddr + memSize > 0x10000))
-    {
-        printf("Mainboard only has 64K, please change the address or size.\n");
-        return(11);
-    }
-    if(mainboard_flag == 0 && (startAddr >= 0x80000 || startAddr + memSize > 0x80000))
-    {
-        printf("tranZPUter board only has 512K, please change the address or size.\n");
+        printf("Illegal flag combination, cannot enable and disable the secondary CPU frequency at the same time.\n");
         return(12);
     }
 
-    // Initialise the IO.
-    //setupZ80Pins(1, G->millis);
-
-    // Call the fill utility to clear memory.
-    //
-    fillZ80Memory(startAddr, memSize, byte, mainboard_flag);
-
+    // Call the method to set the frequency and optionally enable/disable it on the tranZPUter board.
+    actualFreq = setZ80CPUFrequency((float)cpuFreq, (enable_flag == 1 ? 1 : disable_flag == 1 ? 2 : 0));
+    printf("Requested Frequency:%ldHz, Actual Frequency:%ldHz\n", cpuFreq, actualFreq);
     return(0);
 }
 

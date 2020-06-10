@@ -934,9 +934,9 @@ uint32_t analogWriteRes(uint32_t bits)
 }
 
 
-void analogWriteFrequency(uint8_t pin, float frequency)
+uint32_t analogWriteFrequency(uint8_t pin, float frequency)
 {
-	uint32_t prescale, mod, ftmClock, ftmClockSource;
+	uint32_t prescale, mod, ftmClock, ftmClockSource, actualFreq;
 	float minfreq;
 
 	//serial_print("analogWriteFrequency: pin = ");
@@ -971,6 +971,7 @@ void analogWriteFrequency(uint8_t pin, float frequency)
 		minfreq = (float)(ftmClock >> prescale) / 65536.0f;	//Use ftmClock instead of F_TIMER
 		if (frequency >= minfreq) break;
 	}
+
 	//serial_print("F_TIMER/ftm_Clock = ");
 	//serial_phex32(ftmClock >> prescale);
 	//serial_print("\n");
@@ -979,6 +980,7 @@ void analogWriteFrequency(uint8_t pin, float frequency)
 	//serial_print("\n");
 	mod = (float)(ftmClock >> prescale) / frequency - 0.5f;	//Use ftmClock instead of F_TIMER
 	if (mod > 65535) mod = 65535;
+
 	//serial_print("mod = ");
 	//serial_phex32(mod);
 	//serial_print("\n");
@@ -1026,6 +1028,9 @@ void analogWriteFrequency(uint8_t pin, float frequency)
 		TPM1_SC = FTM_SC_CLKS(ftmClockSource) | FTM_SC_PS(prescale);
 	}
 #endif
+
+      actualFreq = ftmClock / (mod+1);
+      return(actualFreq);
 }
 
 

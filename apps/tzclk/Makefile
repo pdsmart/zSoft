@@ -35,7 +35,7 @@
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #########################################################################################################
 
-APP_NAME       = tzload
+APP_NAME       = tzclk
 APP_DIR        = $(CURDIR)/..
 APP_COMMON_DIR = $(CURDIR)/../common
 COMMON_DIR     = $(CURDIR)/../../common

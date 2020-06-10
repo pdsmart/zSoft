@@ -320,7 +320,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
     }
 
     // Initialise the IO.
-    setupZ80Pins(1, G->millis);
+    //setupZ80Pins(1, G->millis);
 
     // Bulk file upload command (used to preload a file set).
     //

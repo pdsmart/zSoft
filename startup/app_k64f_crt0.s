@@ -336,6 +336,8 @@ BSS_END:    .word      __bss_section_end__
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      setCtrlLatch              funcAddr
             .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      setZ80CPUFrequency        funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
             defapifunc      copyFromZ80               funcAddr
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      copyToZ80                 funcAddr

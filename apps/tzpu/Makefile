@@ -50,7 +50,8 @@ ifeq ($(__K64F__),1)
   #override STACKSIZE = 0x00000000
 
   # Modules making up tzpu.
-  APP_C_SRC    = $(APP_COMMON_DIR)/pins_teensy.c $(APP_COMMON_DIR)/analog.c $(COMMON_DIR)/tranzputer.c
+ #APP_C_SRC    = $(APP_COMMON_DIR)/pins_teensy.c $(APP_COMMON_DIR)/analog.c $(COMMON_DIR)/tranzputer.c
+  APP_C_SRC    = $(COMMON_DIR)/tranzputer.c
   CFLAGS       = #-D__TZPU_DEBUG__
   CPPFLAGS     = 
   LDFLAGS      = 
