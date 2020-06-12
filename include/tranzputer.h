@@ -35,7 +35,7 @@
 
 // Configurable constants.
 //
-#define DECODE_Z80_IO                0                                   // Flag to enable code, via interrupt, to capture Z80 actions on I/O ports an Memory mapped I/O.
+//#define DECODE_Z80_IO                3                                   // Flag to enable code, via interrupt, to capture Z80 actions on I/O ports an Memory mapped I/O.
                                                                          // 0 = No code other than direct service request interrupts.
                                                                          // 1 = Decode Z80 I/O address operations.
                                                                          // 2 = Decode Z80 I/O operations with data.
@@ -54,6 +54,11 @@
 #define TZMM_CPM                     0x06                                // CPM main memory configuration, all memory on the tranZPUter board, 64K block 4 selected. Special case for F3C0:F3FF & F7C0:F7FF (floppy disk paging vectors) which resides on the mainboard.
 #define TZMM_CPM2                    0x07                                // CPM main memory configuration, F000-FFFF are on the tranZPUter board in block 4, 0040-CFFF and E800-EFFF are in block 5, mainboard for D000-DFFF (video), E000-E800 (Memory control) selected.
                                                                          // Special case for 0000:003F (interrupt vectors) which resides in block 4, F3C0:F3FF & F7C0:F7FF (floppy disk paging vectors) which resides on the mainboard.
+#define TZMM_MZ700_0                 0x0a                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 6, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is on the mainboard.
+#define TZMM_MZ700_1                 0x0b                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 0, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is on the tranZPUter in block 6.
+#define TZMM_MZ700_2                 0x0c                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 6, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is on the tranZPUter in block 6.
+#define TZMM_MZ700_3                 0x0d                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 0, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is inaccessible.
+#define TZMM_MZ700_4                 0x0e                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 6, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is inaccessible.
 #define TZMM_TZPU0                   0x18                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 0 is selected.
 #define TZMM_TZPU1                   0x19                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 1 is selected.
 #define TZMM_TZPU2                   0x1A                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 2 is selected.
@@ -95,10 +100,12 @@
 #define MZ_CRT_INVERSE               0xE018                              // Address when read sets the CRT to inverted display mode.
 #define MZ_80A_CPU_FREQ              2000000                             // CPU Speed of the Sharp MZ-80A
 #define MZ_700_CPU_FREQ              3580000                             // CPU Speed of the Sharp MZ-700
+#define MZ_80B_CPU_FREQ              4000000                             // CPU Speed of the Sharp MZ-80B
 #define MZ_ROM_SA1510_40C            "0:\\TZFS\\SA1510.ROM"              // Original 40 character Monitor ROM.
 #define MZ_ROM_SA1510_80C            "0:\\TZFS\\SA1510-8.ROM"            // Original Monitor ROM patched for 80 character screen mode.
 #define MZ_ROM_1Z_013A_40C           "0:\\TZFS\\1Z-013A.ROM"             // Original 40 character Monitor ROM for the Sharp MZ700.
 #define MZ_ROM_1Z_013A_80C           "0:\\TZFS\\1Z-013A-8.ROM"           // Original Monitor ROM patched for the Sharp MZ700 patched for 80 column mode.
+#define MZ_ROM_MZ80B_IPL             "0:\\TZFS\\MZ80B_IPL.ROM"           // Original IPL ROM for the Sharp MZ-80B.
 #define MZ_ROM_TZFS                  "0:\\TZFS\\TZFS.ROM"                // tranZPUter Filing System ROM.
 
 // CP/M constants.
@@ -132,7 +139,8 @@
 #define TZSVC_CMD_LOAD40BIOS         0x20                                // Service command requesting that the 40 column version of the SA1510 BIOS is loaded.
 #define TZSVC_CMD_LOAD80BIOS         0x21                                // Service command requesting that the 80 column version of the SA1510 BIOS is loaded.
 #define TZSVC_CMD_LOAD700BIOS40      0x22                                // Service command requesting that the MZ700 1Z-013A 40 column BIOS is loaded.
-#define TZSVC_CMD_LOAD700BIOS80      0x23                                //Service command requesting that the MZ700 1Z-013A 80 column patched BIOS is loaded.
+#define TZSVC_CMD_LOAD700BIOS80      0x23                                // Service command requesting that the MZ700 1Z-013A 80 column patched BIOS is loaded.
+#define TZSVC_CMD_LOAD80BIPL         0x24                                // Service command requesting the MZ-80B IPL is loaded.
 #define TZSVC_CMD_LOADBDOS           0x30                                // Service command to reload CPM BDOS+CCP.
 #define TZSVC_CMD_ADDSDDRIVE         0x31                                // Service command to attach a CPM disk to a drive number.
 #define TZSVC_CMD_READSDDRIVE        0x32                                // Service command to read an attached SD file as a CPM disk drive.
@@ -252,13 +260,14 @@
                                        *ioPin[a] &= ~PORT_PCR_ODE;\
                                        if(b) { *portSetRegister(pinMap[a]) = 1; } else { *portClearRegister(pinMap[a]) = 1; } }
 #define installIRQ(a, mask)          { uint32_t cfg;\
-                                       __disable_irq();\
                                        cfg = *ioPin[a];\
                                        cfg &= ~0x000F0000;\
                                        *ioPin[a] = cfg;\
                                        cfg |= mask;\
                                        *ioPin[a] = cfg;\
-                                       __enable_irq();\
+                                     }
+#define removeIRQ(a)                 { \
+                                       *ioPin[a] = ((*ioPin[a] & ~0x000F0000) | 0x01000000);\
                                      }
 #define pinIndex(a)                  getPinIndex(pinMap[a])
 
@@ -402,6 +411,14 @@ enum VIDEO_FRAMES {
     WORKING                          = 1
 };
 
+// Possible machines the tranZPUter can emulate.
+//
+enum MACHINE_MODE {
+    MZ80A                            = 0,
+    MZ700                            = 1,
+    MZ80B                            = 2
+};
+
 // Structure to define a Sharp MZ80A MZF directory structure. This header appears at the beginning of every Sharp MZ80A tape (and more recently archived/emulator) images.
 //
 typedef struct __attribute__((__packed__)) {
@@ -460,7 +477,7 @@ typedef struct __attribute__((__packed__)) {
 // Structure to maintain all MZ700 hardware control information in order to emulate the machine.
 //
 typedef struct {
-    uint32_t                         config;                             // Compacted control register, 
+    uint32_t                         config;                             // Compacted control register, 31:19 = reserved, 18 = Inhibit mode, 17 = Upper D000:FFFF is RAM (=1), 16 = Lower 0000:0FFF is RAM (=1), 15:8 = old memory mode, 7:0 = current memory mode.
     //uint8_t                          memoryMode;                         // The memory mode the MZ700 is currently running under, this is determined by the memory control commands from the MZ700.
     //uint8_t                          lockMemoryMode;                     // The preserved memory mode when entering the locked state.
     //uint8_t                          inhibit;                            // The inhibit flag, blocks the upper 0xD000:0xFFFF region from being accessed, affects the memoryMode temporarily.
@@ -468,6 +485,11 @@ typedef struct {
     //uint8_t                          b0000;                              // Block 0000:0FFF mode.
     //uint8_t                          bD000;                              // Block D000:FFFF mode.
 } t_mz700;
+
+// Structure to maintain all MZ-80B hardware control information in oder to emulate the machine as near as possible.
+typedef struct {
+    uint32_t                         config;                             // Compacted control register, 31:19 = reserved, 18 = Inhibit mode, 17 = Upper D000:FFFF is RAM (=1), 16 = Lower 0000:0FFF is RAM (=1), 15:8 = old memory mode, 7:0 = current memory mode.
+} t_mz80b;
 
 // Structure to maintain all the control and management variables of the Z80 and underlying hardware so that the state of run is well known by any called method.
 //
@@ -484,18 +506,16 @@ typedef struct {
     enum CTRL_MODE                   ctrlMode;                           // Mode of control, ie normal Z80 Running, controlling mainboard, controlling tranZPUter.
     enum BUS_DIRECTION               busDir;                             // Direction the bus has been configured for.
 
+    enum MACHINE_MODE                machineMode;                        // Machine compatibility, 0 = Sharp MZ-80A, 1 = MZ-700, 2 = MZ-80B
+    t_mz700                          mz700;                              // MZ700 emulation control to detect IO commands and adjust the memory map accordingly.
+    t_mz80b                          mz80b;                              // MZ-80B emulation control to detect IO commands and adjust the memory map and I/O forwarding accordingly.
+
     uint8_t                          resetEvent;                         // A Z80_RESET event occurred, probably user pressing RESET button.
     uint8_t                          svcRequest;                         // A service request has been made by the Z80 (1).
     uint8_t                          sysRequest;                         // A system request has been made by the Z80 (1).
-    #if DECODE_Z80_IO >= 1
     uint8_t                          ioAddr;                             // Address of a Z80 IO instruction.
     uint8_t                          ioEvent;                            // Event flag to indicate that an IO instruction was captured.
-    t_mz700                          mz700;                              // MZ700 emulation control to detect IO commands and adjust the memory map accordingly.
-    #endif
-    #if DECODE_Z80_IO >= 3
     uint8_t                          ioData;                             // Data of a Z80 IO instruction.
-    #endif
-    #if DECODE_Z80_IO >= 3
     uint8_t                          memorySwap;                         // A memory Swap event has occurred, 0000-0FFF -> C000-CFFF (1), or C000-CFFF -> 0000-0FFF (0)
     uint8_t                          crtMode;                            // A CRT event has occurred, Normal mode (0) or Reverse Mode (1)
     uint8_t                          scroll;                             // Hardware scroll offset.
@@ -504,7 +524,6 @@ typedef struct {
     volatile uint32_t                portC;                              // ISR store of GPIO Port C used for signal decoding.
     volatile uint32_t                portD;                              // ISR store of GPIO Port D used for signal decoding.
     volatile uint32_t                portE;                              // ISR store of GPIO Port E used for signal decoding.
-    #endif
   #endif
 } t_z80Control;
 
@@ -600,7 +619,6 @@ uint8_t       copyToZ80(uint32_t, uint8_t *, uint32_t, uint8_t);
 uint8_t       writeZ80Memory(uint16_t, uint8_t);
 uint8_t       readZ80Memory(uint16_t);
 uint8_t       writeZ80IO(uint16_t, uint8_t);
-uint8_t       writeZ80io(uint8_t data);
 uint8_t       readZ80IO(uint16_t);
 void          fillZ80Memory(uint32_t, uint32_t, uint8_t, uint8_t);
 void          captureVideoFrame(enum VIDEO_FRAMES, uint8_t);
