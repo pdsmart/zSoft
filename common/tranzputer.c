@@ -2290,7 +2290,7 @@ char *getAttributeFrame(enum VIDEO_FRAMES frame)
 
 // Method to load a file from the SD card directly into the tranZPUter static RAM or mainboard RAM.
 //
-FRESULT loadZ80Memory(const char *src, uint32_t fileOffset, uint32_t addr, uint32_t size, uint8_t mainBoard, uint8_t releaseBus)
+FRESULT loadZ80Memory(const char *src, uint32_t fileOffset, uint32_t addr, uint32_t size, uint32_t *bytesRead, uint8_t mainBoard, uint8_t releaseBus)
 {
     // Locals.
     //
@@ -2415,6 +2415,13 @@ FRESULT loadZ80Memory(const char *src, uint32_t fileOffset, uint32_t addr, uint3
         printf("File not found:%s\n", src);
     }
 
+    // Return number of bytes read if caller provided a variable.
+    //
+    if(bytesRead != NULL)
+    {
+        *bytesRead = loadSize;
+    }
+
     // If requested or an error occurs, then release the Z80 bus as no more uploads will be taking place in this batch.
     //
     if(releaseBus == 1 || fr0)
@@ -2432,7 +2439,7 @@ FRESULT loadZ80Memory(const char *src, uint32_t fileOffset, uint32_t addr, uint3
 // Method to load an MZF format file from the SD card directly into the tranZPUter static RAM or mainboard RAM.
 // If the load address is specified then it overrides the MZF header value, otherwise load addr is taken from the header.
 //
-FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint8_t mainBoard, uint8_t releaseBus)
+FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint32_t *bytesRead, uint8_t mainBoard, uint8_t releaseBus)
 {
     // Locals.
     FIL           File;
@@ -2477,7 +2484,7 @@ printf("File:%s,attr=%02x,addr:%08lx\n", src, mzfHeader.attr, addr);
         }
 
         // Ok, load up the file into Z80 memory.
-        fr0 = loadZ80Memory(src, MZF_HEADER_SIZE, addr, 0, mainBoard, releaseBus);
+        fr0 = loadZ80Memory(src, MZF_HEADER_SIZE, addr, 0, bytesRead, mainBoard, releaseBus);
     }
 
     return(fr0 ? fr0 : FR_OK);    
@@ -2813,23 +2820,23 @@ void loadTranZPUterDefaultROMS(void)
     fillZ80Memory(0x040000, 0x20000, 0x00, 0); // CPM Mode.
 
     // Now load the necessary images into memory.
-    if((result=loadZ80Memory((const char *)MZ_ROM_SA1510_40C, 0, MZ_MROM_ADDR, 0, 0, 1)) != FR_OK)
+    if((result=loadZ80Memory((const char *)MZ_ROM_SA1510_40C,      0,      MZ_MROM_ADDR,            0,      0, 0, 1)) != FR_OK)
     {
         printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_SA1510_40C);
     }
-    if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0,      MZ_UROM_ADDR,            0x1800, 0, 1) != FR_OK))
+    if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0,      MZ_UROM_ADDR,            0x1800, 0, 0, 1) != FR_OK))
     {
         printf("Error: Failed to load bank 1 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
     }
-    if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x1800, MZ_BANKRAM_ADDR+0x10000, 0x1000, 0, 1) != FR_OK))
+    if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x1800, MZ_BANKRAM_ADDR+0x10000, 0x1000, 0, 0, 1) != FR_OK))
     {
         printf("Error: Failed to load page 2 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
     }
-    if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x2800, MZ_BANKRAM_ADDR+0x20000, 0x1000, 0, 1) != FR_OK))
+    if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x2800, MZ_BANKRAM_ADDR+0x20000, 0x1000, 0, 0, 1) != FR_OK))
     {
         printf("Error: Failed to load page 3 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
     }
-    if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x3800, MZ_BANKRAM_ADDR+0x30000, 0x1000, 0, 1) != FR_OK))
+    if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x3800, MZ_BANKRAM_ADDR+0x30000, 0x1000, 0, 0, 1) != FR_OK))
     {
         printf("Error: Failed to load page 4 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
     }
@@ -2890,19 +2897,38 @@ uint8_t setZ80SvcStatus(uint8_t status)
 
 // Simple method to set defaults in the service structure if not already set by the Z80.
 //
-void svcSetDefaults(void)
+void svcSetDefaults(enum FILE_TYPE type)
 {
-    // If there is no directory path, use the inbuilt default.
-    if(svcControl.directory[0] == '\0')
+    // Set according to the type of file were working with.
+    //
+    switch(type)
     {
-        strcpy((char *)svcControl.directory, TZSVC_DEFAULT_DIR);
-    }
+        case CAS:
+            strcpy((char *)svcControl.directory, TZSVC_DEFAULT_CAS_DIR);
+            strcpy((char *)svcControl.wildcard, TZSVC_DEFAULT_WILDCARD);
+            break;
+
+        case BAS:
+            strcpy((char *)svcControl.directory, TZSVC_DEFAULT_BAS_DIR);
+            strcpy((char *)svcControl.wildcard, TZSVC_DEFAULT_WILDCARD);
+            break;
+
+        case MZF:
+        default:
+            // If there is no directory path, use the inbuilt default.
+            if(svcControl.directory[0] == '\0')
+            {
+                strcpy((char *)svcControl.directory, TZSVC_DEFAULT_MZF_DIR);
+            }
    
-    // If there is no wildcard matching, use default.
-    if(svcControl.wildcard[0] == '\0')
-    {
-        strcpy((char *)svcControl.wildcard, TZSVC_DEFAULT_WILDCARD);
+            // If there is no wildcard matching, use default.
+            if(svcControl.wildcard[0] == '\0')
+            {
+                strcpy((char *)svcControl.wildcard, TZSVC_DEFAULT_WILDCARD);
+            }
+            break;
     }
+    return;
 }
 
 // Helper method for matchFileWithWildcard.
@@ -3027,7 +3053,7 @@ uint8_t svcReadDir(uint8_t mode)
 
         // Setup the defaults
         //
-        svcSetDefaults();
+        svcSetDefaults(MZF);
 
         // Open the directory.
         result = f_opendir(&dirFp, (char *)&svcControl.directory);
@@ -3085,7 +3111,7 @@ uint8_t svcReadDir(uint8_t mode)
             
                 // Check to see if this is a valid MZF file.
                 const char *ext = strrchr(fno.fname, '.');
-                if(!ext || strcasecmp(++ext, TZSVC_DEFAULT_EXT) != 0)
+                if(!ext || strcasecmp(++ext, TZSVC_DEFAULT_MZF_EXT) != 0)
                     continue;
     
                 // Build filename.
@@ -3158,7 +3184,7 @@ uint8_t svcFindFile(char *file, char *searchFile, uint8_t searchNo)
 
     // Setup the defaults
     //
-    svcSetDefaults();
+    svcSetDefaults(MZF);
 
     // Open the directory.
     result = f_opendir(&dirFp, (char *)&svcControl.directory);
@@ -3176,7 +3202,7 @@ uint8_t svcFindFile(char *file, char *searchFile, uint8_t searchNo)
 
             // Check to see if this is a valid MZF file.
             const char *ext = strrchr(fno.fname, '.');
-            if(!ext || strcasecmp(++ext, TZSVC_DEFAULT_EXT) != 0)
+            if(!ext || strcasecmp(++ext, TZSVC_DEFAULT_MZF_EXT) != 0)
                 continue;
 
             // Build filename.
@@ -3251,7 +3277,7 @@ uint8_t svcReadDirCache(uint8_t mode)
 
     // Setup the defaults
     //
-    svcSetDefaults();
+    svcSetDefaults(MZF);
 
     // If there is no cache revert to direct directory read.
     //
@@ -3453,7 +3479,7 @@ uint8_t svcCacheDir(const char *directory, uint8_t force)
 
             // Check to see if this is a valid MZF file.
             const char *ext = strrchr(fno.fname, '.');
-            if(!ext || strcasecmp(++ext, TZSVC_DEFAULT_EXT) != 0)
+            if(!ext || strcasecmp(++ext, TZSVC_DEFAULT_MZF_EXT) != 0)
                 continue;
 
             // Build filename.
@@ -3519,7 +3545,7 @@ uint8_t svcCacheDir(const char *directory, uint8_t force)
 
 // Method to open a file for reading and return requested sectors.
 //
-uint8_t svcReadFile(uint8_t mode)
+uint8_t svcReadFile(uint8_t mode, enum FILE_TYPE type)
 {
     // Locals - dont use global as this is a seperate thread.
     //
@@ -3536,15 +3562,23 @@ uint8_t svcReadFile(uint8_t mode)
     {
         // Close if previously open.
         if(fileOpen == 1)
-            svcReadFile(TZSVC_CLOSE);
+            svcReadFile(TZSVC_CLOSE, type);
 
         // Setup the defaults
         //
-        svcSetDefaults();
+        svcSetDefaults(type);
+
+        if(type == CAS || type == BAS)
+        {
+            // Build the full filename from what has been provided.
+            // Cassette and basic images, create filename as they are not cached.
+            sprintf(fqfn, "0:\\%s\\%s.%s", svcControl.directory, svcControl.filename, (type == MZF ? TZSVC_DEFAULT_MZF_EXT : type == CAS ? TZSVC_DEFAULT_CAS_EXT : TZSVC_DEFAULT_BAS_EXT));
+printf("FQFN:%s\n", fqfn);
+        }
 
         // Find the file using the given file number or file name.
         //
-        if(svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo))
+        if( (type == MZF && (svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo))) || type == CAS || type == BAS )
         {
             // Open the file, fqfn has the FQFN of the correct file on the SD drive.
             result = f_open(&File, fqfn, FA_OPEN_EXISTING | FA_READ);
@@ -3555,7 +3589,7 @@ uint8_t svcReadFile(uint8_t mode)
                 //
                 fileOpen   = 1; 
                 fileSector = 0;
-                result     = (FRESULT)svcReadFile(TZSVC_NEXT);
+                result     = (FRESULT)svcReadFile(TZSVC_NEXT, type);
             }
         }
     }
@@ -3577,6 +3611,10 @@ uint8_t svcReadFile(uint8_t mode)
         {
             // Read the required sector.
             result = f_read(&File, (char *)&svcControl.sector, TZSVC_SECTOR_SIZE, &readSize);
+
+            // Place number of bytes read into the record for the Z80 to know where EOF is.
+            //
+            svcControl.loadSize = readSize;
         }
 
         // Move onto next sector.
@@ -3586,6 +3624,7 @@ uint8_t svcReadFile(uint8_t mode)
     // Close the currently open file.
     else if(mode == TZSVC_CLOSE)
     {
+printf("Closing file\n");
         if(fileOpen)
             f_close(&File);
         fileOpen = 0;
@@ -3596,40 +3635,151 @@ uint8_t svcReadFile(uint8_t mode)
     return(result == FR_OK ? TZSVC_STATUS_OK : TZSVC_STATUS_FILE_ERROR);
 }
 
+// Method to create a file for writing and on subsequent calls write the data into that file.
+//
+uint8_t svcWriteFile(uint8_t mode, enum FILE_TYPE type)
+{
+    // Locals - dont use global as this is a seperate thread.
+    //
+    static FIL        File;
+    static uint8_t    fileOpen   = 0;         // Seperate flag as their is no public way to validate that File is open and valid, the method in FatFS is private for this functionality.
+    static uint8_t    fileSector = 0;         // Sector number being read.
+    FRESULT           result    = FR_OK;
+    unsigned int      readSize;
+    char              fqfn[FF_LFN_BUF + 13];  // 0:\12345678\<filename>
+
+    // Request to createopen? Validate that we dont already have an open file and the create the file.
+    if(mode == TZSVC_OPEN)
+    {
+printf("Open\n");
+        // Close if previously open.
+        if(fileOpen == 1)
+            svcWriteFile(TZSVC_CLOSE, type);
+
+        // Setup the defaults
+        //
+        svcSetDefaults(type);
+       
+        // Build the full filename from what has been provided.
+        sprintf(fqfn, "0:\\%s\\%s.%s", svcControl.directory, svcControl.filename, (type == MZF ? TZSVC_DEFAULT_MZF_EXT : type == CAS ? TZSVC_DEFAULT_CAS_EXT : TZSVC_DEFAULT_BAS_EXT));
+printf("FQFN:%s\n", fqfn);
+
+        // Create the file, fqfn has the FQFN of the correct file on the SD drive.
+        result = f_open(&File, fqfn, FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
+printf("FOPEN:%d\n", result);
+
+        // If the file was opened, set the flag to enable writing.
+        if(!result)
+            fileOpen = 1;
+    }
+  
+    // Write the next sector into the file.
+    else if(mode == TZSVC_NEXT && fileOpen == 1)
+    {
+        // If the Z80 is requesting a non sequential sector then seek to the correct location prior to the write.
+        //
+        if(fileSector != svcControl.fileSector)
+        {
+printf("Different sector:%d %d\n", fileSector, svcControl.fileSector);
+
+            result = f_lseek(&File, (svcControl.fileSector * TZSVC_SECTOR_SIZE));
+            fileSector = svcControl.fileSector;
+        }
+
+        // Proceed if no errors have occurred.
+        //
+        if(!result)
+        {
+            // Write the required sector.
+            result = f_write(&File, (char *)&svcControl.sector, svcControl.saveSize, &readSize);
+ printf("Write block:%d, %d, %d\n", svcControl.sector, svcControl.saveSize, readSize);
+ for(uint32_t idx=0; idx < svcControl.saveSize; idx++)
+ {
+     printf("%02x ", svcControl.sector[idx]);
+ }
+        }
+
+        // Move onto next sector.
+        fileSector++;
+    printf("Sector:%d\n", fileSector);
+    }
+   
+    // Close the currently open file.
+    else if(mode == TZSVC_CLOSE)
+    {
+printf("Close file\n");
+        if(fileOpen)
+            f_close(&File);
+        fileOpen = 0;
+    } else
+    {
+        printf("WARNING: svcWriteFile called with unknown mode:%d\n", mode);
+    }
+
+    // Return values: 0 - Success : maps to TZSVC_STATUS_OK
+    //                1 - Fail    : maps to TZSVC_STATUS_FILE_ERROR
+    return(result == FR_OK ? TZSVC_STATUS_OK : TZSVC_STATUS_FILE_ERROR);
+}
+
 // Method to load a file from SD directly into the tranZPUter memory.
 //
-uint8_t svcLoadFile(void)
+uint8_t svcLoadFile(enum FILE_TYPE type)
 {
     // Locals - dont use global as this is a seperate thread.
     //
     FRESULT           result    = FR_OK;
+    uint32_t          bytesRead;
     char              fqfn[FF_LFN_BUF + 13];  // 0:\12345678\<filename>
 
     // Setup the defaults
     //
-    svcSetDefaults();
+    svcSetDefaults(type);
 
-    // Find the file using the given file number or file name.
+    // MZF are handled with their own methods as it involves looking into the file to determine the name and details.
     //
-    if(svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo))
+    if(type == MZF)
     {
-        // Call method to load an MZF file.
-        result = loadMZFZ80Memory(fqfn, 0xFFFFFFFF, 0, 1);
-
-        // Store the filename, used in reload or immediate saves.
+        // Find the file using the given file number or file name.
         //
-        osControl.lastFile = (uint8_t *)realloc(osControl.lastFile, strlen(fqfn)+1);
-        if(osControl.lastFile == NULL)
+        if(svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo))
         {
-            printf("Out of memory saving last file name, dependent applications (ie. CP/M) wont work!\n");
-            result = FR_NOT_ENOUGH_CORE;
+            // Call method to load an MZF file.
+            result = loadMZFZ80Memory(fqfn, 0xFFFFFFFF, 0, 0, 1);
+
+            // Store the filename, used in reload or immediate saves.
+            //
+            osControl.lastFile = (uint8_t *)realloc(osControl.lastFile, strlen(fqfn)+1);
+            if(osControl.lastFile == NULL)
+            {
+                printf("Out of memory saving last file name, dependent applications (ie. CP/M) wont work!\n");
+                result = FR_NOT_ENOUGH_CORE;
+            } else
+            {
+                strcpy((char *)osControl.lastFile, fqfn);
+            }
         } else
         {
-            strcpy((char *)osControl.lastFile, fqfn);
+            result = FR_NO_FILE;
         }
     } else
+    // Cassette images are for NASCOM/Microsoft Basic. The files are in NASCOM format so the header needs to be skipped.
+    // BAS files are for human readable BASIC files.
+    if(type == CAS || type == BAS)
     {
-        result = FR_NO_FILE;
+        // Build the full filename from what has been provided.
+        sprintf(fqfn, "0:\\%s\\%s.%s", svcControl.directory, svcControl.filename, type == CAS ? TZSVC_DEFAULT_CAS_EXT : TZSVC_DEFAULT_BAS_EXT);
+
+        // For the tokenised cassette, skip the header and load directly into the memory location provided. The load size given is the maximum size of file
+        // and the loadZ80Memory method will only load upto the given size.
+        //
+        if((result=loadZ80Memory((const char *)fqfn, 0, svcControl.loadAddr, svcControl.loadSize, &bytesRead, 0, 1)) != FR_OK)
+        {
+            printf("Error: Failed to load CAS:%s into tranZPUter memory.\n", fqfn);
+        } else
+        {
+            // Return the size of load in the service control record.
+            svcControl.loadSize = (uint16_t) bytesRead;
+        }
     }
 
     // Return values: 0 - Success : maps to TZSVC_STATUS_OK
@@ -3639,7 +3789,7 @@ uint8_t svcLoadFile(void)
 
 // Method to save a file from tranZPUter memory directly into a file on the SD card.
 //
-uint8_t svcSaveFile(void)
+uint8_t svcSaveFile(enum FILE_TYPE type)
 {
     // Locals - dont use global as this is a seperate thread.
     //
@@ -3650,21 +3800,36 @@ uint8_t svcSaveFile(void)
 
     // Setup the defaults
     //
-    svcSetDefaults();
+    svcSetDefaults(type);
 
-    // Get the MZF header which contains the details of the file to save.
-    copyFromZ80((uint8_t *)&mzfHeader, MZ_CMT_ADDR, MZF_HEADER_SIZE, 0);
-
-    // Need to extract and convert the filename to create a file.
+    // MZF are handled with their own methods as it involves looking into the file to determine the name and details.
     //
-    convertSharpFilenameToAscii(asciiFileName, (char *)mzfHeader.fileName, MZF_FILENAME_LEN);
+    if(type == MZF)
+    {
+        // Get the MZF header which contains the details of the file to save.
+        copyFromZ80((uint8_t *)&mzfHeader, MZ_CMT_ADDR, MZF_HEADER_SIZE, 0);
 
-    // Build filename.
-    //
-    sprintf(fqfn, "0:\\%s\\%s.%s", svcControl.directory, asciiFileName, TZSVC_DEFAULT_EXT);
+        // Need to extract and convert the filename to create a file.
+        //
+        convertSharpFilenameToAscii(asciiFileName, (char *)mzfHeader.fileName, MZF_FILENAME_LEN);
 
-    // Call the main method to save memory passing in the correct MZF details and header.
-    result = saveZ80Memory(fqfn, (mzfHeader.loadAddr < MZ_CMT_DEFAULT_LOAD_ADDR-3 ? MZ_CMT_DEFAULT_LOAD_ADDR : mzfHeader.loadAddr), mzfHeader.fileSize, &mzfHeader, 0);
+        // Build filename.
+        //
+        sprintf(fqfn, "0:\\%s\\%s.%s", svcControl.directory, asciiFileName, TZSVC_DEFAULT_MZF_EXT);
+
+        // Call the main method to save memory passing in the correct MZF details and header.
+        result = saveZ80Memory(fqfn, (mzfHeader.loadAddr < MZ_CMT_DEFAULT_LOAD_ADDR-3 ? MZ_CMT_DEFAULT_LOAD_ADDR : mzfHeader.loadAddr), mzfHeader.fileSize, &mzfHeader, 0);
+    } else
+    // Cassette images are for NASCOM/Microsoft Basic. The files are in NASCOM format so the header needs to be skipped.
+    // BAS files are for human readable BASIC files.
+    if(type == CAS || type == BAS)
+    {
+        // Build the full filename from what has been provided.
+        sprintf(fqfn, "0:\\%s\\%s.%s", svcControl.directory, svcControl.filename, type == CAS ? TZSVC_DEFAULT_CAS_EXT : TZSVC_DEFAULT_BAS_EXT);
+      
+        // Call the main method to save memory passing in the correct details from the service record.
+        result = saveZ80Memory(fqfn, svcControl.saveAddr, svcControl.saveSize, NULL, 0);
+    }
 
     // Return values: 0 - Success : maps to TZSVC_STATUS_OK
     //                1 - Fail    : maps to TZSVC_STATUS_FILE_ERROR
@@ -3674,7 +3839,7 @@ uint8_t svcSaveFile(void)
 
 // Method to erase a file on the SD card.
 //
-uint8_t svcEraseFile(void)
+uint8_t svcEraseFile(enum FILE_TYPE type)
 {
     // Locals - dont use global as this is a seperate thread.
     //
@@ -3683,17 +3848,26 @@ uint8_t svcEraseFile(void)
 
     // Setup the defaults
     //
-    svcSetDefaults();
+    svcSetDefaults(MZF);
 
-    // Find the file using the given file number or file name.
+    // MZF are handled with their own methods as it involves looking into the file to determine the name and details.
     //
-    if(svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo))
+    if(type == MZF)
     {
-        // Call method to load an MZF file.
-        result = f_unlink(fqfn);
+        // Find the file using the given file number or file name.
+        //
+        if(svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo))
+        {
+            // Call method to load an MZF file.
+            result = f_unlink(fqfn);
+        } else
+        {
+            result = FR_NO_FILE;
+        }
     } else
+    // Cassette images are for NASCOM/Microsoft Basic. The files are in NASCOM format so the header needs to be skipped.
+    if(type == CAS)
     {
-        result = FR_NO_FILE;
     }
 
     // Return values: 0 - Success : maps to TZSVC_STATUS_OK
@@ -3887,9 +4061,13 @@ uint32_t getServiceAddr(void)
     uint32_t addr       = TZSVC_CMD_STRUCT_ADDR_TZFS;
     uint8_t  memoryMode = readCtrlLatch();
 
-    // Currently only CPM has a different service record address.
+    // If in CPM mode then set the service address accordingly.
     if(memoryMode == TZMM_CPM || memoryMode == TZMM_CPM2)
         addr = TZSVC_CMD_STRUCT_ADDR_CPM;
+  
+    // If in MZ700 mode then set the service address accordingly.
+    if(memoryMode == TZMM_MZ700_0 || memoryMode == TZMM_MZ700_2 || memoryMode == TZMM_MZ700_3 || memoryMode == TZMM_MZ700_4)
+        addr = TZSVC_CMD_STRUCT_ADDR_MZ700;
 
     return(addr);
 }
@@ -3912,7 +4090,7 @@ void processServiceRequest(void)
     copyFromZ80((uint8_t *)&svcControl, z80Control.svcControlAddr, TZSVC_CMD_SIZE, 0);
 
     // Need to get the remainder of the data for the write operations.
-    if(svcControl.cmd == TZSVC_CMD_WRITESDDRIVE)
+    if(svcControl.cmd == TZSVC_CMD_WRITEFILE || svcControl.cmd == TZSVC_CMD_NEXTWRITEFILE || svcControl.cmd == TZSVC_CMD_WRITESDDRIVE)
     {
         copyFromZ80((uint8_t *)&svcControl.sector, z80Control.svcControlAddr+TZSVC_CMD_SIZE, TZSVC_SECTOR_SIZE, 0);
     }
@@ -3940,18 +4118,29 @@ void processServiceRequest(void)
 
         // Open a file stream and return the first block.
         case TZSVC_CMD_READFILE:
-            status=svcReadDir(TZSVC_OPEN);
+            status=svcReadFile(TZSVC_OPEN, svcControl.fileType);
             break;
 
         // Read the next block in the file stream.
-        case TZSVC_CMD_MEXTREADFILE:
-            status=svcReadFile(TZSVC_NEXT);
+        case TZSVC_CMD_NEXTREADFILE:
+            status=svcReadFile(TZSVC_NEXT, svcControl.fileType);
+            break;
+
+        // Create a file for data write.
+        case TZSVC_CMD_WRITEFILE:
+            status=svcWriteFile(TZSVC_OPEN, svcControl.fileType);
+            break;
+              
+        // Write a block of data to an open file.
+        case TZSVC_CMD_NEXTWRITEFILE:
+            status=svcWriteFile(TZSVC_NEXT, svcControl.fileType);
             break;
 
         // Close an open dir/file.
         case TZSVC_CMD_CLOSE:
             svcReadDir(TZSVC_CLOSE);
-            svcReadFile(TZSVC_CLOSE);
+            svcReadFile(TZSVC_CLOSE, svcControl.fileType);
+            svcWriteFile(TZSVC_CLOSE, svcControl.fileType);
            
             // Only need to copy the command section back to the Z80 for a close operation.
             //
@@ -3960,18 +4149,18 @@ void processServiceRequest(void)
 
         // Load a file directly into target memory.
         case TZSVC_CMD_LOADFILE:
-            status=svcLoadFile();
+            status=svcLoadFile(svcControl.fileType);
             break;
         
         // Save a file directly from target memory.
         case TZSVC_CMD_SAVEFILE:
-            status=svcSaveFile();
+            status=svcSaveFile(svcControl.fileType);
             refreshCacheDir = 1;
             break;
           
         // Erase a file from the SD Card.
         case TZSVC_CMD_ERASEFILE:
-            status=svcEraseFile();
+            status=svcEraseFile(svcControl.fileType);
             refreshCacheDir = 1;
             break;
 
@@ -3982,7 +4171,7 @@ void processServiceRequest(void)
 
         // Load the 40 column version of the SA1510 bios into memory.
         case TZSVC_CMD_LOAD40BIOS:
-            if((status=loadZ80Memory((const char *)MZ_ROM_SA1510_40C, 0, MZ_MROM_ADDR, 0, 0, 1)) != FR_OK)
+            if((status=loadZ80Memory((const char *)MZ_ROM_SA1510_40C, 0, MZ_MROM_ADDR, 0, 0, 0, 1)) != FR_OK)
             {
                 printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_SA1510_40C);
             }
@@ -3999,7 +4188,7 @@ void processServiceRequest(void)
           
         // Load the 80 column version of the SA1510 bios into memory.
         case TZSVC_CMD_LOAD80BIOS:
-            if((status=loadZ80Memory((const char *)MZ_ROM_SA1510_80C, 0, MZ_MROM_ADDR, 0, 0, 1)) != FR_OK)
+            if((status=loadZ80Memory((const char *)MZ_ROM_SA1510_80C, 0, MZ_MROM_ADDR, 0, 0, 0, 1)) != FR_OK)
             {
                 printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_SA1510_80C);
             }
@@ -4016,7 +4205,7 @@ void processServiceRequest(void)
            
         // Load the 40 column MZ700 1Z-013A bios into memory.
         case TZSVC_CMD_LOAD700BIOS40:
-            if((status=loadZ80Memory((const char *)MZ_ROM_1Z_013A_40C, 0, MZ_MROM_ADDR, 0, 0, 1)) != FR_OK)
+            if((status=loadZ80Memory((const char *)MZ_ROM_1Z_013A_40C, 0, MZ_MROM_ADDR, 0, 0, 0, 1)) != FR_OK)
             {
                 printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_1Z_013A_40C);
             }
@@ -4033,7 +4222,7 @@ void processServiceRequest(void)
 
         // Load the 80 column MZ700 1Z-013A bios into memory.
         case TZSVC_CMD_LOAD700BIOS80:
-            if((status=loadZ80Memory((const char *)MZ_ROM_1Z_013A_80C, 0, MZ_MROM_ADDR, 0, 0, 1)) != FR_OK)
+            if((status=loadZ80Memory((const char *)MZ_ROM_1Z_013A_80C, 0, MZ_MROM_ADDR, 0, 0, 0, 1)) != FR_OK)
             {
                 printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_1Z_013A_80C);
             }
@@ -4050,7 +4239,7 @@ void processServiceRequest(void)
            
         // Load the MZ-80B IPL ROM into memory.
         case TZSVC_CMD_LOAD80BIPL:
-            if((status=loadZ80Memory((const char *)MZ_ROM_MZ80B_IPL, 0, MZ_MROM_ADDR, 0, 0, 1)) != FR_OK)
+            if((status=loadZ80Memory((const char *)MZ_ROM_MZ80B_IPL, 0, MZ_MROM_ADDR, 0, 0, 0, 1)) != FR_OK)
             {
                 printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_MZ80B_IPL);
             }
@@ -4067,7 +4256,7 @@ void processServiceRequest(void)
 
         // Load the CPM CCP+BDOS from file into the address given.
         case TZSVC_CMD_LOADBDOS:
-            if((status=loadZ80Memory((const char *)osControl.lastFile, MZF_HEADER_SIZE, svcControl.loadAddr+0x40000, svcControl.loadSize, 0, 1)) != FR_OK)
+            if((status=loadZ80Memory((const char *)osControl.lastFile, MZF_HEADER_SIZE, svcControl.loadAddr+0x40000, svcControl.loadSize, 0, 0, 1)) != FR_OK)
             {
                 printf("Error: Failed to load BDOS:%s into tranZPUter memory.\n", (char *)osControl.lastFile);
             }
@@ -4111,6 +4300,7 @@ void processServiceRequest(void)
             break;
 
         default:
+            printf("WARNING: Unrecognised command:%02x\n", svcControl.cmd);
             break;
     }
 

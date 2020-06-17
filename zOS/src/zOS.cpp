@@ -344,7 +344,7 @@ int cmdProcessor(void)
         loadTranZPUterDefaultROMS();
 
         // Cache initial directory.
-        svcCacheDir(TZSVC_DEFAULT_DIR, 1);
+        svcCacheDir(TZSVC_DEFAULT_MZF_DIR, 1);
 
         // For the tranZPUter, once we know that an SD card is available, launch seperate thread to handle hardware and service functionality.
         // No SD card = no tranZPUter functionality.

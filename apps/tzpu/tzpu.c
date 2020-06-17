@@ -127,10 +127,10 @@ uint32_t app(uint32_t param1, uint32_t param2)
    // setupZ80Pins(1, G->millis);
 
     printf("Loading Monitor ROM\n");
-    loadZ80Memory("SA1510.rom", 0, 0x00000000, 0, 0, 1);
+    loadZ80Memory("SA1510.rom", 0, 0x00000000, 0, 0, 0, 1);
 
     printf("Loading Floppy ROM\n");
-    loadZ80Memory("1Z-013A.rom", 0, 0x0000F000, 0, 0, 1);
+    loadZ80Memory("1Z-013A.rom", 0, 0x0000F000, 0, 0, 0, 1);
 
     printf("Testing Display\n");
     testBus();

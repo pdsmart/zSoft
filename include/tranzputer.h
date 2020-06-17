@@ -120,6 +120,7 @@
 //
 #define TZSVC_CMD_STRUCT_ADDR_TZFS   0x0ED80                             // Address of the command structure within TZFS - exists in 64K Block 0.
 #define TZSVC_CMD_STRUCT_ADDR_CPM    0x4F560                             // Address of the command structure within CP/M - exists in 64K Block 4.
+#define TZSVC_CMD_STRUCT_ADDR_MZ700  0x6FD80                             // Address of the command structure within MZ700 compatible programs - exists in 64K Block 6.
 #define TZSVC_CMD_STRUCT_SIZE        0x280                               // Size of the inter z80/K64 service command memory.
 #define TZSVC_CMD_SIZE               (sizeof(t_svcControl)-TZSVC_SECTOR_SIZE)
 #define TZVC_MAX_CMPCT_DIRENT_BLOCK  TZSVC_SECTOR_SIZE/TZSVC_CMPHDR_SIZE // Maximum number of directory entries per sector.
@@ -130,12 +131,14 @@
 #define TZSVC_CMD_READDIR            0x01                                // Service command to open a directory and return the first block of entries.
 #define TZSVC_CMD_NEXTDIR            0x02                                // Service command to return the next block of an open directory.
 #define TZSVC_CMD_READFILE           0x03                                // Service command to open a file and return the first block.
-#define TZSVC_CMD_MEXTREADFILE       0x04                                // Service command to return the next block of an open file.
-#define TZSVC_CMD_CLOSE              0x05                                // Service command to close any open file or directory.
-#define TZSVC_CMD_LOADFILE           0x06                                // Service command to load a file directly into tranZPUter memory.
-#define TZSVC_CMD_SAVEFILE           0x07                                // Service command to save a file directly from tranZPUter memory.
-#define TZSVC_CMD_ERASEFILE          0x08                                // Service command to erase a file on the SD card.
-#define TZSVC_CMD_CHANGEDIR          0x09                                // Service command to change active directory on the SD card.
+#define TZSVC_CMD_NEXTREADFILE       0x04                                // Service command to return the next block of an open file.
+#define TZSVC_CMD_WRITEFILE          0x05                                // Service command to create a file and save the first block.
+#define TZSVC_CMD_NEXTWRITEFILE      0x06                                // Service command to write the next block to the open file.
+#define TZSVC_CMD_CLOSE              0x07                                // Service command to close any open file or directory.
+#define TZSVC_CMD_LOADFILE           0x08                                // Service command to load a file directly into tranZPUter memory.
+#define TZSVC_CMD_SAVEFILE           0x09                                // Service command to save a file directly from tranZPUter memory.
+#define TZSVC_CMD_ERASEFILE          0x0a                                // Service command to erase a file on the SD card.
+#define TZSVC_CMD_CHANGEDIR          0x0b                                // Service command to change active directory on the SD card.
 #define TZSVC_CMD_LOAD40BIOS         0x20                                // Service command requesting that the 40 column version of the SA1510 BIOS is loaded.
 #define TZSVC_CMD_LOAD80BIOS         0x21                                // Service command requesting that the 80 column version of the SA1510 BIOS is loaded.
 #define TZSVC_CMD_LOAD700BIOS40      0x22                                // Service command requesting that the MZ700 1Z-013A 40 column BIOS is loaded.
@@ -148,8 +151,12 @@
 #define TZSVC_CMD_CPU_BASEFREQ       0x40                                // Service command to switch to the mainboard frequency.
 #define TZSVC_CMD_CPU_ALTFREQ        0x41                                // Service command to switch to the alternate frequency provided by the K64F.
 #define TZSVC_CMD_CPU_CHGFREQ        0x42                                // Service command to set the alternate frequency in hertz.
-#define TZSVC_DEFAULT_DIR            "MZF"                               // Default directory where MZF files are stored.
-#define TZSVC_DEFAULT_EXT            "MZF"                               // Default file extension for MZF files.
+#define TZSVC_DEFAULT_MZF_DIR        "MZF"                               // Default directory where MZF files are stored.
+#define TZSVC_DEFAULT_CAS_DIR        "CAS"                               // Default directory where BASIC CASsette files are stored.
+#define TZSVC_DEFAULT_BAS_DIR        "BAS"                               // Default directory where BASIC text files are stored.
+#define TZSVC_DEFAULT_MZF_EXT        "MZF"                               // Default file extension for MZF files.
+#define TZSVC_DEFAULT_CAS_EXT        "CAS"                               // Default file extension for CASsette files.
+#define TZSVC_DEFAULT_BAS_EXT        "BAS"                               // Default file extension for BASic script files stored in readable text.
 #define TZSVC_DEFAULT_WILDCARD       "*"                                 // Default wildcard file matching.
 #define TZSVC_RESULT_OFFSET          0x01                                // Offset into structure of the result byte.
 #define TZSVC_DIRNAME_SIZE           20                                  // Limit is size of FAT32 directory name.
@@ -175,6 +182,11 @@
 #define MZF_EXECADDR                 0x16                                // Exec address of program.
 #define MZF_COMMENT                  0x18                                // Comment, used for details of the file or startup code.
 #define MZF_COMMENT_LEN              104                                 // Length of the comment field.
+
+// Constants for other handled file formats.
+//
+#define CAS_HEADER_SIZE              256                                 // Size of the CASsette header.
+
 
 // Pin Constants - Pins assigned at the hardware level to specific tasks/signals.
 //
@@ -419,6 +431,14 @@ enum MACHINE_MODE {
     MZ80B                            = 2
 };
 
+// Types of file which have handlers and can be processed.
+//
+enum FILE_TYPE {
+    MZF                              = 0,
+    CAS                              = 1,
+    BAS                              = 2
+};
+
 // Structure to define a Sharp MZ80A MZF directory structure. This header appears at the beginning of every Sharp MZ80A tape (and more recently archived/emulator) images.
 //
 typedef struct __attribute__((__packed__)) {
@@ -552,11 +572,16 @@ typedef struct __attribute__((__packed__)) {
     uint16_t                         trackNo;                            // For virtual drives with track and sector this is the track number
     uint16_t                         sectorNo;                           // For virtual drives with tracl and sector this is the sector number.
     uint8_t                          fileNo;                             // File number of a file within the last directory listing to open/update.
+    uint8_t                          fileType;                           // Type of file being processed.
     union {
         uint16_t                     loadAddr;                           // Load address for ROM/File images which need to be dynamic.
+        uint16_t                     saveAddr;                           // Save address for ROM/File images which need to be dynamic.
         uint16_t                     cpuFreq;                            // CPU Frequency in KHz - used for setting of the alternate CPU clock frequency.
     };
-    uint16_t                         loadSize;                           // Size for ROM/File to be loaded.
+    union {
+        uint16_t                     loadSize;                           // Size for ROM/File to be loaded.
+        uint16_t                     saveSize;                           // Size for ROM/File to be saved.
+    };
     uint8_t                          directory[TZSVC_DIRNAME_SIZE];      // Directory in which to look for a file. If no directory is given default to MZF.
     uint8_t                          filename[TZSVC_FILENAME_SIZE];      // File to open or create.
     uint8_t                          wildcard[TZSVC_WILDCARD_SIZE];      // A basic wildcard pattern match filter to be applied to a directory search.
@@ -627,9 +652,9 @@ FRESULT       loadVideoFrameBuffer(char *, enum VIDEO_FRAMES);
 FRESULT       saveVideoFrameBuffer(char *, enum VIDEO_FRAMES);   
 char          *getVideoFrame(enum VIDEO_FRAMES);
 char          *getAttributeFrame(enum VIDEO_FRAMES);
-FRESULT       loadZ80Memory(const char *, uint32_t, uint32_t, uint32_t, uint8_t, uint8_t);
+FRESULT       loadZ80Memory(const char *, uint32_t, uint32_t, uint32_t, uint32_t *, uint8_t, uint8_t);
 FRESULT       saveZ80Memory(const char *, uint32_t, uint32_t, t_svcDirEnt *, uint8_t);
-FRESULT       loadMZFZ80Memory(const char *, uint32_t, uint8_t, uint8_t);
+FRESULT       loadMZFZ80Memory(const char *, uint32_t, uint32_t *, uint8_t, uint8_t);
 
 // Getter/Setter methods!
 uint8_t       isZ80Reset(void);
@@ -640,15 +665,17 @@ void          convertSharpFilenameToAscii(char *, char *, uint8_t);
 
 // tranZPUter OS i/f methods.
 uint8_t       setZ80SvcStatus(uint8_t);
-void          svcSetDefaults(void);
+void          svcSetDefaults(enum FILE_TYPE);
 uint8_t       svcReadDir(uint8_t);
 uint8_t       svcFindFile(char *, char *, uint8_t);
 uint8_t       svcReadDirCache(uint8_t);
 uint8_t       svcFindFileCache(char *, char *, uint8_t);
 uint8_t       svcCacheDir(const char *, uint8_t);
-uint8_t       svcReadFile(uint8_t);
-uint8_t       svcLoadFile(void);
-uint8_t       svcEraseFile(void);
+uint8_t       svcReadFile(uint8_t, enum FILE_TYPE);
+uint8_t       svcWriteFile(uint8_t, enum FILE_TYPE);
+uint8_t       svcLoadFile(enum FILE_TYPE);
+uint8_t       svcSaveFile(enum FILE_TYPE);
+uint8_t       svcEraseFile(enum FILE_TYPE);
 uint8_t       svcAddCPMDrive(void);
 uint8_t       svcReadCPMDrive(void);
 uint8_t       svcWriteCPMDrive(void);

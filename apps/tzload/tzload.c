@@ -343,10 +343,10 @@ uint32_t app(uint32_t param1, uint32_t param2)
             //
             if(mzf_flag == 0)
             {
-                loadZ80Memory(uploadFile, 0, memAddr, 0, mainboard_flag, (idx == uploadCnt-1) ? 1 : 0);
+                loadZ80Memory(uploadFile, 0, memAddr, 0, 0, mainboard_flag, (idx == uploadCnt-1) ? 1 : 0);
             } else
             {
-                loadMZFZ80Memory(uploadFile, memAddr,    mainboard_flag, (idx == uploadCnt-1) ? 1 : 0);
+                loadMZFZ80Memory(uploadFile, memAddr,    0, mainboard_flag, (idx == uploadCnt-1) ? 1 : 0);
             }
         }
     }
@@ -385,10 +385,10 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
             if(mzf_flag == 0)
             {
-                loadZ80Memory(uploadFile, 0, memAddr, 0, mainboard_flag, 1);
+                loadZ80Memory(uploadFile, 0, memAddr, 0, 0, mainboard_flag, 1);
             } else
             {
-                loadMZFZ80Memory(uploadFile, memAddr,    mainboard_flag, 1);
+                loadMZFZ80Memory(uploadFile, memAddr,    0, mainboard_flag, 1);
             }
         }
     }
