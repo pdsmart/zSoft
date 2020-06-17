@@ -194,7 +194,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
         usage();
         return(0);
     }
-    if(cpuFreq == 2000000)
+    if(cpuFreq == 0)
     {
         printf("Please specify the CPU frequency with the --freq flag.\n");
         return(10);

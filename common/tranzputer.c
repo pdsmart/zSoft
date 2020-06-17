@@ -4080,6 +4080,7 @@ void processServiceRequest(void)
     //
     uint8_t    refreshCacheDir = 0;
     uint8_t    status          = 0;
+    uint32_t   actualFreq;
     uint32_t   copySize        = TZSVC_CMD_STRUCT_SIZE;
 
     // Update the service control record address according to memory mode.
@@ -4296,7 +4297,8 @@ void processServiceRequest(void)
 
         // Set the alternate frequency. The TZFS command provides the frequency in KHz so multiply up to Hertz before changing.
         case TZSVC_CMD_CPU_CHGFREQ:
-            setZ80CPUFrequency(svcControl.cpuFreq * 1000, 1);
+            actualFreq = setZ80CPUFrequency(svcControl.cpuFreq * 1000, 1);
+            svcControl.cpuFreq = (uint16_t)(actualFreq / 1000);
             break;
 
         default:
