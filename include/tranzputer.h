@@ -162,6 +162,8 @@
 #define TZSVC_DIRNAME_SIZE           20                                  // Limit is size of FAT32 directory name.
 #define TZSVC_WILDCARD_SIZE          20                                  // Very basic pattern matching so small size.
 #define TZSVC_FILENAME_SIZE          MZF_FILENAME_LEN                    // Length of a Sharp MZF filename.
+#define TZSVC_LONG_FNAME_SIZE        (sizeof(t_svcCmpDirEnt) - 1)        // Length of a standard filename to fit inside a directory entry.
+#define TZSVC_LONG_FMT_FNAME_SIZE    20                                  // Length of a standard filename formatted in a directory listing.
 #define TZSVC_SECTOR_SIZE            512                                 // SD Card sector buffer size.
 #define TZSVC_STATUS_OK              0x00                                // Flag to indicate the K64F processing completed successfully.
 #define TZSVC_STATUS_FILE_ERROR      0x01                                // Flag to indicate a file or directory error.
@@ -434,9 +436,11 @@ enum MACHINE_MODE {
 // Types of file which have handlers and can be processed.
 //
 enum FILE_TYPE {
-    MZF                              = 0,
-    CAS                              = 1,
-    BAS                              = 2
+    MZF                              = 0,                                // Sharp MZF tape image files.
+    CAS                              = 1,                                // BASIC CASsette image files.
+    BAS                              = 2,                                // BASic ASCII text script files.
+    ALL                              = 10,                               // All files to be considered.
+    ALLFMT                           = 11                                // Special case for directory listings, all files but truncated and formatted.
 };
 
 // Structure to define a Sharp MZ80A MZF directory structure. This header appears at the beginning of every Sharp MZ80A tape (and more recently archived/emulator) images.
@@ -489,8 +493,12 @@ typedef struct {
 typedef struct __attribute__((__packed__)) {
     uint8_t                          valid;                              // Is this mapping valid?
     uint8_t                          entries;                            // Number of entries in cache.
+    uint8_t                          type;                               // Type of file being cached.
     char                             directory[TZSVC_DIRNAME_SIZE];      // Directory this mapping is associated with.
-    t_sharpToSDMap                   *file[TZSVC_MAX_DIR_ENTRIES];       // File mapping of SD file to its Sharp MZ80A name.
+    union {
+        t_sharpToSDMap               *mzfFile[TZSVC_MAX_DIR_ENTRIES];    // File mapping of SD file to its Sharp MZ80A name.
+        uint8_t                      *sdFileName[TZSVC_MAX_DIR_ENTRIES]; // No mapping for SD filenames, just the file name.
+    };
 } t_dirMap;
 
 
@@ -666,11 +674,11 @@ void          convertSharpFilenameToAscii(char *, char *, uint8_t);
 // tranZPUter OS i/f methods.
 uint8_t       setZ80SvcStatus(uint8_t);
 void          svcSetDefaults(enum FILE_TYPE);
-uint8_t       svcReadDir(uint8_t);
-uint8_t       svcFindFile(char *, char *, uint8_t);
-uint8_t       svcReadDirCache(uint8_t);
-uint8_t       svcFindFileCache(char *, char *, uint8_t);
-uint8_t       svcCacheDir(const char *, uint8_t);
+uint8_t       svcReadDir(uint8_t, enum FILE_TYPE);
+uint8_t       svcFindFile(char *, char *, uint8_t, enum FILE_TYPE);
+uint8_t       svcReadDirCache(uint8_t, enum FILE_TYPE);
+uint8_t       svcFindFileCache(char *, char *, uint8_t, enum FILE_TYPE);
+uint8_t       svcCacheDir(const char *, enum FILE_TYPE, uint8_t);
 uint8_t       svcReadFile(uint8_t, enum FILE_TYPE);
 uint8_t       svcWriteFile(uint8_t, enum FILE_TYPE);
 uint8_t       svcLoadFile(enum FILE_TYPE);

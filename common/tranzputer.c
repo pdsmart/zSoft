@@ -2904,13 +2904,29 @@ void svcSetDefaults(enum FILE_TYPE type)
     switch(type)
     {
         case CAS:
-            strcpy((char *)svcControl.directory, TZSVC_DEFAULT_CAS_DIR);
-            strcpy((char *)svcControl.wildcard, TZSVC_DEFAULT_WILDCARD);
+            // If there is no directory path, use the inbuilt default.
+            if(svcControl.directory[0] == '\0')
+            {
+                strcpy((char *)svcControl.directory, TZSVC_DEFAULT_CAS_DIR);
+            }
+            // If there is no wildcard matching, use default.
+            if(svcControl.wildcard[0] == '\0')
+            {
+                strcpy((char *)svcControl.wildcard, TZSVC_DEFAULT_WILDCARD);
+            }
             break;
 
         case BAS:
-            strcpy((char *)svcControl.directory, TZSVC_DEFAULT_BAS_DIR);
-            strcpy((char *)svcControl.wildcard, TZSVC_DEFAULT_WILDCARD);
+            // If there is no directory path, use the inbuilt default.
+            if(svcControl.directory[0] == '\0')
+            {
+                strcpy((char *)svcControl.directory, TZSVC_DEFAULT_BAS_DIR);
+            }
+            // If there is no wildcard matching, use default.
+            if(svcControl.wildcard[0] == '\0')
+            {
+                strcpy((char *)svcControl.wildcard, TZSVC_DEFAULT_WILDCARD);
+            }
             break;
 
         case MZF:
@@ -2949,7 +2965,7 @@ static uint32_t getNextChar(const char** ptr)
 // Match an MZF name with a given wildcard.
 // This method originated from the private method in FatFS but adapted to work with MZF filename matching.
 // Input:  wildcard    - Pattern to match
-//         fileName    - MZF fileName, either CR or NUL terminated or MZF_FILENAME_LEN chars long.
+//         fileName    - MZF fileName, either CR or NUL terminated or TZSVC_FILENAME_SIZE chars long.
 //         skip        - Number of characters to skip due to ?'s
 //         infinite    - Infinite search as * specified.
 // Output: 0           - No match
@@ -2995,7 +3011,7 @@ static int matchFileWithWildcard(const char *pattern, const char *fileName, int 
             // End of filename, Sharp filenames can be terminated with 0x00, CR or size. If we get to the end of the name then it is 
             // a match.
             //
-            if((np - fileName) == MZF_FILENAME_LEN) return 1;
+            if((np - fileName) == TZSVC_FILENAME_SIZE) return 1;
 
             // Get a pattern char 
             pc = getNextChar(&pp);
@@ -3017,7 +3033,7 @@ static int matchFileWithWildcard(const char *pattern, const char *fileName, int 
         getNextChar(&fileName);
 
     /* Retry until end of name if infinite search is specified */
-    } while (infinite && nc != 0x00 && nc != 0x0d && (np - fileName) < MZF_FILENAME_LEN);
+    } while (infinite && nc != 0x00 && nc != 0x0d && (np - fileName) < TZSVC_FILENAME_SIZE);
 
     return 0;
 }
@@ -3030,7 +3046,7 @@ static int matchFileWithWildcard(const char *pattern, const char *fileName, int 
 // 
 // The parameters are passed in the svcControl block.
 //
-uint8_t svcReadDir(uint8_t mode)
+uint8_t svcReadDir(uint8_t mode, enum FILE_TYPE type)
 {
     // Locals - dont use global as this is a seperate thread.
     //
@@ -3049,11 +3065,11 @@ uint8_t svcReadDir(uint8_t mode)
     {
         // Close if previously open.
         if(dirOpen == 1)
-            svcReadDir(TZSVC_CLOSE);
+            svcReadDir(TZSVC_CLOSE, type);
 
         // Setup the defaults
         //
-        svcSetDefaults(MZF);
+        svcSetDefaults(type);
 
         // Open the directory.
         result = f_opendir(&dirFp, (char *)&svcControl.directory);
@@ -3063,7 +3079,7 @@ uint8_t svcReadDir(uint8_t mode)
             //
             dirOpen   = 1; 
             dirSector = 0;
-            result    = (FRESULT)svcReadDir(TZSVC_NEXT);
+            result    = (FRESULT)svcReadDir(TZSVC_NEXT, type);
         }
     }
 
@@ -3078,14 +3094,14 @@ uint8_t svcReadDir(uint8_t mode)
             //
             if(dirSector < svcControl.dirSector)
             {
-                result=svcReadDir(TZSVC_OPEN);
+                result=svcReadDir(TZSVC_OPEN, type);
             }
             if(!result)
             {
                 // Now get the sector by advancement.
                 for(uint8_t idx=dirSector; idx < svcControl.dirSector && result == FR_OK; idx++)
                 {
-                    result=svcReadDir(TZSVC_NEXT);
+                    result=svcReadDir(TZSVC_NEXT, type);
                 }
             }
         }
@@ -3109,33 +3125,92 @@ uint8_t svcReadDir(uint8_t mode)
                 // If an error occurs or we are at the end of the directory listing close the sector and pass back.
                 if(result != FR_OK || fno.fname[0] == 0) break;
             
-                // Check to see if this is a valid MZF file.
+                // Check to see if this is a valid file for the given type.
                 const char *ext = strrchr(fno.fname, '.');
-                if(!ext || strcasecmp(++ext, TZSVC_DEFAULT_MZF_EXT) != 0)
+                if(type == MZF && (!ext || strcasecmp(++ext, TZSVC_DEFAULT_MZF_EXT) != 0))
+                    continue;
+                if(type == BAS && (!ext || strcasecmp(++ext, TZSVC_DEFAULT_BAS_EXT) != 0))
+                    continue;
+                if(type == CAS && (!ext || strcasecmp(++ext, TZSVC_DEFAULT_CAS_EXT) != 0))
+                    continue;
+                if(type == ALL && !ext)
                     continue;
     
-                // Build filename.
+                // Sharp files need special handling, the file needs te opened and the Sharp filename read out, this is then returned as the filename.
                 //
-                sprintf(fqfn, "0:\\%s\\%s", svcControl.directory, fno.fname);
-    
-                // Open the file so we can read out the MZF header which is the information TZFS/CPM needs.
-                //
-                result = f_open(&File, fqfn, FA_OPEN_EXISTING | FA_READ);
-    
-                // If no error occurred, read in the header.
-                //
-                if(!result) result = f_read(&File, (char *)&dirBlock->dirEnt[idx], TZSVC_CMPHDR_SIZE, &readSize);
-    
-                // No errors, read the header.
-                if(!result && readSize == TZSVC_CMPHDR_SIZE)
+                if(type == MZF)
                 {
-                    // Close the file, no longer needed.
-                    f_close(&File);
-    
+                    // Build filename.
+                    //
+                    sprintf(fqfn, "0:\\%s\\%s", svcControl.directory, fno.fname);
+
+                    // Open the file so we can read out the MZF header which is the information TZFS/CPM needs.
+                    //
+                    result = f_open(&File, fqfn, FA_OPEN_EXISTING | FA_READ);
+        
+                    // If no error occurred, read in the header.
+                    //
+                    if(!result) result = f_read(&File, (char *)&dirBlock->dirEnt[idx], TZSVC_CMPHDR_SIZE, &readSize);
+        
+                    // No errors, read the header.
+                    if(!result && readSize == TZSVC_CMPHDR_SIZE)
+                    {
+                        // Close the file, no longer needed.
+                        f_close(&File);
+        
+                        // Check to see if the file matches any given wildcard.
+                        //
+                        if(matchFileWithWildcard((char *)&svcControl.wildcard, (char *)&dirBlock->dirEnt[idx].fileName, 0, 0))
+                        {
+                            // Valid so find next entry.
+                            idx++;
+                        } else
+                        {
+                            // Scrub the entry, not valid.
+                            memset((char *)&dirBlock->dirEnt[idx], 0x00, TZSVC_CMPHDR_SIZE);
+                        }
+                    }
+                } else
+                {
                     // Check to see if the file matches any given wildcard.
                     //
-                    if(matchFileWithWildcard((char *)&svcControl.wildcard, (char *)&dirBlock->dirEnt[idx].fileName, 0, 0))
+                    if(matchFileWithWildcard((char *)&svcControl.wildcard, fno.fname, 0, 0))
                     {
+                        // If the type is ALL FORMATTED then output a truncated directory entry formatted for display.
+                        //
+                        if(type == ALLFMT)
+                        {
+                            // Get the address of the file extension.
+                            char *ext = strrchr(fno.fname, '.');
+                          
+                            // Although not as efficient, maintain the use of the Sharp MZF header for normal directory filenames just use the extra space for increased filename size.
+                            if(ext)
+                            {
+                                // Although not as efficient, maintain the use of the Sharp MZF header for normal directory filenames just use the extra space for increased filename size.
+                                if((ext - fno.fname) > TZSVC_LONG_FMT_FNAME_SIZE-5)
+                                {
+                                    fno.fname[TZSVC_LONG_FMT_FNAME_SIZE-6] = '*';       // Place a '*' to show the filename was truncated.
+                                    fno.fname[TZSVC_LONG_FMT_FNAME_SIZE-5] = 0x00;
+                                }
+                                *ext = 0x00;
+                                ext++;
+
+                                sprintf((char *)&dirBlock->dirEnt[idx].fileName, "%-*s.%3s", TZSVC_LONG_FMT_FNAME_SIZE-5, fno.fname, ext);
+                            } else
+                            {
+                                fno.fname[TZSVC_LONG_FMT_FNAME_SIZE] =  0x00;
+                                strncpy((char *)&dirBlock->dirEnt[idx].fileName, fno.fname, TZSVC_LONG_FMT_FNAME_SIZE);
+                            }
+                        } else
+                        // All other types just output the filename upto the limit truncating as necessary.
+                        {
+                            fno.fname[TZSVC_LONG_FNAME_SIZE] =  0x00;
+                            strncpy((char *)&dirBlock->dirEnt[idx].fileName, fno.fname, TZSVC_LONG_FNAME_SIZE);
+                        }
+
+                        // Set the attribute in the directory record to indicate this is a valid record.
+                        dirBlock->dirEnt[idx].attr = 0xff;
+
                         // Valid so find next entry.
                         idx++;
                     } else
@@ -3165,11 +3240,12 @@ uint8_t svcReadDir(uint8_t mode)
 }
 
 
-// A method to find a file either using the Sharp MZ80A name or a number assigned to a directory listing.
-// It is a bit long winded as each file that matches the filename specification has to be opened and the MZF header filename 
-// has to be checked. Cacheing would help here but wasteful in resources for number of times it would be called.
+// A method to find a file either using a Sharp MZ80A name, a standard filename or a number assigned to a directory listing.
+// For the Sharp MZ80A it is a bit long winded as each file that matches the filename specification has to be opened and the MZF header filename 
+// has to be checked. For standard files it is just a matter of matching the name. For both types a short cut is a number which is a files position
+// in a directory obtained from a previous directory listing.
 //
-uint8_t svcFindFile(char *file, char *searchFile, uint8_t searchNo)
+uint8_t svcFindFile(char *file, char *searchFile, uint8_t searchNo, enum FILE_TYPE type)
 {
     // Locals
     uint8_t        fileNo    = 0;
@@ -3184,7 +3260,7 @@ uint8_t svcFindFile(char *file, char *searchFile, uint8_t searchNo)
 
     // Setup the defaults
     //
-    svcSetDefaults(MZF);
+    svcSetDefaults(type);
 
     // Open the directory.
     result = f_opendir(&dirFp, (char *)&svcControl.directory);
@@ -3200,39 +3276,76 @@ uint8_t svcFindFile(char *file, char *searchFile, uint8_t searchNo)
             // If an error occurs or we are at the end of the directory listing close the sector and pass back.
             if(result != FR_OK || fno.fname[0] == 0) break;
 
-            // Check to see if this is a valid MZF file.
+            // Check to see if this is a valid file for the given type.
             const char *ext = strrchr(fno.fname, '.');
-            if(!ext || strcasecmp(++ext, TZSVC_DEFAULT_MZF_EXT) != 0)
+            if(type == MZF && (!ext || strcasecmp(++ext, TZSVC_DEFAULT_MZF_EXT) != 0))
                 continue;
-
-            // Build filename.
+            if(type == BAS && (!ext || strcasecmp(++ext, TZSVC_DEFAULT_BAS_EXT) != 0))
+                continue;
+            if(type == CAS && (!ext || strcasecmp(++ext, TZSVC_DEFAULT_CAS_EXT) != 0))
+                continue;
+            if(type == ALL && !ext)
+                continue;
+    
+            // Sharp files need special handling, the file needs te opened and the Sharp filename read out, this is then used as the filename for matching.
             //
-            sprintf(fqfn, "0:\\%s\\%s", svcControl.directory, fno.fname);
-
-            // Open the file so we can read out the MZF header which is the information TZFS/CPM needs.
-            //
-            result = f_open(&File, fqfn, FA_OPEN_EXISTING | FA_READ);
-
-            // If no error occurred, read in the header.
-            //
-            if(!result) result = f_read(&File, (char *)&dirEnt, TZSVC_CMPHDR_SIZE, &readSize);
-
-            // No errors, read the header.
-            if(!result && readSize == TZSVC_CMPHDR_SIZE)
+            if(type == MZF)
             {
-                // Close the file, no longer needed.
-                f_close(&File);
-                
+                // Build filename.
+                //
+                sprintf(fqfn, "0:\\%s\\%s", svcControl.directory, fno.fname);
+
+                // Open the file so we can read out the MZF header which is the information TZFS/CPM needs.
+                //
+                result = f_open(&File, fqfn, FA_OPEN_EXISTING | FA_READ);
+
+                // If no error occurred, read in the header.
+                //
+                if(!result) result = f_read(&File, (char *)&dirEnt, TZSVC_CMPHDR_SIZE, &readSize);
+
+                // No errors, read the header.
+                if(!result && readSize == TZSVC_CMPHDR_SIZE)
+                {
+                    // Close the file, no longer needed.
+                    f_close(&File);
+                    
+                    // Check to see if the file matches any given wildcard. If we dont have a match loop to next directory entry.
+                    //
+                    if(matchFileWithWildcard((char *)&svcControl.wildcard, (char *)&dirEnt.fileName, 0, 0))
+                    {
+                        // If a filename has been given, see if this file matches it.
+                        if(searchFile != NULL)
+                        {
+                            // Check to see if the file matches the name given with wildcard expansion if needed.
+                            //
+                            if(matchFileWithWildcard(searchFile, (char *)&dirEnt.fileName, 0, 0))
+                            {
+                                found = 2;
+                            }
+                        }
+              
+                        // If we are searching on file number and the latest directory entry retrieval matches, exit and return the filename.
+                        if(searchNo != 0xFF && fileNo == (uint8_t)searchNo)
+                        {
+                            found = 1;
+                        } else
+                        {
+                            fileNo++;
+                        }
+                    }
+                }
+            } else
+            {
                 // Check to see if the file matches any given wildcard. If we dont have a match loop to next directory entry.
                 //
-                if(matchFileWithWildcard((char *)&svcControl.wildcard, (char *)&dirEnt.fileName, 0, 0))
+                if(matchFileWithWildcard((char *)&svcControl.wildcard, (char *)&fno.fname, 0, 0))
                 {
                     // If a filename has been given, see if this file matches it.
                     if(searchFile != NULL)
                     {
                         // Check to see if the file matches the name given with wildcard expansion if needed.
                         //
-                        if(matchFileWithWildcard(searchFile, (char *)&dirEnt.fileName, 0, 0))
+                        if(matchFileWithWildcard(searchFile, (char *)&fno.fname, 0, 0))
                         {
                             found = 2;
                         }
@@ -3265,7 +3378,7 @@ uint8_t svcFindFile(char *file, char *searchFile, uint8_t searchNo)
 
 // Method to read the current directory from the cache. If the cache is invalid resort to using the standard direct method.
 //
-uint8_t svcReadDirCache(uint8_t mode)
+uint8_t svcReadDirCache(uint8_t mode, enum FILE_TYPE type)
 {
     // Locals - dont use global as this is a seperate thread.
     //
@@ -3277,13 +3390,17 @@ uint8_t svcReadDirCache(uint8_t mode)
 
     // Setup the defaults
     //
-    svcSetDefaults(MZF);
+    svcSetDefaults(type);
+   
+    // Need to refresh cache directory?
+    if(!osControl.dirMap.valid || strcasecmp((const char *)svcControl.directory, osControl.dirMap.directory) != 0 || osControl.dirMap.type != type)
+        result=svcCacheDir((const char *)svcControl.directory, svcControl.fileType, 0);
 
     // If there is no cache revert to direct directory read.
     //
-    if(!osControl.dirMap.valid)
+    if(!osControl.dirMap.valid || result)
     {
-        result = svcReadDir(mode);
+        result = svcReadDir(mode, type);
     } else
     {
         // Request to open? No need with cache, just return next block.
@@ -3294,7 +3411,7 @@ uint8_t svcReadDirCache(uint8_t mode)
             dirOpen   = 1; 
             dirSector = 0;
             dirEntry  = 0;
-            result    = (FRESULT)svcReadDirCache(TZSVC_NEXT);
+            result    = (FRESULT)svcReadDirCache(TZSVC_NEXT, type);
         }
     
         // Read a block of directory entries into the z80 service buffer sector.
@@ -3323,16 +3440,63 @@ uint8_t svcReadDirCache(uint8_t mode)
             {
                 // Check to see if the file matches any given wildcard.
                 //
-                if(matchFileWithWildcard((char *)&svcControl.wildcard, (char *)&osControl.dirMap.file[dirEntry]->mzfHeader.fileName, 0, 0))
+                if(matchFileWithWildcard((char *)&svcControl.wildcard, type == MZF ? (char *)&osControl.dirMap.mzfFile[dirEntry]->mzfHeader.fileName : (char *)osControl.dirMap.sdFileName[dirEntry], 0, 0))
                 {
-                    // Valid so store and find next entry.
+                    // Sharp files we copy the whole header into the entry.
                     //
-                    memcpy((char *)&dirBlock->dirEnt[idx], (char *)&osControl.dirMap.file[dirEntry]->mzfHeader, TZSVC_CMPHDR_SIZE);
+                    if(type == MZF)
+                    {
+                        // Valid so store and find next entry.
+                        //
+                        memcpy((char *)&dirBlock->dirEnt[idx], (char *)&osControl.dirMap.mzfFile[dirEntry]->mzfHeader, TZSVC_CMPHDR_SIZE);
+                    } else
+                    {
+                        // If the type is ALL FORMATTED then output a truncated directory entry formatted for display.
+                        //
+                        if(type == ALLFMT)
+                        {
+                            // Duplicate the cache entry, formatting is destructuve and less time neeed to duplicate than repair.
+                            char *fname = strdup((char *)osControl.dirMap.sdFileName[dirEntry]);
+                            if(fname != NULL)
+                            {
+                                // Get the address of the file extension.
+                                char *ext = strrchr(fname, '.');
+                          
+                                // Although not as efficient, maintain the use of the Sharp MZF header for normal directory filenames just use the extra space for increased filename size.
+                                if(ext)
+                                {
+                                    // Although not as efficient, maintain the use of the Sharp MZF header for normal directory filenames just use the extra space for increased filename size.
+                                    if((ext - fname) > TZSVC_LONG_FMT_FNAME_SIZE-5)
+                                    {
+                                        fname[TZSVC_LONG_FMT_FNAME_SIZE-6] = '*';       // Place a '*' to show the filename was truncated.
+                                        fname[TZSVC_LONG_FMT_FNAME_SIZE-5] = 0x00;
+                                    }
+                                    *ext = 0x00;
+                                    ext++;
+                                    sprintf((char *)&dirBlock->dirEnt[idx].fileName, "%-*s.%3s", TZSVC_LONG_FMT_FNAME_SIZE-5, fname, ext);
+                                } else
+                                {
+                                    fname[TZSVC_LONG_FMT_FNAME_SIZE] = 0x00;
+                                    strncpy((char *)&dirBlock->dirEnt[idx].fileName, fname, TZSVC_LONG_FMT_FNAME_SIZE);
+                                }
+
+                                // Release the duplicate memory.
+                                free(fname);
+                            } else
+                            {
+                                printf("Out of memory duplicating directory filename.\n");
+                            }
+                        } else
+                        // All other types just output the filename upto the limit truncating as necessary.
+                        {
+                            osControl.dirMap.sdFileName[dirEntry][TZSVC_LONG_FNAME_SIZE] = 0x00;
+                            strncpy((char *)&dirBlock->dirEnt[idx].fileName, (char *)osControl.dirMap.sdFileName[dirEntry],  TZSVC_LONG_FNAME_SIZE);
+                        }
+
+                        // Set the attribute in the directory record to indicate this is a valid record.
+                        dirBlock->dirEnt[idx].attr = 0xff;
+                    } 
                     idx++;
-                } else
-                {
-                    // Scrub the entry, not valid.
-                    memset((char *)&dirBlock->dirEnt[idx], 0x00, TZSVC_CMPHDR_SIZE);
                 }
                 dirEntry++;
             }
@@ -3355,7 +3519,7 @@ uint8_t svcReadDirCache(uint8_t mode)
 
 // A method to find a file using the cached directory. If the cache is not available (ie. no memory) use the standard method.
 //
-uint8_t svcFindFileCache(char *file, char *searchFile, uint8_t searchNo)
+uint8_t svcFindFileCache(char *file, char *searchFile, uint8_t searchNo, enum FILE_TYPE type)
 {
     // Locals
     uint8_t        fileNo    = 0;
@@ -3367,13 +3531,13 @@ uint8_t svcFindFileCache(char *file, char *searchFile, uint8_t searchNo)
     //
     if(!osControl.dirMap.valid)
     {
-        result = svcFindFile(file, searchFile, searchNo);
+        result = svcFindFile(file, searchFile, searchNo, type);
     } else
     {
         // If we are searching on file number and there is no filter in place, see if it is valid and exit with data.
         if(searchNo != 0xFF && strcmp((char *)svcControl.wildcard, TZSVC_DEFAULT_WILDCARD) == 0)
         {
-            if(searchNo < osControl.dirMap.entries && osControl.dirMap.file[searchNo])
+            if(searchNo < osControl.dirMap.entries && osControl.dirMap.mzfFile[searchNo]) // <- this is the same for standard files as mzfFile is a union for sdFileName
             {
                 found = 1;
                 idx   = searchNo;
@@ -3386,14 +3550,14 @@ uint8_t svcFindFileCache(char *file, char *searchFile, uint8_t searchNo)
             do {
                 // Check to see if the file matches any given wildcard. If we dont have a match loop to next directory entry.
                 //
-                if(matchFileWithWildcard((char *)&svcControl.wildcard, (char *)&osControl.dirMap.file[idx]->mzfHeader.fileName, 0, 0))
+                if(matchFileWithWildcard((char *)&svcControl.wildcard, type == MZF ? (char *)&osControl.dirMap.mzfFile[idx]->mzfHeader.fileName : (char *)&osControl.dirMap.sdFileName[idx], 0, 0))
                 {
                     // If a filename has been given, see if this file matches it.
                     if(searchFile != NULL)
                     {
                         // Check to see if the file matches the name given with wildcard expansion if needed.
                         //
-                        if(matchFileWithWildcard(searchFile, (char *)&osControl.dirMap.file[idx]->mzfHeader.fileName, 0, 0))
+                        if(matchFileWithWildcard(searchFile, type == MZF ? (char *)&osControl.dirMap.mzfFile[idx]->mzfHeader.fileName : (char *)&osControl.dirMap.sdFileName[idx], 0, 0))
                         {
                             found = 2;
                         }
@@ -3421,7 +3585,7 @@ uint8_t svcFindFileCache(char *file, char *searchFile, uint8_t searchNo)
         {
             // Build filename.
             //
-            sprintf(file, "0:\\%s\\%s", osControl.dirMap.directory, osControl.dirMap.file[idx]->sdFileName);
+            sprintf(file, "0:\\%s\\%s", osControl.dirMap.directory, type == MZF ? osControl.dirMap.mzfFile[idx]->sdFileName : osControl.dirMap.sdFileName[idx]);
         }
     }
 
@@ -3430,10 +3594,10 @@ uint8_t svcFindFileCache(char *file, char *searchFile, uint8_t searchNo)
     return(result == FR_OK ? (found == 0 ? 0 : 1) : 0);
 }
 
-// Method to build up a cache of all the files on the SD card in a given directory along with the Sharp MZ80A header to which they map.
-// This involves scanning each file to extract the MZF header and creating a map.
+// Method to build up a cache of all the files on the SD card in a given directory along with any mapping to Sharp MZ80A headers if required.
+// For Sharp MZ80A files this involves scanning each file to extract the MZF header and creating a map.
 //
-uint8_t svcCacheDir(const char *directory, uint8_t force)
+uint8_t svcCacheDir(const char *directory, enum FILE_TYPE type, uint8_t force)
 {
     // Locals
     uint8_t        fileNo    = 0;
@@ -3446,7 +3610,7 @@ uint8_t svcCacheDir(const char *directory, uint8_t force)
     t_svcCmpDirEnt dirEnt;
 
     // No need to cache directory if we have already cached it.
-    if(force == 0 && osControl.dirMap.valid && strcasecmp(directory, osControl.dirMap.directory) == 0)
+    if(force == 0 && osControl.dirMap.valid && strcasecmp(directory, osControl.dirMap.directory) == 0 && osControl.dirMap.type == type)
         return(1);
 
     // Invalidate the map and free existing memory incase of errors.
@@ -3454,14 +3618,19 @@ uint8_t svcCacheDir(const char *directory, uint8_t force)
     osControl.dirMap.valid = 0;
     for(uint8_t idx=0; idx < osControl.dirMap.entries; idx++)
     {
-        if(osControl.dirMap.file[idx])
+        if(osControl.dirMap.type == MZF && osControl.dirMap.mzfFile[idx])
         {
-            free(osControl.dirMap.file[idx]->sdFileName);
-            free(osControl.dirMap.file[idx]);
-            osControl.dirMap.file[idx] = 0;
+            free(osControl.dirMap.mzfFile[idx]->sdFileName);
+            free(osControl.dirMap.mzfFile[idx]);
+            osControl.dirMap.mzfFile[idx] = 0;
+        } else
+        {
+            free(osControl.dirMap.sdFileName[idx]);
+            osControl.dirMap.sdFileName[idx] = 0;
         }
     }
     osControl.dirMap.entries = 0;
+    osControl.dirMap.type = MZF;
 
     // Open the directory and extract all files.
     result = f_opendir(&dirFp, directory);
@@ -3470,63 +3639,100 @@ uint8_t svcCacheDir(const char *directory, uint8_t force)
         fileNo = 0;
         
         do {
-            // Read an SD directory entry then open the returned SD file so that we can to read out the important MZF data for name matching.
+            // Read an SD directory entry. If reading Sharp MZ80A files then open the returned SD file so that we can to read out the important MZF data for name matching.
             //
             result = f_readdir(&dirFp, &fno);
 
             // If an error occurs or we are at the end of the directory listing close the sector and pass back.
             if(result != FR_OK || fno.fname[0] == 0) break;
 
-            // Check to see if this is a valid MZF file.
+            // Check to see if this is a valid file for the given type.
             const char *ext = strrchr(fno.fname, '.');
-            if(!ext || strcasecmp(++ext, TZSVC_DEFAULT_MZF_EXT) != 0)
+            if(type == MZF && (!ext || strcasecmp(++ext, TZSVC_DEFAULT_MZF_EXT) != 0))
+                continue;
+            if(type == BAS && (!ext || strcasecmp(++ext, TZSVC_DEFAULT_BAS_EXT) != 0))
+                continue;
+            if(type == CAS && (!ext || strcasecmp(++ext, TZSVC_DEFAULT_CAS_EXT) != 0))
+                continue;
+            if(type == ALL && !ext)
                 continue;
 
-            // Build filename.
+            // Sharp files need special handling, the file needs te opened and the Sharp filename read out, this is then used in the cache.
             //
-            sprintf(fqfn, "0:\\%s\\%s", directory, fno.fname);
-
-            // Open the file so we can read out the MZF header which is the information TZFS/CPM needs.
-            //
-            result = f_open(&File, fqfn, FA_OPEN_EXISTING | FA_READ);
-
-            // If no error occurred, read in the header.
-            //
-            if(!result) result = f_read(&File, (char *)&dirEnt, TZSVC_CMPHDR_SIZE, &readSize);
-
-            // No errors, read the header.
-            if(!result && readSize == TZSVC_CMPHDR_SIZE)
+            if(type == MZF)
             {
-                // Close the file, no longer needed.
-                f_close(&File);
+                // Build filename.
+                //
+                sprintf(fqfn, "0:\\%s\\%s", directory, fno.fname);
 
-                // Cache this entry. The SD filename is dynamically allocated as it's size can be upto 255 characters for LFN names. The Sharp name is 
-                // fixed at 17 characters as you cant reliably rely on terminators and the additional data makes it a constant 32 chars long.
-                osControl.dirMap.file[fileNo] = (t_sharpToSDMap *)malloc(sizeof(t_sharpToSDMap));
-                osControl.dirMap.file[fileNo]->sdFileName = (uint8_t *)malloc(strlen(fno.fname)+1);
+                // Open the file so we can read out the MZF header which is the information TZFS/CPM needs.
+                //
+                result = f_open(&File, fqfn, FA_OPEN_EXISTING | FA_READ);
 
-                if(osControl.dirMap.file[fileNo] == NULL || osControl.dirMap.file[fileNo]->sdFileName == NULL)
+                // If no error occurred, read in the header.
+                //
+                if(!result) result = f_read(&File, (char *)&dirEnt, TZSVC_CMPHDR_SIZE, &readSize);
+
+                // No errors, read the header.
+                if(!result && readSize == TZSVC_CMPHDR_SIZE)
+                {
+                    // Close the file, no longer needed.
+                    f_close(&File);
+
+                    // Cache this entry. The SD filename is dynamically allocated as it's size can be upto 255 characters for LFN names. The Sharp name is 
+                    // fixed at 17 characters as you cant reliably rely on terminators and the additional data makes it a constant 32 chars long.
+                    osControl.dirMap.mzfFile[fileNo] = (t_sharpToSDMap *)malloc(sizeof(t_sharpToSDMap));
+                    osControl.dirMap.mzfFile[fileNo]->sdFileName = (uint8_t *)malloc(strlen(fno.fname)+1);
+
+                    if(osControl.dirMap.mzfFile[fileNo] == NULL || osControl.dirMap.mzfFile[fileNo]->sdFileName == NULL)
+                    {
+                        printf("Out of memory cacheing directory:%s\n", directory);
+                        for(uint8_t idx=0; idx <= fileNo; idx++)
+                        {
+                            if(osControl.dirMap.mzfFile[idx])
+                            {
+                                free(osControl.dirMap.mzfFile[idx]->sdFileName);
+                                free(osControl.dirMap.mzfFile[idx]);
+                                osControl.dirMap.mzfFile[idx] = 0;
+                            }
+                        }
+                        result = FR_NOT_ENOUGH_CORE;
+                    } else
+                    {
+                        // Copy in details into this maps node.
+                        strcpy((char *)osControl.dirMap.mzfFile[fileNo]->sdFileName, fno.fname);
+                        memcpy((char *)&osControl.dirMap.mzfFile[fileNo]->mzfHeader, (char *)&dirEnt, TZSVC_CMPHDR_SIZE);
+                        fileNo++;
+                    }
+                }
+            } else
+            {
+                // Cache this entry. The SD filename is dynamically allocated as it's size can be upto 255 characters for LFN names. The SD service header is based
+                // on Sharp names which are fixed at 17 characters which shouldnt be a problem, just truncate the name as there is no support for longer names yet!
+                osControl.dirMap.sdFileName[fileNo] = (uint8_t *)malloc(strlen(fno.fname)+1);
+
+                if(osControl.dirMap.sdFileName[fileNo] == NULL)
                 {
                     printf("Out of memory cacheing directory:%s\n", directory);
                     for(uint8_t idx=0; idx <= fileNo; idx++)
                     {
-                        if(osControl.dirMap.file[idx])
+                        if(osControl.dirMap.sdFileName[idx])
                         {
-                            free(osControl.dirMap.file[idx]->sdFileName);
-                            free(osControl.dirMap.file[idx]);
-                            osControl.dirMap.file[idx] = 0;
+                            free(osControl.dirMap.sdFileName[idx]);
+                            osControl.dirMap.sdFileName[idx] = 0;
                         }
                     }
                     result = FR_NOT_ENOUGH_CORE;
                 } else
                 {
                     // Copy in details into this maps node.
-                    strcpy((char *)osControl.dirMap.file[fileNo]->sdFileName, fno.fname);
-                    memcpy((char *)&osControl.dirMap.file[fileNo]->mzfHeader, (char *)&dirEnt, TZSVC_CMPHDR_SIZE);
+                    strcpy((char *)osControl.dirMap.sdFileName[fileNo], fno.fname);
+printf("Cacheing:%d,%s,%08lx\n",fileNo, fno.fname,  osControl.dirMap.sdFileName[fileNo]);
                     fileNo++;
                 }
             }
         } while(!result && fileNo < TZSVC_MAX_DIR_ENTRIES);
+
     }
 
     // Success?
@@ -3536,6 +3742,8 @@ uint8_t svcCacheDir(const char *directory, uint8_t force)
         osControl.dirMap.valid = 1;
         osControl.dirMap.entries = fileNo;
         strcpy(osControl.dirMap.directory, directory);
+        // Save the filetype.
+        osControl.dirMap.type = type;
     }
 
     // Return values: 0 - Success : maps to TZSVC_STATUS_OK
@@ -3578,7 +3786,7 @@ printf("FQFN:%s\n", fqfn);
 
         // Find the file using the given file number or file name.
         //
-        if( (type == MZF && (svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo))) || type == CAS || type == BAS )
+        if( (type == MZF && (svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo, type))) || type == CAS || type == BAS )
         {
             // Open the file, fqfn has the FQFN of the correct file on the SD drive.
             result = f_open(&File, fqfn, FA_OPEN_EXISTING | FA_READ);
@@ -3741,7 +3949,7 @@ uint8_t svcLoadFile(enum FILE_TYPE type)
     {
         // Find the file using the given file number or file name.
         //
-        if(svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo))
+        if(svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo, type))
         {
             // Call method to load an MZF file.
             result = loadMZFZ80Memory(fqfn, 0xFFFFFFFF, 0, 0, 1);
@@ -3795,7 +4003,7 @@ uint8_t svcSaveFile(enum FILE_TYPE type)
     //
     FRESULT           result    = FR_OK;
     char              fqfn[FF_LFN_BUF + 13];  // 0:\12345678\<filename>
-    char              asciiFileName[MZF_FILENAME_LEN+1];
+    char              asciiFileName[TZSVC_FILENAME_SIZE+1];
     t_svcDirEnt       mzfHeader;
 
     // Setup the defaults
@@ -3811,7 +4019,7 @@ uint8_t svcSaveFile(enum FILE_TYPE type)
 
         // Need to extract and convert the filename to create a file.
         //
-        convertSharpFilenameToAscii(asciiFileName, (char *)mzfHeader.fileName, MZF_FILENAME_LEN);
+        convertSharpFilenameToAscii(asciiFileName, (char *)mzfHeader.fileName, TZSVC_FILENAME_SIZE);
 
         // Build filename.
         //
@@ -3856,7 +4064,7 @@ uint8_t svcEraseFile(enum FILE_TYPE type)
     {
         // Find the file using the given file number or file name.
         //
-        if(svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo))
+        if(svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo, type))
         {
             // Call method to load an MZF file.
             result = f_unlink(fqfn);
@@ -4109,12 +4317,12 @@ void processServiceRequest(void)
     {
         // Open a directory stream and return the first block.
         case TZSVC_CMD_READDIR:
-            status=svcReadDirCache(TZSVC_OPEN);
+            status=svcReadDirCache(TZSVC_OPEN, svcControl.fileType);
             break;
 
         // Read the next block in the directory stream.
         case TZSVC_CMD_NEXTDIR:
-            status=svcReadDirCache(TZSVC_NEXT);
+            status=svcReadDirCache(TZSVC_NEXT, svcControl.fileType);
             break;
 
         // Open a file stream and return the first block.
@@ -4139,7 +4347,7 @@ void processServiceRequest(void)
 
         // Close an open dir/file.
         case TZSVC_CMD_CLOSE:
-            svcReadDir(TZSVC_CLOSE);
+            svcReadDir(TZSVC_CLOSE, svcControl.fileType);
             svcReadFile(TZSVC_CLOSE, svcControl.fileType);
             svcWriteFile(TZSVC_CLOSE, svcControl.fileType);
            
@@ -4167,7 +4375,7 @@ void processServiceRequest(void)
 
         // Change active directory. Do this immediately to validate the directory name given.
         case TZSVC_CMD_CHANGEDIR:
-            status=svcCacheDir((const char *)svcControl.directory, 0);
+            status=svcCacheDir((const char *)svcControl.directory, svcControl.fileType, 0);
             break;
 
         // Load the 40 column version of the SA1510 bios into memory.
@@ -4313,7 +4521,7 @@ void processServiceRequest(void)
 
     // Need to refresh the directory? Do this at the end of the routine so the Sharp MZ80A isnt held up.
     if(refreshCacheDir)
-        svcCacheDir((const char *)svcControl.directory, 1);
+        svcCacheDir((const char *)svcControl.directory, svcControl.fileType, 1);
 
     return;
 }

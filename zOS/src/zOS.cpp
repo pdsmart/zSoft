@@ -343,8 +343,8 @@ int cmdProcessor(void)
         // Setup memory on Z80 to default.
         loadTranZPUterDefaultROMS();
 
-        // Cache initial directory.
-        svcCacheDir(TZSVC_DEFAULT_MZF_DIR, 1);
+        // Cache initial director.
+        svcCacheDir(TZSVC_DEFAULT_MZF_DIR, MZF, 1);
 
         // For the tranZPUter, once we know that an SD card is available, launch seperate thread to handle hardware and service functionality.
         // No SD card = no tranZPUter functionality.
