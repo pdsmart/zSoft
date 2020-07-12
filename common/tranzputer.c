@@ -1086,6 +1086,7 @@ static void __attribute((naked, noinline)) irqPortC(void)
 //
 static void setupIRQ(void)
 {
+return;
     __disable_irq();
 
     // Setup the interrupts according to the mode the tranZPUter is currently running under.
@@ -1184,6 +1185,7 @@ static void setupIRQ(void)
 //
 static void restoreIRQ(void)
 {
+return;
     __disable_irq();
 
     // Restore the interrupts according to the mode the tranZPUter is currently running under.
@@ -1289,6 +1291,7 @@ void setupZ80Pins(uint8_t initTeensy, volatile uint32_t *millisecondTick)
     pinMap[Z80_MEM2]    = Z80_MEM2_PIN;
     pinMap[Z80_MEM3]    = Z80_MEM3_PIN;
     pinMap[Z80_MEM4]    = Z80_MEM4_PIN;
+    pinMap[ENIOWAIT]    = ENIOWAIT_PIN;
 
     pinMap[Z80_IORQ]    = Z80_IORQ_PIN;
     pinMap[Z80_MREQ]    = Z80_MREQ_PIN;

@@ -192,57 +192,58 @@
 
 // Pin Constants - Pins assigned at the hardware level to specific tasks/signals.
 //
-#define MAX_TRANZPUTER_PINS          52
-#define Z80_MEM0_PIN                 46
-#define Z80_MEM1_PIN                 47
-#define Z80_MEM2_PIN                 48
-#define Z80_MEM3_PIN                 49
-#define Z80_MEM4_PIN                 50
-#define Z80_WR_PIN                   10
-#define Z80_RD_PIN                   12
+#define MAX_TRANZPUTER_PINS          53
+#define Z80_MEM0_PIN                 16
+#define Z80_MEM1_PIN                 17
+#define Z80_MEM2_PIN                 19
+#define Z80_MEM3_PIN                 18
+#define Z80_MEM4_PIN                 49
+#define ENIOWAIT_PIN                 50
+#define Z80_WR_PIN                   48
+#define Z80_RD_PIN                   55
 #define Z80_IORQ_PIN                 8
-#define Z80_MREQ_PIN                 9
-#define Z80_A0_PIN                   39
-#define Z80_A1_PIN                   38
-#define Z80_A2_PIN                   37
-#define Z80_A3_PIN                   36
-#define Z80_A4_PIN                   35
-#define Z80_A5_PIN                   34
-#define Z80_A6_PIN                   33
-#define Z80_A7_PIN                   32
-#define Z80_A8_PIN                   31
-#define Z80_A9_PIN                   30
-#define Z80_A10_PIN                  29
-#define Z80_A11_PIN                  28
-#define Z80_A12_PIN                  27
-#define Z80_A13_PIN                  26
-#define Z80_A14_PIN                  25
-#define Z80_A15_PIN                  24
-#define Z80_A16_PIN                  23
-#define Z80_A17_PIN                  22
-#define Z80_A18_PIN                  21
+#define Z80_MREQ_PIN                 7
+#define Z80_A0_PIN                   15
+#define Z80_A1_PIN                   22
+#define Z80_A2_PIN                   23
+#define Z80_A3_PIN                   9
+#define Z80_A4_PIN                   10
+#define Z80_A5_PIN                   13
+#define Z80_A6_PIN                   11
+#define Z80_A7_PIN                   12
+#define Z80_A8_PIN                   35
+#define Z80_A9_PIN                   36
+#define Z80_A10_PIN                  37
+#define Z80_A11_PIN                  38
+#define Z80_A12_PIN                  3
+#define Z80_A13_PIN                  4
+#define Z80_A14_PIN                  26
+#define Z80_A15_PIN                  27
+#define Z80_A16_PIN                  33
+#define Z80_A17_PIN                  34
+#define Z80_A18_PIN                  24
 #define Z80_D0_PIN                   0
 #define Z80_D1_PIN                   1
-#define Z80_D2_PIN                   2
-#define Z80_D3_PIN                   3
-#define Z80_D4_PIN                   4
-#define Z80_D5_PIN                   5
-#define Z80_D6_PIN                   6
-#define Z80_D7_PIN                   7
-#define Z80_WAIT_PIN                 13
-#define Z80_BUSACK_PIN               17
-#define Z80_NMI_PIN                  43
-#define Z80_INT_PIN                  44
-#define Z80_RESET_PIN                54
-#define SYSCLK_PIN                   11
-#define CTL_RFSH_PIN                 45
-#define CTL_HALT_PIN                 18
+#define Z80_D2_PIN                   29
+#define Z80_D3_PIN                   30
+#define Z80_D4_PIN                   43
+#define Z80_D5_PIN                   46
+#define Z80_D6_PIN                   44
+#define Z80_D7_PIN                   45
+#define Z80_WAIT_PIN                 54
+#define Z80_BUSACK_PIN               5
+#define Z80_NMI_PIN                  39
+#define Z80_INT_PIN                  28
+#define Z80_RESET_PIN                6
+#define SYSCLK_PIN                   25
+#define CTL_RFSH_PIN                 53
+#define CTL_HALT_PIN                 51
 #define CTL_M1_PIN                   20
-#define CTL_BUSRQ_PIN                15
-#define CTL_BUSACK_PIN               16
+#define CTL_BUSRQ_PIN                2
+#define CTL_BUSACK_PIN               21
 #define CTL_CLK_PIN                  14
-#define CTL_CLKSLCT_PIN              19
-#define TZ_BUSACK_PIN                55
+#define CTL_CLKSLCT_PIN              47
+#define TZ_BUSACK_PIN                52
 #define TZ_SVCREQ_PIN                56
 #define TZ_SYSREQ_PIN                57
 
@@ -285,35 +286,14 @@
                                      }
 #define pinIndex(a)                  getPinIndex(pinMap[a])
 
-#define setZ80Data(a)                { pinSet(Z80_D7,  ((a >>  7) & 0x1)); pinSet(Z80_D6,  ((a >>  6) & 0x1));\
-                                       pinSet(Z80_D5,  ((a >>  5) & 0x1)); pinSet(Z80_D4,  ((a >>  4) & 0x1));\
-                                       pinSet(Z80_D3,  ((a >>  3) & 0x1)); pinSet(Z80_D2,  ((a >>  2) & 0x1));\
-                                       pinSet(Z80_D1,  ((a >>  1) & 0x1)); pinSet(Z80_D0,  ((a      ) & 0x1)); }
-#define setZ80Addr(a)                { pinSet(Z80_A15, ((a >> 15) & 0x1)); pinSet(Z80_A14, ((a >> 14) & 0x1));\
-                                       pinSet(Z80_A13, ((a >> 13) & 0x1)); pinSet(Z80_A12, ((a >> 12) & 0x1));\
-                                       pinSet(Z80_A11, ((a >> 11) & 0x1)); pinSet(Z80_A10, ((a >> 10) & 0x1));\
-                                       pinSet(Z80_A9,  ((a >>  9) & 0x1)); pinSet(Z80_A8,  ((a >>  8) & 0x1));\
-                                       pinSet(Z80_A7,  ((a >>  7) & 0x1)); pinSet(Z80_A6,  ((a >>  6) & 0x1));\
-                                       pinSet(Z80_A5,  ((a >>  5) & 0x1)); pinSet(Z80_A4,  ((a >>  4) & 0x1));\
-                                       pinSet(Z80_A3,  ((a >>  3) & 0x1)); pinSet(Z80_A2,  ((a >>  2) & 0x1));\
-                                       pinSet(Z80_A1,  ((a >>  1) & 0x1)); pinSet(Z80_A0,  ((a      ) & 0x1)); }
-#define setZ80AddrLower(a)           { pinSet(Z80_A7,  ((a >>  7) & 0x1)); pinSet(Z80_A6,  ((a >>  6) & 0x1));\
-                                       pinSet(Z80_A5,  ((a >>  5) & 0x1)); pinSet(Z80_A4,  ((a >>  4) & 0x1));\
-                                       pinSet(Z80_A3,  ((a >>  3) & 0x1)); pinSet(Z80_A2,  ((a >>  2) & 0x1));\
-                                       pinSet(Z80_A1,  ((a >>  1) & 0x1)); pinSet(Z80_A0,  ((a      ) & 0x1)); }
-#define setZ80RefreshAddr(a)         { pinSet(Z80_A6,  ((a >>  6) & 0x1)); pinSet(Z80_A5,  ((a >>  5) & 0x1));\
-                                       pinSet(Z80_A4,  ((a >>  4) & 0x1)); pinSet(Z80_A3,  ((a >>  3) & 0x1));\
-                                       pinSet(Z80_A2,  ((a >>  2) & 0x1)); pinSet(Z80_A1,  ((a >>  1) & 0x1));\
-                                       pinSet(Z80_A0,  ((a      ) & 0x1)); }
-#define readZ80AddrLower()           ( pinGet(Z80_A7) << 7 | pinGet(Z80_A6) << 6 | pinGet(Z80_A5) << 5 | pinGet(Z80_A4) << 4 |\
-                                       pinGet(Z80_A3) << 3 | pinGet(Z80_A2) << 2 | pinGet(Z80_A1) << 1 | pinGet(Z80_A0) )
-#define readZ80Addr(a)               ( pinGet(Z80_A15) << 15 | pinGet(Z80_A14) << 14 | pinGet(Z80_A13) << 13 | pinGet(Z80_A12) << 12 |\
-                                       pinGet(Z80_A11) << 11 | pinGet(Z80_A10) << 10 | pinGet(Z80_A9) << 9 | pinGet(Z80_A8) << 8  |\
-                                       pinGet(Z80_A7) << 7 | pinGet(Z80_A6) << 6 | pinGet(Z80_A5) << 5 | pinGet(Z80_A4) << 4 |\
-                                       pinGet(Z80_A3) << 3 | pinGet(Z80_A2) << 2 | pinGet(Z80_A1) << 1 | pinGet(Z80_A0) )
-#define readDataBus()                ( pinGet(Z80_D7) << 7 | pinGet(Z80_D6) << 6 | pinGet(Z80_D5) << 5 | pinGet(Z80_D4) << 4 |\
-                                       pinGet(Z80_D3) << 3 | pinGet(Z80_D2) << 2 | pinGet(Z80_D1) << 1 | pinGet(Z80_D0) )
-#define readCtrlLatch()              ( (pinGet(Z80_MEM4) << 4 | pinGet(Z80_MEM3) << 3 | pinGet(Z80_MEM2) << 2 | pinGet(Z80_MEM1) << 1 | pinGet(Z80_MEM0)) & 0x1F )
+#define setZ80Data(a)                { PORTB_GPCHR = 0x00FF0000 | (a & 0x000000ff); }
+#define setZ80Addr(a)                { PORTC_GPCLR = 0x0FFF0000 | (a & 0x00000fff); PORTA_GPCLR = 0xF0000000 | (a & 0x0000f0000); PORTE_GPCHR = 0x07000000 | ((a >> 8) & 0x00000700); }
+#define setZ80AddrLower(a)           { PORTC_GPCLR = 0x00FF0000 | (a & 0x000000ff); }
+#define setZ80RefreshAddr(a)         { PORTC_GPCLR = 0x007F0000 | (a & 0x0000007f); }
+#define readZ80AddrLower()           ( GPIOC_PDIR & 0x000000ff )
+#define readZ80Addr(a)               ( (GPIOA_PDIR & 0x0000f0000) | (GPIOC_PDIR & 0x00000fff) )
+#define readDataBus()                ( (GPIOB_PDIR >> 16) & 0x000000ff )
+#define readCtrlLatch()              ( GPIOB_PDIR & 0x0000001f )
 #define writeCtrlLatch(a)            { writeZ80IO(IO_TZ_CTRLLATCH, a); } 
 #define setZ80Direction(a)           { for(uint8_t idx=Z80_D0; idx <= Z80_D7; idx++) { if(a == WRITE) { pinOutput(idx); } else { pinInput(idx); } }; z80Control.busDir = a; }
 #define reqZ80BusChange(a)           { if(a == MAINBOARD_ACCESS && z80Control.ctrlMode == TRANZPUTER_ACCESS) \
@@ -379,29 +359,30 @@ enum pinIdxToPinNumMap {
     Z80_MEM2                         = 29,
     Z80_MEM3                         = 30,
     Z80_MEM4                         = 31,
+    ENIOWAIT                         = 32,
 
-    Z80_IORQ                         = 32,
-    Z80_MREQ                         = 33,
-    Z80_RD                           = 34,
-    Z80_WR                           = 35,
-    Z80_WAIT                         = 36,
-    Z80_BUSACK                       = 37,
+    Z80_IORQ                         = 33,
+    Z80_MREQ                         = 34,
+    Z80_RD                           = 35,
+    Z80_WR                           = 36,
+    Z80_WAIT                         = 37,
+    Z80_BUSACK                       = 38,
 
-    Z80_NMI                          = 38,
-    Z80_INT                          = 39,
-    Z80_RESET                        = 40,
-    MB_SYSCLK                        = 41,
-    TZ_BUSACK                        = 42,
-    TZ_SVCREQ                        = 43,
-    TZ_SYSREQ                        = 44,
+    Z80_NMI                          = 39,
+    Z80_INT                          = 40,
+    Z80_RESET                        = 41,
+    MB_SYSCLK                        = 42,
+    TZ_BUSACK                        = 43,
+    TZ_SVCREQ                        = 44,
+    TZ_SYSREQ                        = 45,
 
-    CTL_BUSACK                       = 45,
-    CTL_BUSRQ                        = 46,
-    CTL_RFSH                         = 47,
-    CTL_HALT                         = 48,
-    CTL_M1                           = 49,
-    CTL_CLK                          = 50,
-    CTL_CLKSLCT                      = 51 
+    CTL_BUSACK                       = 46,
+    CTL_BUSRQ                        = 47,
+    CTL_RFSH                         = 48,
+    CTL_HALT                         = 49,
+    CTL_M1                           = 50,
+    CTL_CLK                          = 51,
+    CTL_CLKSLCT                      = 52 
 };
 
 // Possible control modes that the K64F can be in, do nothing where the Z80 runs normally, control the Z80 and mainboard, or control the Z80 and tranZPUter.
