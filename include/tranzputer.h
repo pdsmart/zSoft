@@ -67,6 +67,7 @@
 #define TZMM_TZPU5                   0x1D                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 5 is selected.
 #define TZMM_TZPU6                   0x1E                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 6 is selected.
 #define TZMM_TZPU7                   0x1F                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 7 is selected.
+#define TZMM_ENIOWAIT                0x20                                // Enable wait state generator for Sharp system IO operations in region 0xE0-0xFF.
 
 // IO addresses on the tranZPUter or mainboard.
 //
@@ -286,27 +287,27 @@
                                      }
 #define pinIndex(a)                  getPinIndex(pinMap[a])
 
-#define setZ80Data(a)                { PORTB_GPCHR = 0x00FF0000 | (a & 0x000000ff); }
-#define setZ80Addr(a)                { PORTC_GPCLR = 0x0FFF0000 | (a & 0x00000fff); PORTA_GPCLR = 0xF0000000 | (a & 0x0000f0000); PORTE_GPCHR = 0x07000000 | ((a >> 8) & 0x00000700); }
-#define setZ80AddrLower(a)           { PORTC_GPCLR = 0x00FF0000 | (a & 0x000000ff); }
-#define setZ80RefreshAddr(a)         { PORTC_GPCLR = 0x007F0000 | (a & 0x0000007f); }
+#define setZ80Data(a)                { GPIOB_PDOR = (GPIOB_PDOR & 0xff00ffff) | ((a << 16) & 0x00ff0000); }
+#define setZ80Addr(a)                { GPIOA_PDOR = (GPIOA_PDOR & 0xffff0fff) | (a & 0x00000f000); GPIOC_PDOR = (GPIOC_PDOR & 0xfffff000) | (a & 0x00000fff); }
+#define setZ80AddrLower(a)           { GPIOC_PDOR = (GPIOC_PDOR & 0xffffff00) | (a & 0x000000ff); }
+#define setZ80RefreshAddr(a)         { GPIOC_PDOR = (GPIOC_PDOR & 0xffffff80) | (a & 0x0000007f); }
 #define readZ80AddrLower()           ( GPIOC_PDIR & 0x000000ff )
-#define readZ80Addr(a)               ( (GPIOA_PDIR & 0x0000f0000) | (GPIOC_PDIR & 0x00000fff) )
-#define readDataBus()                ( (GPIOB_PDIR >> 16) & 0x000000ff )
-#define readCtrlLatch()              ( GPIOB_PDIR & 0x0000001f )
+#define readZ80Addr()                ( (GPIOA_PDIR & 0x00000f000) | (GPIOC_PDIR & 0x00000fff) )
+#define readZ80DataBus()             ( (GPIOB_PDIR >> 16) & 0x000000ff )
+#define readCtrlLatch()              ( GPIOB_PDIR & 0x0000003f )
 #define writeCtrlLatch(a)            { writeZ80IO(IO_TZ_CTRLLATCH, a); } 
 #define setZ80Direction(a)           { for(uint8_t idx=Z80_D0; idx <= Z80_D7; idx++) { if(a == WRITE) { pinOutput(idx); } else { pinInput(idx); } }; z80Control.busDir = a; }
 #define reqZ80BusChange(a)           { if(a == MAINBOARD_ACCESS && z80Control.ctrlMode == TRANZPUTER_ACCESS) \
                                        {\
                                            pinHigh(CTL_BUSACK);\
                                            z80Control.ctrlMode = MAINBOARD_ACCESS;\
-                                           z80Control.curCtrlLatch = 0b00000000;\
+                                           z80Control.curCtrlLatch = TZMM_ORIG | TZMM_ENIOWAIT;\
                                            writeCtrlLatch(z80Control.curCtrlLatch);\
                                        } else if(a == TRANZPUTER_ACCESS && z80Control.ctrlMode == MAINBOARD_ACCESS)\
                                        {\
                                            pinLow(CTL_BUSACK);\
                                            z80Control.ctrlMode = TRANZPUTER_ACCESS;\
-                                           z80Control.curCtrlLatch = 0b00011111;\
+                                           z80Control.curCtrlLatch = TZMM_TZPU7 | TZMM_ENIOWAIT;\
                                            writeCtrlLatch(z80Control.curCtrlLatch);\
                                        } }
 // Lower level macro without pin mapping as this is called in the ResetHandler to halt the Z80 whilst the K64F starts up and is able to load up tranZPUter software.

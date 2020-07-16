@@ -2,6 +2,7 @@
 //
 // Name:            tranzputer.c
 // Created:         May 2020
+// Version:         v1.1
 // Author(s):       Philip Smart
 // Description:     The TranZPUter library.
 //                  This file contains methods which allow applications to access and control the
@@ -27,7 +28,12 @@
 // Credits:         
 // Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
 //
-// History:         May 2020 - Initial write of the TranZPUter software.
+// History:         v1.0 May 2020  - Initial write of the TranZPUter software.
+//                  v1.1 July 2020 - Updated for v1.1 of the hardware, all pins have been routed on the PCB
+//                                   to aid in decoding, for example, address lines are now all in Port C 11:0
+//                                   for Z80 A11:A0 and Port A 15:12 for Z80 A15:12. This was done due to the
+//                                   extra overhead required to piece together address and data lines in v1.0
+//                                   where the PCB was routed for linear reading and routing.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -202,7 +208,7 @@ static void __attribute((naked, noinline)) irqPortE(void)
 // There are 3 versions of the same routine, originally using #if macro preprocessor statements but it became
 // unwieldy. The purpose of the 3 versions are:
 // 0 = Basic IRQ just sets the reset flag if the user presses reset on the host.
-// 1,2 = Captures I/O events, stores the address/data of the I/O command.
+// 1,2 = Captures I/O and memory events, stores the address/data of the I/O command or processes the memory mapped transaction.
 // 3 = MZ700 mode - this mode detects the MZ700 OUT commands and changes memory mode. Unfortunately it doesnt work 100% due to another
 // ISR occasionally delaying the activation of this routine which means we cannot apply a WAIT state and consequently the data on the Z80
 // address bus has changed. Other than removing realtime clock and threads I cant see a way around it in software, will have to look at 
@@ -222,7 +228,11 @@ static void __attribute((naked, noinline)) irqPortD_Mode0(void)
 
                                           // Is Z80_RESET active, set flag and exit.
                  "                        movs     r0, #1                   \n"
+                 "                        tst      r5, #0x010               \n"
+                 "                        beq      irqPortD_Exit            \n"
                  "                        strb     r0, %[val0]              \n"
+
+                 "              irqPortD_Exit:                              \n"
             
                                           : [val0] "=m" (z80Control.resetEvent)
                                           : 
@@ -234,24 +244,50 @@ static void __attribute((naked, noinline)) irqPortD_Mode0(void)
     return;
 }
 //
-// Mode 1 & 2 - Capture and store an IORQ event for the main thread to process.
+// Mode 1 & 2 - Capture and store an IORQ or MREQ Memory Mapped event for the main thread to process.
 //
-#if 0
+#if 1
 static void __attribute((naked, noinline)) irqPortD_Mode12(void)
 {
-                                          // This code is critical, AIT needs to be applied before end of the WAIT sample cycle, the 120Mhz K64F only just makes it. This is to ensure a good sample of the signals
-                                          // then BUSRQ needs to be asserted in case of memory mode latch updates.
-    asm volatile("                        push     {r0-r1}                  \n"
-                 "                        ldr      r0, =0x43fe1114          \n"          // Z80_WAIT  0x43fe1114 clear, 0x43fe1014 set
+                                          // Save minimum number of registers, cycles matter as we need to capture the address and halt the Z80 whilst we decode it.
+    asm volatile("                        push     {r0-r8,lr}               \n"
+
+                                          // Get the triggering interrupt.
+                 "                        ldr      r0, =0x4004c0a0          \n"
+                 "                        ldr      r4, [r0, #0]             \n"
+
+                                          // Assert BUSRQ so we keep the Z80 from moving to the next instruction in-case we need to update the memory latch.
+                 "                        ldr      r0, =0x43fe1900          \n"          // CTL_BUSRQ
                  "                        movs     r1, #1                   \n"
                  "                        str      r1, [r0,#0]              \n"
+                );
 
-                                          // Save minimum number of registers, cycles matter as we need to capture the address and halt the Z80 whilst we decode it.
-                 "                        pop      {r0-r1}                  \n"
-                 "                        push     {r0-r8,lr}               \n"
+    asm volatile(                         // Is Z80_RESET active, set flag and exit.
+                                          // NB: We are testing the interrupt register, a bit is set if the given signal caused the interrupt, so a 1 means the signal went active.
+                 "                        tst      r4, #0x0010              \n"
+                 "                        beq      irqd0                    \n"
+                 "                        movs     r6, #1                   \n"
+                 "                        strb     r6, %[val1]              \n"
+                 "                        b        irqPortD_Exit3           \n"
+
+                                          : [val1] "=m" (z80Control.resetEvent)
+                                          : 
+                                          : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
+
+    asm volatile(                         // If the IORQ line and MREQ lines are high (another interrupt triggered us or false trigger) get out, cant work with incomplete data.
+                 "              irqd0:    tst      r4, #0x0008              \n"
+                 "                        bne      irqd1                    \n"
+                 "                        tst      r4, #0x0004              \n"
+                 "                        bne      irqd10                   \n"
+                 "                        b        irqPortD_Exit3           \n"
+                );
+   
+                                          ////////////////////////////////////////////
+                                          // IORQ logic, intercept IO operations.
+                                          ////////////////////////////////////////////
 
                                           // Capture GPIO ports - this is necessary in order to make a clean capture and then decode.
-                 "                        ldr      r0, =0x400ff010          \n"          // GPIOA_PDIR
+    asm volatile("              irqd1:    ldr      r0, =0x400ff010          \n"          // GPIOA_PDIR
                  "                        ldr      r4, [r0, #0]             \n"
                  "                        add.w    r0, #64                  \n"          // GPIOB_PDIR
                  "                        ldr      r5, [r0, #0]             \n"
@@ -262,63 +298,41 @@ static void __attribute((naked, noinline)) irqPortD_Mode12(void)
                  "                        add.w    r0, #64                  \n"          // GPIOE_PDIR
                  "                        ldr      r8, [r0, #0]             \n"
 
-                                          // De-assert Z80_WAIT, signals have been sampled and if it is kept low too long it will slow the host down and with BUSRQ, BUSACK will go high (a bug?)!!
-                 "                        ldr      r0, =0x43fe1014          \n"          // Z80_WAIT 0x43fe1114 clear, 0x43fe1014 set
-                 "                        movs     r3, #1                   \n"
-                 "                        str      r3, [r0,#0]              \n"
-
-                                          // If the IORQ line has gone high (another interrupt or slow system response) get out, cant work with incomplete data.
-                 "                        tst      r7, #8                   \n"
-                 "                        beq      irqPortD_Exit12          \n"
                                           :
                                           :
-                                          : "r0", "r4","r5","r6","r7","r8","r9","r10","r11","r12"
-                );
+                                          : "r0","r1","r4","r5","r6","r7","r8","r9","r10","r11","r12");
+  
+    asm volatile(                         // Is TZ_SVCREQ (E10) active (low), set flag and exit if it is.
+                 "                        movs     r0, #1                   \n"
+                 "                        tst      r8, #0x400               \n"
+                 "                        bne      irqd2                    \n"
+                 "                        strb     r0, %[val0]              \n" 
+                 "                        b        irqPortD_Exit3           \n"
 
-    asm volatile(                         // Is Z80_RESET active, set flag and exit.
-                 "              cbr:      tst      r7, #0x8000              \n"
-                 "                        bne      cbr0                     \n"
-                 "                        movs     r6, #1                   \n"
-                 "                        strb     r6, %[val1]              \n"
-                 "                        b        irqPortD_Exit12          \n"
-              
-                                          // Is Z80_WR active, continue if it is as we consider IO WRITE cycles.
-                 "              cbr0:     tst      r6, #16                  \n"
-                 "                        beq      cbr1                     \n"
+                                          // Is TZ_SYSREQ (E11) active (low), set flag and exit if it is.
+                 "              irqd2:    tst      r8, #0x800               \n"
+                 "                        bne      irqd3                    \n"
+                 "                        strb     r0, %[val1]              \n"
+                 "                        b        irqPortD_Exit3           \n"
+
+                                          : [val0] "+m" (z80Control.svcRequest),
+                                            [val1] "+m" (z80Control.sysRequest) 
+                                          :
+                                          : "r0","r4","r5","r7","r8","r9","r10","r11","r12");
+
+    asm volatile(                         // Is Z80_WR active, continue if it is as we consider IO WRITE cycles.
+                 "              irqd3:    tst      r7, #0x200               \n"          // Z80_WR = D9 v1.1+
+                 "                        beq      irqd4                    \n"
    
                                           // Is Z80_RD active, continue if it is as we consider IO READ cycles.
-                 "                        tst      r6, #128                 \n"
-                 "                        bne      irqPortD_Exit12          \n"
-                 "              cbr1:                                       \n"
-
-                                          : [val1] "=m" (z80Control.resetEvent)
-                                          : 
-                                          : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
+                 "                        tst      r7, #0x800               \n"          // Z80_RD = D11 v1.1+
+                 "                        bne      irqPortD_Exit3           \n"
+                 "              irqd4:                                      \n"
+                );
 
                                           // Convert lower 8 address bits into a byte and store.
-    asm volatile("                        lsrs     r0, r5, #4               \n"          // (z80Control.portB >> 4)&0x80)
-                 "                        and.w    r0, r0, #128             \n"
-                 "                        lsrs     r1, r8, #18              \n"          // (z80Control.portE >> 18)&0x40)
-                 "                        and.w    r1, r1, #64              \n"
-                 "                        orrs     r0, r1                   \n"
-                 "                        lsrs     r1, r8, #20              \n"          // (z80Control.portE >> 20)&0x20)
-                 "                        and.w    r1, r1, #32              \n"
-                 "                        orrs     r0, r1                   \n"
-                 "                        lsrs     r1, r6, #4               \n"          // (z80Control.portC >> 4)&0x10)
-                 "                        and.w    r1, r1, #16              \n"
-                 "                        orrs     r0, r1                   \n"
-                 "                        lsrs     r1, r6, #6               \n"          // (z80Control.portC >> 6)&0x08)
-                 "                        and.w    r1, r1, #8               \n"
-                 "                        orrs     r0, r1                   \n"
-                 "                        lsrs     r1, r6, #8               \n"          // (z80Control.portC >> 8)&0x04)
-                 "                        and.w    r1, r1, #4               \n"
-                 "                        orrs     r0, r1                   \n"
-                 "                        lsrs     r1, r6, #10              \n"          // (z80Control.portC >> 10)&0x02)
-                 "                        and.w    r1, r1, #2               \n"
-                 "                        orrs     r0, r1                   \n"
-                 "                        lsrs     r1, r4, #17              \n"          // (z80Control.portA >> 17)&0x01)
-                 "                        and.w    r1, r1, #1               \n"
-                 "                        orrs     r0, r1                   \n"
+                                          //
+    asm volatile("                        and      r0, r6, #0xFF            \n"          // Port C 7:0 = Z80 A7:A0
 
                                           // Store the address for later processing..
                  "                        strb     r0, %[val0]              \n" 
@@ -329,31 +343,10 @@ static void __attribute((naked, noinline)) irqPortD_Mode12(void)
                                           : "r0","r1","r4","r5","r6","r7","r8","r9","r10","r11","r12");
 
   #if 0
-    // Convert data port bits into a byte and store.
-    asm volatile("                        mov.w    r0, r7, lsl #5           \n"          // (z80Control.portD << 5)&0x80)
-                 "                        and.w    r0, r0, #128             \n"
-                 "                        lsls     r1, r7, #2               \n"          // (z80Control.portD << 2)&0x40)
-                 "                        and.w    r1, r1, #64              \n"
-                 "                        orrs     r0, r1                   \n"
-                 "                        lsrs     r1, r7, #2               \n"          // (z80Control.portD >> 2)&0x20)
-                 "                        and.w    r1, r1, #32              \n"
-                 "                        orrs     r0, r1                   \n"
-                 "                        lsrs     r1, r4, #9               \n"          // (z80Control.portA >> 9)&0x10)
-                 "                        and.w    r1, r1, #16              \n"
-                 "                        orrs     r0, r1                   \n"
-                 "                        lsrs     r1, r4, #9               \n"          // (z80Control.portA >> 9)&0x08)
-                 "                        and.w    r1, r1, #8               \n"
-                 "                        orrs     r0, r1                   \n"
-                 "                        lsls     r1, r7, #2               \n"          // (z80Control.portD << 2)&0x04)
-                 "                        and.w    r1, r1, #4               \n"
-                 "                        orrs     r0, r1                   \n"
-                 "                        lsrs     r1, r1, #16              \n"          // (z80Control.portB >> 16)&0x02)
-                 "                        and.w    r1, r1, #2               \n"
-                 "                        orrs     r0, r1                   \n"
-                 "                        lsrs     r1, r1, #16              \n"          // (z80Control.portB >> 16)&0x01)
-                 "                        and.w    r1, r1, #1               \n"
-                 "                        orrs     r0, r1                   \n"
-                 "                        strb     r0, %[val0]              \n"
+                                          // Convert data port bits into a byte and store.
+    asm volatile("                        lsrs     r1, r5, 16              \n"          // Data Port B 23:17 = Z80 D7:D0
+                 "                        and      r1, r1, #0xFF           \n"          // Clear out top bits.
+                 "                        strb     r1, %[val0]              \n"
                  "                        mov      r7, r0                   \n"          // Data in R7
 
                                           : [val0] "=m" (z80Control.ioData)
@@ -364,135 +357,22 @@ static void __attribute((naked, noinline)) irqPortD_Mode12(void)
                                           // Process the IO request by setting the ioEvent flag as it wasnt an MZ700 memory switch request.
     asm volatile("                        movs     r4, #1                   \n"
                  "                        strb     r4, %[val2]              \n"
+                 "                        b        irqPortD_Exit12          \n"
 
                                           : [val2]  "=m" (z80Control.ioEvent)
                                           :
                                           : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
-              
-    asm volatile("       irqPortD_Exit12:                                   \n"
-                                          // Reset the interrupt, PORTD_ISFR <= PORTD_ISFR
-                 "                        ldr      r3, =0x4004c0a0          \n"
-                 "                        ldr      r2, [r3, #0]             \n"
-                 "                        str      r2, [r3, #0]             \n"
-                 "                        pop      {r0-r8,pc}               \n"
-                                          :
-                                          :
-                                          : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
 
-    return;
-}
-#endif
-//
-// Mode 3 - MZ700 processing.
-//
-static void __attribute((naked, noinline)) irqPortD_Mode3(void)
-{
-                                          // This code is critical, WAIT needs to be applied before end of the WAIT sample cycle, the 120Mhz K64F only just makes it. This is to ensure a good sample of the signals
-                                          // then BUSRQ needs to be asserted in case of memory mode latch updates.
-  #if 0 
-    asm volatile("                        push     {r0-r1}                  \n"
-                 "                        ldr      r0, =0x43fe1114          \n"          // Z80_WAIT  0x43fe1114 clear, 0x43fe1014 set
-                 "                        movs     r1, #1                   \n"
-                 "                        str      r1, [r0,#0]              \n"
-                 "                        pop      {r0-r1}                  \n"
-                );
-  #endif
 
-                                          // Save minimum number of registers, cycles matter as we need to capture the address and halt the Z80 whilst we decode it.
-    asm volatile("                        push     {r0-r8,lr}               \n"
-
-                                          // Get the triggering interrupt.
-                 "                        ldr      r0, =0x4004c0a0          \n"
-                 "                        ldr      r4, [r0, #0]             \n"
-                );
-
-    asm volatile(                         // Is Z80_RESET active, set flag and exit.
-                 "                        tst      r4, #0x8000              \n"
-                 "                        beq      irqd0                    \n"
-                 "                        movs     r6, #1                   \n"
-                 "                        strb     r6, %[val1]              \n"
-                 "                        b        irqPortD_Exit3           \n"
-
-                                          : [val1] "=m" (z80Control.resetEvent)
-                                          : 
-                                          : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
-
-    asm volatile(                         // If the IORQ line is high (another interrupt triggered us or false trigger) get out, cant work with incomplete data.
-                 "              irqd0:    tst      r4, #8                   \n"
-                 "                        beq      irqPortD_Exit3           \n"
-                );
-
-                                          // Capture GPIO ports - this is necessary in order to make a clean capture and then decode.
-    asm volatile("                        ldr      r0, =0x400ff010          \n"          // GPIOA_PDIR
-                 "                        ldr      r4, [r0, #0]             \n"
-                 "                        add.w    r0, #64                  \n"          // GPIOB_PDIR
-                 "                        ldr      r5, [r0, #0]             \n"
-                 "                        add.w    r0, #64                  \n"          // GPIOC_PDIR
-                 "                        ldr      r6, [r0, #0]             \n"
-                 "                        add.w    r0, #64                  \n"          // GPIOD_PDIR
-                 "                        ldr      r7, [r0, #0]             \n"
-                 "                        add.w    r0, #64                  \n"          // GPIOE_PDIR
-                 "                        ldr      r8, [r0, #0]             \n"
-
-  #if 0
-                                          // De-assert Z80_WAIT, signals have been sampled and if it is kept low too long it will slow the host down and with BUSRQ active during a WAIT, BUSACK will go high (a bug?)!!
-                 "                        ldr      r0, =0x43fe1014          \n"          // Z80_WAIT 0x43fe1114 clear, 0x43fe1014 set
-                 "                        movs     r1, #1                   \n"
-                 "                        str      r1, [r0,#0]              \n"
-  #endif
-               
-                                          // Assert BUSRQ so we keep the Z80 from moving to the next instruction incase we need to update the memory latch.
-                 "                        ldr      r0, =0x43fe1100          \n"          // CTL_BUSRQ 0x43fe1100 clear, 0x43fe1000 set
-                 "                        movs     r1, #1                   \n"
-                 "                        str      r1, [r0,#0]              \n"
-
-                                          :
-                                          :
-                                          : "r0","r1","r4","r5","r6","r7","r8","r9","r10","r11","r12");
-  
-    asm volatile(                         // Is TZ_SVCREQ (E10) active (low), set flag and exit if it is.
-                 "                        movs     r0, #1                   \n"
-                 "                        tst      r8, #0x400               \n"
-                 "                        bne      irqd1                    \n"
-                 "                        strb     r0, %[val0]              \n" 
-                 "                        b        irqPortD_Exit3           \n"
-
-                                          // Is TZ_SYSREQ (E11) active (low), set flag and exit if it is.
-                 "              irqd1:    tst      r8, #0x800               \n"
-                 "                        bne      irqd2                    \n"
-                 "                        strb     r0, %[val1]              \n"
-                 "                        b        irqPortD_Exit3           \n"
-
-                                          : [val0] "+m" (z80Control.svcRequest),
-                                            [val1] "+m" (z80Control.sysRequest) 
-                                          :
-                                          : "r0","r4","r5","r7","r8","r9","r10","r11","r12");
-   
-    asm volatile(                         // Is Z80_WR active, continue if it is as we consider IO WRITE cycles.
-                 "              irqd2:    tst      r6, #16                  \n"
-                 "                        beq      irqd3                    \n"
-   
-                                          // Is Z80_RD active, continue if it is as we consider IO READ cycles.
-                 "                        tst      r6, #128                 \n"
-                 "                        bne      irqPortD_Exit3           \n"
-                 "              irqd3:                                      \n"
-                );
-
-    // Convert lower 8 address bits into a byte and store.
-    //
-    asm volatile("                        rbit     r0, r6                   \n"          // Reverse bits of Port C
-                 "                        lsrs     r0, r0, #19              \n"          // Move 19 bits to the right so A4:1 are in the right spot.
-                 "                        and      r0, r0, #0x1E            \n"          // Clear out bits we dont want.
-                 "                        rbit     r1, r8                   \n"          // Reverse order or A5:6
-                 "                        lsrs     r1, r1, #1               \n"          // Put into correct location.
-                 "                        and      r1, r1, #0x60            \n"          // Clear out bits we dont want.
-                 "                        orr      r0, r1                   \n"          // Bits 6:1 now in order.
-                 "                        lsrs     r1, r5, #4               \n"          // A7 into correct location.
-                 "                        and      r1, r1, #0x80            \n"          // Clear out bits we dont want.
-                 "                        orr      r0, r1                   \n"          // Bits 7:1 now in order.
-                 "                        lsrs     r1, r4, #17              \n"          // A0 into correct location.
-                 "                        and      r1, r1, #0x1             \n"          // Remove unwanted bits.
-                 "                        orr      r0, r1                   \n"          // Bits 7:0 now in order.
+                                          ////////////////////////////////////////////
+                                          // MREQ logic, intercept memory operations.
+                                          ////////////////////////////////////////////
+                                        
+                                          // Convert 16 address bits into a byte and store.
+                                          //
+    asm volatile("                        and      r0, r4, #0xF000          \n"          // Port A 15:12 = Z80 A15:A12
+                 "                        and      r1, r6, #0xFFF           \n"          // Port C 11:0 = Z80 A11:A0
+                 "                        orr      r0, r1                   \n"          // Complete address into R0
 
                                           // Store the address for later processing..
                  "                        strb     r0, %[val0]              \n" 
@@ -502,528 +382,17 @@ static void __attribute((naked, noinline)) irqPortD_Mode3(void)
                                           :
                                           : "r0","r1","r4","r5","r6","r7","r8","r9","r10","r11","r12");
 
-    // MZ700 memory mode switch?
-    //         0x0000:0x0FFF     0xD000:0xFFFF
-    // 0xE0 =  DRAM
-    // 0xE1 =                    DRAM
-    // 0xE2 =  MONITOR
-    // 0xE3 =                    Memory Mapped I/O
-    // 0xE4 =  MONITOR           Memory Mapped I/O
-    // 0xE5 =                    Inhibit
-    // 0xE6 =                    Return to state prior to 0xE5
-    //
-    // Must be in range 0xE0-0xE6 to be an MZ700 operation.
-    asm volatile("                    cmp.w     r8, #224                    \n"
-                 "                    blt       irqd20                      \n"
-                 "                    cmp.w     r8, #230                    \n"
-                 "                    bgt       irqd20                      \n"
-                 "                                                          \n"
-                 "                        ldr      r6, %[val1]              \n"          // Retrieve the config value for the MZ700.
-                 "                        tst      r6, #0x40000             \n"
-                 "                        bne      irqd16                   \n"          // For locked mode, only service E4, E5 & E6.
-                 "                        and      r6, r6, #0xFFFFFF00      \n"          // Clear out the memoryMode[current[ as a new value will be stored.
-
-                                          // 0xE0
-                 "              irqd12:   cmp.w    r8, #224                 \n"          // R8 = address location of OUT command on Z80.
-                 "                        bne      irqd13                   \n"
-                 "                        orr      r6, #65536               \n"          // mode[16] = 1
-                 "                        b        irqd11x                  \n"
-
-                                          // 0xE1
-                 "              irqd13:   cmp.w    r8, #225                 \n"
-                 "                        bne      irqd14                   \n" 
-                 "                        orr      r6, #131072              \n"          // mode[17] = 1
-                 "                        b        irqd11x                  \n"
-
-                                          // 0xE2
-                 "              irqd14:   cmp.w    r9, #226                 \n"
-                 "                        bne      irqd15                   \n"
-                 "                        bic      r6, #65536               \n"          // mode[16] = 0
-                 "                        b        irqd11x                  \n"
-
-                                          // 0xE3
-                 "              irqd15:   cmp.w    r8, #227                 \n"
-                 "                        bne      irqd16                   \n"
-                 "                        bic      r6, #131072              \n"          // mode[17] = 0
-
-                                          // if(z80Control.mz700.mode[17:16] == '00')
-                 "              irqd11x:  tst      r6, #0x30000             \n"
-                 "                        bne      irqd12x                  \n"
-                 "                        orr      r6,#2                    \n"          // memoryMode = 2
-                 "                        b        irqd19                   \n"
-
-                                          // if(z80Control.mz700.mode[17:16] == '10')
-                 "              irqd12x:  tst      r6, #0x20000             \n"
-                 "                        beq      irqd13x                  \n"
-                 "                        tst      r6, #0x10000             \n"
-                 "                        bne      irqd14x                  \n"
-                 "                        orr      r6, #11                  \n"          // memoryMode = 11
-                 "                        b        irqd19                   \n"
-                 
-                                          // if(z80Control.mz700.mode[17:16] == '01')
-                 "              irqd13x:  orr      r6, #10                  \n"          // memoryMode = 10
-                 "                        b        irqd19                   \n"
-
-                                          // if(z80Control.mz700.mode[17:16] == '11)
-                 "              irqd14x:  orr      r6, #12                  \n"          // memoryMode = 12
-                 "                        b        irqd19                   \n"
-
-                                          // 0xE4 - Reset to default.
-                 "              irqd16:   cmp.w    r8, #228                 \n"
-                 "                        bne      irqd17                   \n"
-                 "                        mov      r6, #0x002               \n"          // mode[17:16] = '00', mode[inhibit] = '0',  memoryMode[current] = 2, memoryMode[old] = 2
-                 "                        b        irqd19                   \n"
-
-                                          // 0xE5 - Lock the region D000-FFFF by setting memory mode to 13.
-                 "              irqd17:   cmp.w    r8, #229                 \n"
-                 "                        bne      irqd18                   \n"
-                 "                        orr      r6, #0x40000             \n"          // mode[inhibit] = 1 
-                 "                        and      r5, r6, #0x0000FF00      \n"          // Look at previous memory mode and use to decide the mode we lock into.
-                 "                        cmp      r5, #0xB00               \n"
-                 "                        bne      irqd17x                  \n"
-                 "                        orr      r6, #13                  \n"          // memoryMode[current] = 13 - Monitor ROM at 0000:0FFF
-                 "                        b        irqd19                   \n"
-                 "              irqd17x:  orr      r6, #14                  \n"          // memoryMode[current] = 14 - System RAM at 0000:0FFF
-                 "                        b        irqd19                   \n"
-
-                                          // 0xE6 - Unlock the region D000-FFF by returning the memory mode to original.
-                 "              irqd18:   cmp.w    r8, #230                 \n"
-                 "                        bne      irqd2                    \n"
-                 "                        and      r6, #0xFFFBFFFF          \n"          // mode[inhibit] = 0
-                 "                        and      r5, r6, #0x0000FF00      \n"
-                 "                        lsrs     r5, r5, #8               \n"
-                 "                        orr      r6, r5                   \n"          // memoryMode[current] = memoryMode[old]
-
-                                          // Store the changed value back to the control structure.
-                 "              irqd19:   lsls     r8, r8, #24 \n"
-                 "                        and      r6, r6, #0x00FFFFFF \n"
-                 "                        orr      r6, r8 \n"
-                 "                        and      r5, r6, #0x000000FF      \n"
-                 "                        lsls     r5, r5, #8               \n"
-                 "                        and      r6, r6, #0xFFFF00FF      \n"
-                 "                        orr      r6, r5                   \n"          // memoryMode[old] = memoryMode[current]
-                 "                        str      r6, %[val1]              \n"
-
-                                          // Output to variables.
-                                          : [val1]  "=m" (z80Control.mz700.config)
-                                          // Input from variables.
-                                          :
-                                          : "r5","r6","r7","r8","r9","r10","r11","r12");
-
-                                          // ADDR 7       ADDR 6       ADDR 5       ADDR 4      ADDR 3      ADDR 2       ADDR 1       ADDR 0
-                                          // PORT B:11    PORT E:24    PORT E:25    PORT C:8    PORT C:9    PORT C:10    PORT C:11    PORT A:17
-                                          //                             
-                                          // DATA 7       DATA 6       DATA 5       DATA 4      DATA 3      DATA 2       DATA 1       DATA 0
-                                          // PORT D:2     PORT D:4     PORT D:7     PORT A:13   PORT A:12   PORT D:0     PORT B:17    PORT B:16
-                                          //
-                                          // 
-                                          // Z80 WAIT    SYSCLK      CTL BUSACK  Z80 BUSRQ   Z80 IORQ    Z80 WR
-                                          // PORT C:5    PORT C:6    PORT B:0    PORT C:0    PORT D:3    PORT C:4
-                                          //
-                                          //           High             Low
-                                          // PORT A = 0000000000000010 0011000000000000
-                                          // PORT B = 0000000000000011 0000100000000000
-                                          // PORT C = 0000000000000000 0000111100010000
-                                          // PORT D = 0000000000000000 0000000010011101
-                                          // PORT E = 0000001100000000 0000000000000000
-   
-                                          // Write memory mode to the latch. 
-                                          // This requires all signals A7-A0, D7-D0, WR, IORQ be set to output and de-asserted, data and address set
-                                          // control signals asserted, de-asserted then all signals returned to being inputs. Finally reset the IRQ!!
-                                          //
-    asm volatile("                        mov      r2, r6                   \n"
-          
-                                          // Read current PDOR values ready to be changed.
-                                          //
-                 "                        ldr      r0, =0x400FF000          \n"      // PDOR A
-                 "                        ldr      r4, [r0, #0]             \n"
-                 "                        orr      r4, #0b00000000000000100011000000000000 \n"
-                 "                        str      r4, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // PDOR B
-                 "                        ldr      r5, [r0, #0]             \n"
-                 "                        orr      r5, #0b00000000000000110000100000000000 \n"
-                 "                        str      r5, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // PDOR C
-                 "                        ldr      r6, [r0, #0]             \n"
-                 "                        orr      r6, #0b00000000000000000000111100010000 \n"
-                 "                        str      r6, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // PDOR D
-                 "                        ldr      r7, [r0, #0]             \n"
-                 "                        orr      r7, #0b00000000000000000000000010011101 \n"
-                 "                        str      r7, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // PDOR E
-                 "                        ldr      r8, [r0, #0]             \n"
-                 "                        orr      r8, #0b00000011000000000000000000000000 \n"
-                 "                        str      r8, [r0, #0]             \n"
-
-                                          // ADDR 7       ADDR 6       ADDR 5       ADDR 4      ADDR 3      ADDR 2       ADDR 1       ADDR 0
-                                          // PORT B:11    PORT E:24    PORT E:25    PORT C:8    PORT C:9    PORT C:10    PORT C:11    PORT A:17
-                                          //
-                                          // Pre-set the address to 060H - the memory mode latch.
-                 "                        and      r4, #0b11111111111111111111111111111110 \n"       // Port A
-                 "                        and      r5, #0b11111111111111111111011111111111 \n"       // Port B
-                 "                        and      r6, #0b11111111111111111111000011111111 \n"       // Port C
-                 "                        and      r8, #0b11111111111111111111111111111111 \n"       // Port E
-               
-                                          // Setup the Data Direction Register PDDR[x].
-                                          //
-                 "                        ldr      r0, =0x400FF014          \n"      // Port A
-                 "                        ldr      r1, [r0, #0]             \n"
-                 "                        orr      r1, #0b00000000000000100011000000000000 \n"
-                 "                        str      r1, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // Port B
-                 "                        ldr      r1, [r0, #0]             \n"
-                 "                        orr      r1, #0b00000000000000110000100000000000 \n"
-                 "                        str      r1, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // Port C
-                 "                        ldr      r1, [r0, #0]             \n"
-                 "                        orr      r1, #0b00000000000000000000111100010000 \n"
-                 "                        str      r1, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // Port D
-                 "                        ldr      r1, [r0, #0]             \n"
-                 "                        orr      r1, #0b00000000000000000000000010011101 \n"
-                 "                        str      r1, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // Port E
-                 "                        ldr      r1, [r0, #0]             \n"
-                 "                        orr      r1, #0b00000011000000000000000000000000 \n"
-                 "                        str      r1, [r0, #0]             \n"
-                );
-               
-                                          // Global Pin Control Register
-                                          // PORT A: 0x40049080 = Low, 0x40049084 = High
-                                          // PORT B: 0x4004A080 = Low, 0x4004A084 = High
-                                          // PORT C: 0x4004B080 = Low, 0x4004B084 = High
-                                          // PORT D: 0x4004C080 = Low, 0x4004C084 = High
-                                          // PORT E: 0x4004D080 = Low, 0x4004D084 = High
-                                          // 4 bytes between Low and High, 0x1000 bytes between PORTs.
-                                          //
-                                          // ADDR 7       ADDR 6       ADDR 5       ADDR 4      ADDR 3      ADDR 2       ADDR 1       ADDR 0
-                                          // PORT B:11    PORT E:24    PORT E:25    PORT C:8    PORT C:9    PORT C:10    PORT C:11    PORT A:17
-                                          //                             
-                                          // DATA 7       DATA 6       DATA 5       DATA 4      DATA 3      DATA 2       DATA 1       DATA 0
-                                          // PORT D:2     PORT D:4     PORT D:7     PORT A:13   PORT A:12   PORT D:0     PORT B:17    PORT B:16
-                                          //
-                                          // Z80 WAIT    SYSCLK      CTL BUSACK  Z80 BUSRQ   Z80 IORQ    Z80 WR
-                                          // PORT C:5    PORT C:6    PORT B:0    PORT C:0    PORT D:3    PORT C:4
-                                          //
-                                          //           High             Low
-                                          // PORT A = 0000000000000010 0011000000000000
-                                          // PORT B = 0000000000000011 0000100000000000
-                                          // PORT C = 0000000000000000 0000111100010000
-                                          // PORT D = 0000000000000000 0000000010011101
-                                          // PORT E = 0000001100000000 0000000000000000
-                                          //
-    asm volatile("                        ldr      r0, =0x40049080          \n"      // Port A low
-                 "                        ldr      r1, =0x30000143          \n"      // Bits 13:12   - PORT_PCR_SRE | PORT_PCR_DSE | PORT_PCR_MUX(1)
-                 "                        str      r1, [r0,#0]              \n"
-                 "                        add      r0, #4                   \n"      // Port A high
-                 "                        ldr      r1, =0x00020143          \n"      // Bits 17
-                 "                        str      r1, [r0,#0]              \n"
-
-                 "                        add      r0, #0xFFC               \n"      // Port B low
-                 "                        ldr      r1, =0x08000143          \n"      // Bits 11
-                 "                        str      r1, [r0,#0]              \n"
-                 "                        add      r0, #4                   \n"      // Port B high
-                 "                        ldr      r1, =0x00030143          \n"      // Bits 17:16
-                 "                        str      r1, [r0,#0]              \n"
-
-                 "                        add      r0, #0xFFC               \n"      // Port C low
-                 "                        ldr      r1, =0x0F100143          \n"      // Bits 11:8,4
-                 "                        str      r1, [r0,#0]              \n"
-
-                 "                        add      r0, #0x1000              \n"      // Port D low
-                 "                        ldr      r1, =0x009D0143          \n"      // Bits 7, 4:2, 0
-                 "                        str      r1, [r0,#0]              \n"
-
-                 "                        ldr      r0, =0x4004D080          \n"      // Port E high
-                 "                        ldr      r1, =0x03000143          \n"      // Bits 25:24
-                 "                        str      r1, [r0,#0]              \n"
-
-                                          // DATA 7       DATA 6       DATA 5       DATA 4      DATA 3      DATA 2       DATA 1       DATA 0
-                                          // PORT D:2     PORT D:4     PORT D:7     PORT A:13   PORT A:12   PORT D:0     PORT B:17    PORT B:16
-                                          // 
-                                          // Setup the data value on the lines D7:0
-                 "                        tst      r6, #0x80                \n"      // D7
-                 "                        bne      sd0                      \n"
-                 "                        bic      r7, #0x04                \n"
-                 "              sd0:      tst      r2, #0x40                \n"      // D6
-                 "                        bne      sd1                      \n"
-                 "                        bic      r7, #0x10                \n"
-                 "              sd1:      tst      r2, #0x20                \n"      // D5
-                 "                        bne      sd2                      \n"
-                 "                        bic      r7, #0x80                \n"
-                 "              sd2:      tst      r2, #0x10                \n"      // D4
-                 "                        bne      sd3                      \n"
-                 "                        bic      r4, #0x2000              \n"
-                 "              sd3:      tst      r2, #0x08                \n"      // D3
-                 "                        bne      sd4                      \n"
-                 "                        bic      r4, #0x1000              \n"
-                 "              sd4:      tst      r2, #0x04                \n"      // D2
-                 "                        bne      sd5                      \n"
-                 "                        bic      r7, #0x1                 \n"
-                 "              sd5:      tst      r2, #0x02                \n"      // D1
-                 "                        bne      sd6                      \n"
-                 "                        bic      r5, #0x20000             \n"
-                 "              sd6:      tst      r2, #0x01                \n"      // D0
-                 "                        bne      sd7                      \n"
-                 "                        bic      r5, #0x10000             \n"
-                 "              sd7:                                        \n"
-
-                                          // Update the PDOR registers with the determined values.
-                                          //
-                 "                        ldr      r0, =0x400FF000          \n"      // PDOR A
-                 "                        str      r4, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // PDOR B
-                 "                        str      r5, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // PDOR C
-                 "                        str      r6, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // PDOR D
-                 "                        str      r7, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // PDOR E
-                 "                        str      r8, [r0, #0]             \n"
-                );
-
-                                          // Start the write cycle, MREQ and WR go low.
-    asm volatile("                        mov      r1, #1                   \n"
-                 "                        ldr      r0, =0x43fe190c          \n"      // Set IORQ=0x43fe188c, Clear=0x43fe190c
-                 "                        str      r1, [r0,#0]              \n"
-                 "                        sub      r0, #0x7FC               \n"      // Set WR  =0x43fe1090, Clear=0x43fe1110
-                 "                        str      r1, [r0,#0]              \n"
-
-                                          // A small delay to ensure the pulse width is sufficient to cater for 55ns of the flash decoder + 40ns for the HCT138 + latch timing.
-                                          // The main criteria is data settle time prior to rising edge on the latch.
-                 "                        movs     r1, #5                   \n"
-                 "              sd8:      subs     r1, #1                   \n"
-                 "                        bne      sd8                      \n"
-
-                                          // Complete the write cycle before.
-                 "                        mov      r1, #1                   \n"
-                 "                        ldr      r0, =0x43fe188c          \n"      // Set IORQ=0x43fe188c, Clear=0x43fe190c
-                 "                        str      r1, [r0,#0]              \n"
-                 "                        sub      r0, #0x7FC               \n"      // Set WR  =0x43fe1090, Clear=0x43fe1110
-                 "                        str      r1, [r0,#0]              \n"
-                );
-                
-                                          // Revert the Data Direction Register PDDR[x].
-                                          //
-                                          // Z80 WAIT    SYSCLK      CTL BUSACK  Z80 BUSRQ   Z80 IORQ    Z80 WR
-                                          // PORT C:5    PORT C:6    PORT B:0    PORT C:0    PORT D:3    PORT C:4
-    asm volatile("                        ldr      r0, =0x400FF014          \n"      // Port A
-                 "                        ldr      r1, [r0, #0]             \n"
-                 "                        and      r1, #0b11111111111111011100111111111111 \n"
-                 "                        str      r1, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // Port B
-                 "                        ldr      r1, [r0, #0]             \n"
-                 "                        and      r1, #0b11111111111111001111011111111111 \n"
-                 "                        str      r1, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // Port C
-                 "                        ldr      r1, [r0, #0]             \n"
-                 "                        and      r1, #0b11111111111111111111000011101111 \n"
-                 "                        str      r1, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // Port D
-                 "                        ldr      r1, [r0, #0]             \n"
-                 "                        and      r1, #0b11111111111111111111111101100010 \n"
-                 "                        str      r1, [r0, #0]             \n"
-                 "                        add      r0, #0x40                \n"      // Port E
-                 "                        ldr      r1, [r0, #0]             \n"
-                 "                        and      r1, #0b11111100111111111111111111111111 \n"
-                 "                        str      r1, [r0, #0]             \n"
-                );
-
-                                          // Global Pin Control Register
-                                          // Setup all changed signals to now be inputs.
-    asm volatile("                        ldr      r0, =0x40049080          \n"      // Port A low
-                 "                        ldr      r1, =0x30000103          \n"      // Bits 13:12       - PORT_PCR_MUX(1) | PORT_PCR_PE | PORT_PCR_PS
-                 "                        str      r1, [r0,#0]              \n"
-                 "                        add      r0, #4                   \n"      // Port A high
-                 "                        ldr      r1, =0x00020103          \n"      // Bits 17
-                 "                        str      r1, [r0,#0]              \n"
-
-                 "                        add      r0, #0xFFC               \n"      // Port B low
-                 "                        ldr      r1, =0x08000103          \n"      // Bits 11
-                 "                        str      r1, [r0,#0]              \n"
-                 "                        add      r0, #4                   \n"      // Port B high
-                 "                        ldr      r1, =0x00030103          \n"      // Bits 17:16
-                 "                        str      r1, [r0,#0]              \n"
-
-                 "                        add      r0, #0xFFC               \n"      // Port C low
-                 "                        ldr      r1, =0x0F100103          \n"      // Bits 11:8,4
-                 "                        str      r1, [r0,#0]              \n"
-
-                 "                        add      r0, #0x1000              \n"      // Port D low
-                 "                        ldr      r1, =0x009D0103          \n"      // Bits 7, 4:2, 0
-                 "                        str      r1, [r0,#0]              \n"
-
-                 "                        ldr      r0, =0x4004D080          \n"      // Port E high
-                 "                        ldr      r1, =0x03000103          \n"      // Bits 25:24
-                 "                        str      r1, [r0,#0]              \n"
-  
-                                          // After writing out the data, jump to exit, we dont set the ioEvent flag as the event has been processed already.
-                 "                        b        irqPortD_Exit3           \n"
-                );
-
-    asm volatile(                         // Process the IO request by setting the ioEvent flag as it wasnt an MZ700 memory switch request.
-                 "              irqd20:   movs     r4, #1                   \n"
-                 "                        strb     r4, %[val2]              \n"
-
-                                          : [val2]  "+m" (z80Control.ioEvent)
-                                          :
-                                          : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
-              
-    asm volatile("       irqPortD_Exit3:                                    \n"
   #if 0
-                                          // De-assert Z80_WAIT, on a valid run it will have already been de-asserted, but certain events such as reset exit immediately so need to de-assert on exit.
-                 "                        ldr      r4, =0x43fe1014          \n"          // Z80_WAIT 0x43fe1114 clear, 0x43fe1014 set
-                 "                        movs     r5, #1                   \n"
-                 "                        str      r5, [r4,#0]              \n"
+                                          // Convert data port bits into a byte and store.
+    asm volatile("                        lsrs     r1, r5, 16              \n"          // Data Port B 23:17 = Z80 D7:D0
+                 "                        and      r1, r1, #0xFF           \n"          // Clear out top bits.
+                 "                        strb     r1, %[val0]              \n"
+                 "                        mov      r7, r0                   \n"          // Data in R7
+
+                                          : [val0] "=m" (z80Control.ioData)
+                                          :
+                                          : "r0","r1","r4","r5","r6","r7","r8","r9","r10","r11","r12");
   #endif
-
-                                          // De-assert BUSRQ nothing more to do.
-                 "                        ldr      r4, =0x43fe1000          \n"          // CTL_BUSRQ 0x43fe1100 clear, 0x43fe1000 set
-                 "                        movs     r5, #1                   \n"
-                 "                        str      r5, [r4,#0]              \n"
-                
-                                          // Reset the triggering interrupt, PORTD_ISFR <= PORTD_ISFR
-                 "                        ldr      r0, =0x4004c0a0          \n"
-                 "                        ldr      r4, [r0, #0]             \n"
-                 "                        str      r4, [r0, #0]             \n"
-             
-                                          // Restore registers, all done.
-                 "                        pop      {r0-r8,pc}               \n"
-                                          :
-                                          :
-                                          : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
-
-    return;
-}
-
-// This method is called everytime an active irq triggers on Port C. For this design, this means the MREQ line.
-// Store all the ports as they are needed to capture the Address and Data of the asserted z80 I/O transaction.
-//
-#if 0
-static void __attribute((naked, noinline)) irqPortC(void)
-{
-                                          // This code is critical, AIT needs to be applied before end of the WAIT sample cycle, the 120Mhz K64F only just makes it. This is to ensure a good sample of the signals
-                                          // then BUSRQ needs to be asserted in case of memory mode latch updates.
-    asm volatile("                        push     {r0-r1}                  \n");
-    asm volatile("                        ldr      r0, =0x43fe1114          \n"          // Z80_WAIT  0x43fe1114 clear, 0x43fe1014 set
-                 "                        movs     r1, #1                   \n"
-                 "                        str      r1, [r0,#0]              \n"
-
-                                          // Save minimum number of registers, cycles matter as we need to capture the address and halt the Z80 whilst we decode it.
-                 "                        pop      {r0-r1}                  \n"
-                 "                        push     {r0-r8,lr}               \n"
-               
-                                          // Get the triggering interrupt and reset, PORTC_ISFR <= PORTC_ISFR
-                 "                        ldr      r3, =0x4004b0a0          \n"
-                 "                        ldr      r2, [r3, #0]             \n"
-                 "                        str      r2, [r3, #0]             \n"
-                );
-
-                                          // Capture GPIO ports - this is necessary in order to make a clean capture and then decode.
-    asm volatile("                        ldr      r0, =0x400ff010          \n"          // GPIOA_PDIR
-                 "                        ldr      r4, [r0, #0]             \n"
-                 "                        add.w    r0, #64                  \n"          // GPIOB_PDIR
-                 "                        ldr      r5, [r0, #0]             \n"
-                 "                        add.w    r0, #64                  \n"          // GPIOC_PDIR
-                 "                        ldr      r6, [r0, #0]             \n"
-                 "                        add.w    r0, #64                  \n"          // GPIOD_PDIR
-                 "                        ldr      r7, [r0, #0]             \n"
-                 "                        add.w    r0, #64                  \n"          // GPIOE_PDIR
-                 "                        ldr      r8, [r0, #0]             \n"
-
-                                          // De-assert Z80_WAIT, signals have been sampled and if it is kept low too long it will slow the host down and with BUSRQ, BUSACK will go high (a bug?)!!
-                 "                        ldr      r0, =0x43fe1014          \n"          // Z80_WAIT 0x43fe1114 clear, 0x43fe1014 set
-                 "                        movs     r3, #1                   \n"
-                 "                        str      r3, [r0,#0]              \n"
-                                          :
-                                          :
-                                          : "r4","r5","r6","r7","r8","r9","r10","r11","r12"
-                );
-
-                                          // Now save the GPIO values into the structure. Seperate statements to get around the optimizer trying to use 5 scratch registers.
-    asm volatile("                        str      r4, %[val1]              \n" : [val1] "=m" (z80Control.portA) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
-    asm volatile("                        str      r5, %[val2]              \n" : [val2] "=m" (z80Control.portB) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
-    asm volatile("                        str      r6, %[val3]              \n" : [val3] "=m" (z80Control.portC) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
-    asm volatile("                        str      r7, %[val4]              \n" : [val4] "=m" (z80Control.portD) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
-    asm volatile("                        str      r8, %[val5]              \n" : [val5] "=m" (z80Control.portE) : : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
-
-    asm volatile(
-                                          // Is Z80_WR active, continue if it is as we consider IO WRITE cycles.
-                 "                        tst      r6, #16                  \n"
-                 "                        beq      cbrx                     \n"
-   
-                                          // Is Z80_RD active, continue if it is as we consider IO READ cycles.
-                 "                        tst      r6, #128                 \n"
-                 "                        bne      irqPortC_Exit            \n"
-                 "                                                          \n"
-                                          // Is Z80_RFSH active, exit if so as we dont want to consider refresh cycles.
-                 "                        tst      r5, #0x800000            \n"
-                 "                        beq      irqPortC_Exit            \n"
-
-                                          // Is Z80_M1 active, exit if so as we dont want to consider instruction cycles.
-                 "                        tst      r7, #0x20                \n"
-                 "                        beq      irqPortC_Exit            \n"
-                 "              cbrx:                                       \n"
-                );
-
-
-                                          // Is the memory address in the 0xE000 region?
-                                          // Only interested in certain locations (memory mapped IO), exit if not in range.
-    asm volatile("                        lsrs     r3, r8, #11              \n"       // (z80Control.portE >> 11)&0x8000)
-                 "                        and      r3, r3, #32768           \n"
-                 "                        lsls     r2, r4, #9               \n"        // (z80Control.portA << 9)&0x4000)
-                 "                        and      r2, r2, #16384           \n"
-                 "                        orrs     r3, r2                   \n"
-                 "                        lsrs     r2, r4, #1               \n"        // (z80Control.portA >> 1)&0x2000)
-                 "                        and      r2, r2, #8192            \n"
-                 "                        orrs     r3, r2                   \n"
-                 "                        lsrs     r2, r4, #3               \n"        // (z80Control.portA >> 3)&0x1000)
-                 "                        and      r2, r2, #4096            \n"
-                 "                        orrs     r3, r2                   \n"
-                 "                        lsrs     r2, r4, #5               \n"        // (z80Control.portA >> 5)&0x0800)
-                 "                        and      r2, r2, #2048            \n"
-                 "                        orrs     r3, r2                   \n"
-                 "                        cmp      r3, #57344               \n"        // == 0xE000
-                 "                        bne      irqPortC_Exit            \n"
-                );
-
-                                          // Get the lower part of the address into R0 which we compare with the various registers and update.
-                                          //
-    asm volatile("                        mov      r3, r5, lsr #8           \n"    // (z80Control.portB >> 8)&0x0400)
-                 "                        and      r3, r3, #1024            \n"
-                 "                        mov      r2, r5, lsr #10          \n"   // (z80Control.portB >> 10)&0x0200)
-                 "                        and      r2, r2, #512             \n"
-                 "                        orr      r3, r2                   \n"
-                 "                        mov      r2, r5, lsr #2           \n"    // (z80Control.portB >> 2)&0x0100)
-                 "                        and      r2, r2, #256             \n"
-                 "                        orr      r3, r2                   \n"
-                 "                        mov      r2, r5, lsr #4           \n"    // (z80Control.portB >> 2)&0x0080)
-                 "                        and      r2, r2, #128             \n"
-                 "                        orr      r3, r2                   \n"
-                 "                        mov      r2, r8, lsr #18          \n"   // (z80Control.portE >> 2)&0x0040)
-                 "                        and      r2, r2, #64              \n"
-                 "                        orr      r3, r2                   \n"
-                 "                        mov      r2, r8, lsr #20          \n"   // (z80Control.portE >> 2)&0x0020)
-                 "                        and      r2, r2, #32              \n"
-                 "                        orr      r3, r2                   \n"
-                 "                        mov      r2, r6, lsr #4           \n"    // (z80Control.portC >> 4)&0x0010)
-                 "                        and      r2, r2, #16              \n"
-                 "                        orr      r3, r2                   \n"
-                 "                        mov      r2, r6, lsr #6           \n"    // (z80Control.portC >> 6)&0x0008)
-                 "                        and      r2, r2, #8               \n"
-                 "                        orr      r3, r2                   \n"
-                 "                        mov      r2, r6, lsr #8           \n"    // (z80Control.portC >> 8)&0x0004)
-                 "                        and      r2, r2, #4               \n"
-                 "                        orr      r3, r2                   \n"
-                 "                        mov      r2, r6, lsr #8           \n"    // (z80Control.portC >> 10)&0x0002)
-                 "                        and      r2, r2, #2               \n"
-                 "                        orr      r3, r2                   \n"
-                 "                        mov      r2, r4, lsr #17          \n"   // (z80Control.portA >> 17)&0x0001)
-                 "                        and      r2, r2, #1               \n"
-                 "                        orr      r3, r2                   \n"
-
-                                          ::: "r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
 
     asm volatile(                         // A memory swap event.
                  "                        movw     r1," XSTR(MZ_MEMORY_SWAP) "\n"
@@ -1071,7 +440,20 @@ static void __attribute((naked, noinline)) irqPortC(void)
                                           :
                                           : "r2","r3","r4","r5","r7","r8","r9","r10","r11","r12");
 
-    asm volatile("       irqPortC_Exit:                                     \n"
+              
+    asm volatile("       irqPortD_Exit12:                                   \n"
+
+                                          // De-assert BUSRQ nothing more to do.
+                 "                        ldr      r4, =0x43fe1800          \n"      // CTL_BUSRQ,  Set=43fe1800, Clear=43fe1900
+                 "                        movs     r5, #1                   \n"
+                 "                        str      r5, [r4,#0]              \n"
+                
+                                          // Reset the triggering interrupt, PORTD_ISFR <= PORTD_ISFR
+                 "                        ldr      r0, =0x4004c0a0          \n"
+                 "                        ldr      r4, [r0, #0]             \n"
+                 "                        str      r4, [r0, #0]             \n"
+             
+                                          // Restore registers, all done.
                  "                        pop      {r0-r8,pc}               \n"
                                           :
                                           :
@@ -1080,13 +462,389 @@ static void __attribute((naked, noinline)) irqPortC(void)
     return;
 }
 #endif
+//
+// Mode 3 - MZ700 processing.
+//
+// v1.1 address reference:
+//     CTL_BUSRQ,  Set=43fe1800, Clear=43fe1900
+//     Z80_WAIT,   Set=43fe183c, Clear=43fe193c
+//     CTL_BUSACK, Set=43fe1818, Clear=43fe1918
+//     Z80_IORQ,   Set=43fe180c, Clear=43fe190c
+//     Z80_MREQ,   Set=43fe1808, Clear=43fe1908
+// 
+//
+static void __attribute((naked, noinline)) irqPortD_Mode3(void)
+{
+                                          // Save minimum number of registers, cycles matter as we need to capture the address and halt the Z80 whilst we decode it.
+    asm volatile("                        push     {r0-r8,lr}               \n"
 
+                                          // Get the triggering interrupt.
+                 "                        ldr      r0, =0x4004c0a0          \n"
+                 "                        ldr      r4, [r0, #0]             \n"
+
+                                          // Assert BUSRQ so we keep the Z80 from moving to the next instruction in-case we need to update the memory latch.
+                 "                        ldr      r0, =0x43fe1900          \n"          // CTL_BUSRQ
+                 "                        movs     r1, #1                   \n"
+                 "                        str      r1, [r0,#0]              \n"
+                );
+
+    asm volatile(                         // Is Z80_RESET active, set flag and exit.
+                                          // NB: We are testing the interrupt register, a bit is set if the given signal caused the interrupt, so a 1 means the signal went active.
+                 "                        tst      r4, #0x0010              \n"
+                 "                        beq      irqd0                    \n"
+                 "                        movs     r6, #1                   \n"
+                 "                        strb     r6, %[val1]              \n"
+                 "                        b        irqPortD_Exit3           \n"
+
+                                          : [val1] "=m" (z80Control.resetEvent)
+                                          : 
+                                          : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
+
+    asm volatile(                         // If the IORQ line is high (another interrupt triggered us or false trigger) get out, cant work with incomplete data.
+                 "              irqd0:    tst      r4, #0x0008              \n"
+                 "                        beq      irqPortD_Exit3           \n"
+                );
+
+                                          // Capture GPIO ports - this is necessary in order to make a clean capture and then decode.
+    asm volatile("                        ldr      r0, =0x400ff010          \n"          // GPIOA_PDIR
+                 "                        ldr      r4, [r0, #0]             \n"
+                 "                        add.w    r0, #64                  \n"          // GPIOB_PDIR
+                 "                        ldr      r5, [r0, #0]             \n"
+                 "                        add.w    r0, #64                  \n"          // GPIOC_PDIR
+                 "                        ldr      r6, [r0, #0]             \n"
+                 "                        add.w    r0, #64                  \n"          // GPIOD_PDIR
+                 "                        ldr      r7, [r0, #0]             \n"
+                 "                        add.w    r0, #64                  \n"          // GPIOE_PDIR
+                 "                        ldr      r8, [r0, #0]             \n"
+
+                                          :
+                                          :
+                                          : "r0","r1","r4","r5","r6","r7","r8","r9","r10","r11","r12");
+  
+    asm volatile(                         // Is TZ_SVCREQ (E10) active (low), set flag and exit if it is.
+                 "                        movs     r0, #1                   \n"
+                 "                        tst      r8, #0x400               \n"
+                 "                        bne      irqd1                    \n"
+                 "                        strb     r0, %[val0]              \n" 
+                 "                        b        irqPortD_Exit3           \n"
+
+                                          // Is TZ_SYSREQ (E11) active (low), set flag and exit if it is.
+                 "              irqd1:    tst      r8, #0x800               \n"
+                 "                        bne      irqd2                    \n"
+                 "                        strb     r0, %[val1]              \n"
+                 "                        b        irqPortD_Exit3           \n"
+
+                                          : [val0] "+m" (z80Control.svcRequest),
+                                            [val1] "+m" (z80Control.sysRequest) 
+                                          :
+                                          : "r0","r4","r5","r7","r8","r9","r10","r11","r12");
+
+    asm volatile(                         // Is Z80_WR active, continue if it is as we consider IO WRITE cycles.
+                 "              irqd2:    tst      r7, #0x200               \n"          // Z80_WR = D9 v1.1+
+                 "                        beq      irqd3                    \n"
+   
+                                          // Is Z80_RD active, continue if it is as we consider IO READ cycles.
+                 "                        tst      r7, #0x800               \n"          // Z80_RD = D11 v1.1+
+                 "                        bne      irqPortD_Exit3           \n"
+                 "              irqd3:                                      \n"
+                );
+
+                                          // Convert lower 8 address bits into a byte and store.
+                                          //
+    asm volatile("                        and      r0, r6, #0xFF            \n"          // Port C 7:0 = Z80 A7:A0
+
+                                          // Store the address for later processing..
+                 "                        strb     r0, %[val0]              \n" 
+                 "                        mov      r8, r0                   \n"          // Addr in R8
+                 
+                                          : [val0] "=m" (z80Control.ioAddr)
+                                          :
+                                          : "r0","r1","r4","r5","r6","r7","r8","r9","r10","r11","r12");
+
+    // MZ700 memory mode switch?
+    //         0x0000:0x0FFF     0xD000:0xFFFF
+    // 0xE0 =  DRAM
+    // 0xE1 =                    DRAM
+    // 0xE2 =  MONITOR
+    // 0xE3 =                    Memory Mapped I/O
+    // 0xE4 =  MONITOR           Memory Mapped I/O
+    // 0xE5 =                    Inhibit
+    // 0xE6 =                    Return to state prior to 0xE5
+    //
+    // Must be in range 0xE0-0xE6 to be an MZ700 operation.
+    // 
+    // ADDR 7       ADDR 6       ADDR 5       ADDR 4      ADDR 3      ADDR 2       ADDR 1       ADDR 0
+    // PORT C:7     PORT C:6     PORT C:5     PORT C:4    PORT C:3    PORT C:2     PORT C:1     PORT C:0
+    //                             
+    // DATA 7       DATA 6       DATA 5       DATA 4      DATA 3      DATA 2       DATA 1       DATA 0
+    // PORT B:23    PORT B:22    PORT B:21    PORT B:20   PORT B:19   PORT B:18    PORT B:17    PORT B:16
+    //
+    // 
+    // Z80 WAIT    SYSCLK      CTL BUSACK  CTL BUSRQ   Z80 IORQ    Z80 WR
+    // PORT D:15   PORT A:5    PORT D:6    PORT D:0    PORT D:3    PORT D:9
+    //
+    //     CTL_BUSRQ,  Set=43fe1800, Clear=43fe1900
+    //     Z80_WAIT,   Set=43fe183c, Clear=43fe193c
+    //     CTL_BUSACK, Set=43fe1818, Clear=43fe1918
+    //     Z80_IORQ,   Set=43fe180c, Clear=43fe190c
+    //     Z80_MREQ,   Set=43fe1808, Clear=43fe1908
+    //     Z80_RD,     Set=43fe182c, Clear=43fe192c
+    //     Z80_WR,     Set=43fe1824, Clear=43fe1924
+    //
+    asm volatile("                    cmp.w     r8, #224                    \n"
+                 "                    blt       irqd20                      \n"
+                 "                    cmp.w     r8, #230                    \n"
+                 "                    bgt       irqd20                      \n"
+                 "                                                          \n"
+                 "                        ldr      r6, %[val1]              \n"          // Retrieve the config value for the MZ700.
+                 "                        tst      r6, #0x40000             \n"
+                 "                        bne      irqd16                   \n"          // For locked mode, only service E4, E5 & E6.
+                 "                        and      r6, r6, #0xFFFFFF00      \n"          // Clear out the memoryMode[current[ as a new value will be stored.
+
+                                          // 0xE0
+                 "              irqd12:   cmp.w    r8, #224                 \n"          // R8 = address location of OUT command on Z80.
+                 "                        bne      irqd13                   \n"
+                 "                        orr      r6, #65536               \n"          // mode[16] = 1
+                 "                        b        irqd11x                  \n"
+
+                                          // 0xE1
+                 "              irqd13:   cmp.w    r8, #225                 \n"
+                 "                        bne      irqd14                   \n" 
+                 "                        orr      r6, #131072              \n"          // mode[17] = 1
+                 "                        b        irqd11x                  \n"
+
+                                          // 0xE2
+                 "              irqd14:   cmp.w    r9, #226                 \n"
+                 "                        bne      irqd15                   \n"
+                 "                        bic      r6, #65536               \n"          // mode[16] = 0
+                 "                        b        irqd11x                  \n"
+
+                                          // 0xE3
+                 "              irqd15:   cmp.w    r8, #227                 \n"
+                 "                        bne      irqd16                   \n"
+                 "                        bic      r6, #131072              \n"          // mode[17] = 0
+
+                                          // if(z80Control.mz700.mode[17:16] == '00')
+                 "              irqd11x:  tst      r6, #0x30000             \n"
+                 "                        bne      irqd12x                  \n"
+                 "                        orr      r6," XSTR(TZMM_TZFS + TZMM_ENIOWAIT)    "\n" // memoryMode = 2
+                 "                        b        irqd19                   \n"
+
+                                          // if(z80Control.mz700.mode[17:16] == '10')
+                 "              irqd12x:  tst      r6, #0x20000             \n"
+                 "                        beq      irqd13x                  \n"
+                 "                        tst      r6, #0x10000             \n"
+                 "                        bne      irqd14x                  \n"
+                 "                        orr      r6," XSTR(TZMM_MZ700_1 + TZMM_ENIOWAIT) "\n" // memoryMode = 11
+                 "                        b        irqd19                   \n"
+                 
+                                          // if(z80Control.mz700.mode[17:16] == '01')
+                 "              irqd13x:  orr      r6," XSTR(TZMM_MZ700_0 + TZMM_ENIOWAIT) "\n" // memoryMode = 10
+                 "                        b        irqd19                   \n"
+
+                                          // if(z80Control.mz700.mode[17:16] == '11)
+                 "              irqd14x:  orr      r6," XSTR(TZMM_MZ700_2 + TZMM_ENIOWAIT) "\n" // memoryMode = 12
+                 "                        b        irqd19                   \n"
+
+                                          // 0xE4 - Reset to default.
+                 "              irqd16:   cmp.w    r8, #228                 \n"
+                 "                        bne      irqd17                   \n"
+                 "                        mov      r6," XSTR(TZMM_TZFS + TZMM_ENIOWAIT) "\n"    // mode[17:16] = '00', mode[inhibit] = '0',  memoryMode[current] = 2, memoryMode[old] = 2
+                 "                        b        irqd19                   \n"
+
+                                          // 0xE5 - Lock the region D000-FFFF by setting memory mode to 13.
+                 "              irqd17:   cmp.w    r8, #229                 \n"
+                 "                        bne      irqd18                   \n"
+                 "                        orr      r6, #0x40000             \n"          // mode[inhibit] = 1 
+                 "                        and      r5, r6, #0x0000FF00      \n"          // Look at previous memory mode and use to decide the mode we lock into.
+                 "                        cmp      r5, #0xB00               \n"
+                 "                        bne      irqd17x                  \n"
+                 "                        orr      r6," XSTR(TZMM_MZ700_3 + TZMM_ENIOWAIT) "\n" // memoryMode[current] = 13 - Monitor ROM at 0000:0FFF
+                 "                        b        irqd19                   \n"
+                 "              irqd17x:  orr      r6," XSTR(TZMM_MZ700_4 + TZMM_ENIOWAIT) "\n" // memoryMode[current] = 14 - System RAM at 0000:0FFF
+                 "                        b        irqd19                   \n"
+
+                                          // 0xE6 - Unlock the region D000-FFF by returning the memory mode to original.
+                 "              irqd18:   cmp.w    r8, #230                 \n"
+                 "                        bne      irqd2                    \n"
+                 "                        and      r6, #0xFFFBFFFF          \n"          // mode[inhibit] = 0
+                 "                        and      r5, r6, #0x0000FF00      \n"
+                 "                        lsrs     r5, r5, #8               \n"
+                 "                        orr      r6, r5                   \n"          // memoryMode[current] = memoryMode[old]
+
+                                          // Store the changed value back to the control structure.
+                 "              irqd19:   lsls     r8, r8, #24 \n"
+                 "                        and      r6, r6, #0x00FFFFFF \n"
+                 "                        orr      r6, r8 \n"
+                 "                        and      r5, r6, #0x000000FF      \n"
+                 "                        lsls     r5, r5, #8               \n"
+                 "                        and      r6, r6, #0xFFFF00FF      \n"
+                 "                        orr      r6, r5                   \n"          // memoryMode[old] = memoryMode[current]
+                 "                        str      r6, %[val1]              \n"
+
+                                          // Output to variables.
+                                          : [val1]  "=m" (z80Control.mz700.config)
+                                          // Input from variables.
+                                          :
+                                          : "r5","r6","r7","r8","r9","r10","r11","r12");
+
+                                          // Write memory mode to the latch. 
+                                          // This requires all signals A7-A0, D7-D0, WR, IORQ be set to output and de-asserted, data and address set
+                                          // control signals asserted, de-asserted then all signals returned to being inputs. Finally reset the IRQ!!
+                                          //
+    asm volatile("                        mov      r2, r6                   \n"
+          
+                                          // Read current PDOR values ready to be changed.
+                                          //
+                 "                        ldr      r0, =0x400FF040          \n"      // PDOR B
+                 "                        ldr      r5, [r0, #0]             \n"
+                 "                        lsls     r2, r2, 16                              \n"       // Data into position. 
+                 "                        and      r2, #0b00000000111111110000000000000000 \n"       // Mask the shifted data.
+                 "                        and      r5, #0b11111111000000001111111111111111 \n"       // Clear out the data bits in the output register.
+                 "                        orr      r5, r2                                  \n"       // Add data onto register bits.
+                 "                        str      r5, [r0, #0]             \n"                      // And put back to output register.
+
+                 "                        add      r0, #0x40                \n"      // PDOR C
+                 "                        ldr      r6, [r0, #0]             \n"
+                 "                        and      r6, #0b11111111111111111111111100000000 \n"       // Port C
+                 "                        orr      r6, #0b00000000000000000000000001100000 \n"       // Set address to 60H
+                 "                        str      r6, [r0, #0]             \n"
+
+                 "                        add      r0, #0x40                \n"      // PDOR D
+                 "                        ldr      r7, [r0, #0]             \n"
+                 "                        orr      r7, #0b00000000000000000000000000001000 \n"       // Set all control signals to inactive.
+                 "                        orr      r1, #0b00000000000000000000001000000000 \n"
+                 "                        str      r7, [r0, #0]             \n"
+
+                                          // Setup the Data Direction Register PDDR[x].
+                                          //
+                 "                        ldr      r0, =0x400FF054          \n"      // Port B
+                 "                        ldr      r1, [r0, #0]             \n"
+                 "                        orr      r1, #0b00000000111111110000000000000000 \n"
+                 "                        str      r1, [r0, #0]             \n"
+                 "                        add      r0, #0x40                \n"      // Port C
+                 "                        ldr      r1, [r0, #0]             \n"
+                 "                        orr      r1, #0b00000000000000000000000011111111 \n"
+                 "                        str      r1, [r0, #0]             \n"
+                 "                        add      r0, #0x40                \n"      // Port D
+                 "                        ldr      r1, [r0, #0]             \n"
+                 "                        orr      r1, #0b00000000000000000000000000001000 \n"
+                 "                        orr      r1, #0b00000000000000000000001000000000 \n"
+                 "                        str      r1, [r0, #0]             \n"
+                );
+               
+                                          // Setup the required pins for output mode (CTL_BUSRQ, Z80_WR).
+                                          //
+    asm volatile("                        ldr      r0, =0x4004A084          \n"      // Port B high
+                 "                        ldr      r1, =0x00FF0143          \n"      // Bits 23:16
+                 "                        str      r1, [r0,#0]              \n"
+
+                 "                        add      r0, #0xFFC               \n"      // Port C low
+                 "                        ldr      r1, =0x00FF0143          \n"      // Bits 7:0
+                 "                        str      r1, [r0,#0]              \n"
+
+                 "                        add      r0, #0x1000              \n"      // Port D low
+                 "                        ldr      r1, =0x02080143          \n"      // Bits 9, 3
+                 "                        str      r1, [r0,#0]              \n"
+
+                                          // Update the PDOR registers with the determined values.
+                                          //
+                 "                        ldr      r0, =0x400FF040          \n"      // PDOR B
+                 "                        str      r5, [r0, #0]             \n"
+                 "                        add      r0, #0x40                \n"      // PDOR C
+                 "                        str      r6, [r0, #0]             \n"
+                 "                        add      r0, #0x40                \n"      // PDOR D
+                 "                        str      r7, [r0, #0]             \n"
+                );
+
+                                          // Start the write cycle, IORQ and WR go low.
+    asm volatile("                        mov      r1, #1                   \n"
+                 "                        ldr      r0, =0x43fe190c          \n"      // Set IORQ Set=43fe180c, Clear=43fe190c
+                 "                        str      r1, [r0,#0]              \n"
+                 "                        add      r0, #0x18                \n"      // Set WR   Set=43fe1824, Clear=43fe1924
+                 "                        str      r1, [r0,#0]              \n"
+
+                                          // A small delay to ensure the pulse width is sufficient to cater for 55ns of the flash decoder + 40ns for the HCT138 + latch timing.
+                                          // The main criteria is data settle time prior to rising edge on the latch.
+                 "                        movs     r1, #8                   \n"
+                 "              sd8:      subs     r1, #1                   \n"
+                 "                        bne      sd8                      \n"
+
+                                          // Complete the write cycle by raising the WR and IORQ signals.
+                 "                        mov      r1, #1                   \n"
+                 "                        ldr      r0, =0x43fe180c          \n"      // Set IORQ Set=43fe180c, Clear=43fe190c
+                 "                        str      r1, [r0,#0]              \n"
+                 "                        add      r0, #0x18                \n"      // Set WR   Set=43fe1824, Clear=43fe1924
+                 "                        str      r1, [r0,#0]              \n"
+                );
+                
+                                          // Revert the Data Direction Register PDDR[x].
+                                          //
+    asm volatile("                        ldr      r0, =0x400FF0D4          \n"      // Port D
+                 "                        ldr      r1, [r0, #0]             \n"
+                 "                        and      r1, #0b11111111111111111111110111110111 \n"
+                 "                        str      r1, [r0, #0]             \n"
+                 "                        sub      r0, #0x40                \n"      // Port C
+                 "                        ldr      r1, [r0, #0]             \n"
+                 "                        and      r1, #0b11111111111111111111111100000000 \n"
+                 "                        str      r1, [r0, #0]             \n"
+                 "                        sub      r0, #0x40                \n"      // Port B
+                 "                        ldr      r1, [r0, #0]             \n"
+                 "                        and      r1, #0b11111111000000001111111111111111 \n"
+                 "                        str      r1, [r0, #0]             \n"
+                );
+
+                                          // Global Pin Control Register
+                                          // Setup all changed signals to now be inputs.
+    asm volatile("                        ldr      r0, =0x4004A084          \n"      // Port B high
+                 "                        ldr      r1, =0x00FF0103          \n"      // Bits 23:16
+                 "                        str      r1, [r0,#0]              \n"
+
+                 "                        add      r0, #0xFFC               \n"      // Port C low
+                 "                        ldr      r1, =0x00FF0103          \n"      // Bits 7:0
+                 "                        str      r1, [r0,#0]              \n"
+
+                 "                        add      r0, #0x1000              \n"      // Port D low
+                 "                        ldr      r1, =0x02080103          \n"      // Bits 9, 3
+                 "                        str      r1, [r0,#0]              \n"
+
+                                          // After writing out the data, jump to exit, we dont set the ioEvent flag as the event has been processed already.
+                 "                        b        irqPortD_Exit3           \n"
+                );
+
+    asm volatile(                         // Process the IO request by setting the ioEvent flag as it wasnt an MZ700 memory switch request.
+                 "              irqd20:   movs     r4, #1                   \n"
+                 "                        strb     r4, %[val2]              \n"
+
+                                          : [val2]  "+m" (z80Control.ioEvent)
+                                          :
+                                          : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
+              
+    asm volatile("       irqPortD_Exit3:                                    \n"
+
+                                          // De-assert BUSRQ nothing more to do.
+                 "                        ldr      r4, =0x43fe1800          \n"      // CTL_BUSRQ,  Set=43fe1800, Clear=43fe1900
+                 "                        movs     r5, #1                   \n"
+                 "                        str      r5, [r4,#0]              \n"
+                
+                                          // Reset the triggering interrupt, PORTD_ISFR <= PORTD_ISFR
+                 "                        ldr      r0, =0x4004c0a0          \n"
+                 "                        ldr      r4, [r0, #0]             \n"
+                 "                        str      r4, [r0, #0]             \n"
+             
+                                          // Restore registers, all done.
+                 "                        pop      {r0-r8,pc}               \n"
+                                          :
+                                          :
+                                          : "r4","r5","r6","r7","r8","r9","r10","r11","r12");
+
+    return;
+}
 
 // Method to install the interrupt vector and enable it to capture Z80 memory/IO operations.
 //
 static void setupIRQ(void)
 {
-return;
     __disable_irq();
 
     // Setup the interrupts according to the mode the tranZPUter is currently running under.
@@ -1100,9 +858,6 @@ return;
             // Install the method to be called when PortD triggers.
             _VectorsRam[IRQ_PORTD + 16] = irqPortD_Mode3;
          
-            // Install the method to be called when PortC triggers.
-            //_VectorsRam[IRQ_PORTC + 16] = irqPortC;
-           
             // Setup the IRQ for Z80_IORQ.
             installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
            
@@ -1129,9 +884,6 @@ return;
             // Install the method to be called when PortD triggers.
             _VectorsRam[IRQ_PORTD + 16] = irqPortD_Mode3;
        
-            // Install the method to be called when PortC triggers.
-            //_VectorsRam[IRQ_PORTC + 16] = irqPortC;
-      
             // Setup the IRQ for Z80_IORQ.
             installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
            
@@ -1185,7 +937,6 @@ return;
 //
 static void restoreIRQ(void)
 {
-return;
     __disable_irq();
 
     // Restore the interrupts according to the mode the tranZPUter is currently running under.
@@ -1324,12 +1075,12 @@ void setupZ80Pins(uint8_t initTeensy, volatile uint32_t *millisecondTick)
         ioPin[idx] = portConfigRegister(pinMap[idx]);
 
         // Set to input, will change as functionality dictates.
-        if(idx != CTL_CLK && idx != CTL_BUSRQ && idx != CTL_BUSACK && idx != Z80_WAIT)
+        if(idx != CTL_CLK && idx != CTL_BUSRQ && idx != CTL_BUSACK) // && idx != Z80_WAIT)
         {
             pinInput(idx);
         } else
         {
-            if(idx == CTL_BUSRQ || idx == CTL_BUSACK || idx == Z80_WAIT)
+            if(idx == CTL_BUSRQ || idx == CTL_BUSACK ) //|| idx == Z80_WAIT)
             {
                 pinOutputSet(idx, HIGH);
             } else
@@ -1375,10 +1126,14 @@ void setupZ80Pins(uint8_t initTeensy, volatile uint32_t *millisecondTick)
     }
 
     // Debug to quickly find out addresses of GPIO pins.
-    //#define GPIO_BITBAND_ADDR(reg, bit) (((uint32_t)&(reg) - 0x40000000) * 32 + (bit) * 4 + 0x42000000)
-    //printf("%08lx, %08lx, %08lx, %08lx\n", GPIO_BITBAND_ADDR(CORE_PIN15_PORTREG, CORE_PIN15_BIT), CORE_PIN15_PORTREG, digital_pin_to_info_PGM[(CTL_BUSRQ_PIN)].reg + 64,digital_pin_to_info_PGM[(CTL_BUSRQ_PIN)].reg + 32 );
-    //printf("%08lx, %08lx, %08lx, %08lx\n", GPIO_BITBAND_ADDR(CORE_PIN13_PORTREG, CORE_PIN13_BIT), CORE_PIN13_PORTREG, digital_pin_to_info_PGM[(Z80_WAIT_PIN)].reg + 64,digital_pin_to_info_PGM[(Z80_WAIT_PIN)].reg + 32 );
-    //printf("%08lx, %08lx, %08lx, %08lx\n", GPIO_BITBAND_ADDR(CORE_PIN16_PORTREG, CORE_PIN16_BIT), CORE_PIN16_PORTREG, digital_pin_to_info_PGM[(CTL_BUSACK_PIN)].reg + 64,digital_pin_to_info_PGM[(CTL_BUSACK_PIN)].reg +32 );
+    #define GPIO_BITBAND_ADDR(reg, bit) (((uint32_t)&(reg) - 0x40000000) * 32 + (bit) * 4 + 0x42000000)
+    printf("%s, Set=%08lx, Clear=%08lx\n", "CTL_BUSRQ",  digital_pin_to_info_PGM[(CTL_BUSRQ_PIN)].reg,  digital_pin_to_info_PGM[(CTL_BUSRQ_PIN)].reg + 64 );
+    printf("%s, Set=%08lx, Clear=%08lx\n", "Z80_WAIT",   digital_pin_to_info_PGM[(Z80_WAIT_PIN)].reg,   digital_pin_to_info_PGM[(Z80_WAIT_PIN)].reg + 64 );
+    printf("%s, Set=%08lx, Clear=%08lx\n", "CTL_BUSACK", digital_pin_to_info_PGM[(CTL_BUSACK_PIN)].reg, digital_pin_to_info_PGM[(CTL_BUSACK_PIN)].reg + 64 );
+    printf("%s, Set=%08lx, Clear=%08lx\n", "Z80_IORQ",   digital_pin_to_info_PGM[(Z80_IORQ_PIN)].reg,   digital_pin_to_info_PGM[(Z80_IORQ_PIN)].reg + 64 );
+    printf("%s, Set=%08lx, Clear=%08lx\n", "Z80_MREQ",   digital_pin_to_info_PGM[(Z80_MREQ_PIN)].reg,   digital_pin_to_info_PGM[(Z80_MREQ_PIN)].reg + 64 );
+    printf("%s, Set=%08lx, Clear=%08lx\n", "Z80_RD",     digital_pin_to_info_PGM[(Z80_RD_PIN)].reg,     digital_pin_to_info_PGM[(Z80_RD_PIN)].reg + 64 );
+    printf("%s, Set=%08lx, Clear=%08lx\n", "Z80_WR",     digital_pin_to_info_PGM[(Z80_WR_PIN)].reg,     digital_pin_to_info_PGM[(Z80_WR_PIN)].reg + 64 );
     return;
 }
 
@@ -1438,7 +1193,6 @@ uint8_t reqZ80Bus(uint32_t timeout)
     
     // Store the control latch state before we start modifying anything enabling a return to the pre bus request state.
     z80Control.runCtrlLatch = readCtrlLatch(); 
-
     return(result);
 }
 
@@ -1631,7 +1385,7 @@ uint8_t writeZ80Memory(uint16_t addr, uint8_t data)
         pinLow(Z80_WR);
 
         // On a Teensy3.5 K64F running at 120MHz this delay gives a pulsewidth of 760nS.
-        //for(volatile uint32_t pulseWidth=0; pulseWidth < 2; pulseWidth++);
+        for(volatile uint32_t pulseWidth=0; pulseWidth < 2; pulseWidth++);
 
         // Another wait loop check as the Z80 can assert wait at the time of Write or anytime before it is deasserted.
         while((*ms - startTime) < 200 && pinGet(Z80_WAIT) == 0);
@@ -1677,11 +1431,15 @@ uint8_t readZ80Memory(uint16_t addr)
         // On a Teensy3.5 K64F running at 120MHz this delay gives a pulsewidth of 760nS. This gives time for the addressed device to present the data
         // on the data bus.
         for(volatile uint32_t pulseWidth=0; pulseWidth < 1; pulseWidth++);
+    } else
+    {
+        // On the tranZPUter v1.1, because of reorganisation of the signals, the time to process is less and so the pulse width under v1.0 is insufficient.
+        for(volatile uint32_t pulseWidth=0; pulseWidth < 1; pulseWidth++);
     }
 
     // Fetch the data before deasserting the signals.
     //
-    data = readDataBus();
+    data = readZ80DataBus();
 
     // Complete the read cycle.
     //
@@ -1772,7 +1530,7 @@ uint8_t readZ80IO(uint16_t addr)
 
     // Fetch the data before deasserting the signals.
     //
-    data = readDataBus();
+    data = readZ80DataBus();
 
     // Complete the read cycle.
     //
@@ -2472,7 +2230,7 @@ FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint32_t *bytesRead, ui
         // This assumes the TZFS is running and the memory bank is 64K block 0.
         //
         copyToZ80(MZ_CMT_ADDR, (uint8_t *)&mzfHeader, MZF_HEADER_SIZE, 0);
-printf("File:%s,attr=%02x,addr:%08lx\n", src, mzfHeader.attr, addr);
+     
         // Now obtain the parameters.
         //
         if(addr == 0xFFFFFFFF)
@@ -3730,7 +3488,6 @@ uint8_t svcCacheDir(const char *directory, enum FILE_TYPE type, uint8_t force)
                 {
                     // Copy in details into this maps node.
                     strcpy((char *)osControl.dirMap.sdFileName[fileNo], fno.fname);
-printf("Cacheing:%d,%s,%08lx\n",fileNo, fno.fname,  osControl.dirMap.sdFileName[fileNo]);
                     fileNo++;
                 }
             }
@@ -3784,7 +3541,6 @@ uint8_t svcReadFile(uint8_t mode, enum FILE_TYPE type)
             // Build the full filename from what has been provided.
             // Cassette and basic images, create filename as they are not cached.
             sprintf(fqfn, "0:\\%s\\%s.%s", svcControl.directory, svcControl.filename, (type == MZF ? TZSVC_DEFAULT_MZF_EXT : type == CAS ? TZSVC_DEFAULT_CAS_EXT : TZSVC_DEFAULT_BAS_EXT));
-printf("FQFN:%s\n", fqfn);
         }
 
         // Find the file using the given file number or file name.
@@ -3835,7 +3591,6 @@ printf("FQFN:%s\n", fqfn);
     // Close the currently open file.
     else if(mode == TZSVC_CLOSE)
     {
-printf("Closing file\n");
         if(fileOpen)
             f_close(&File);
         fileOpen = 0;
@@ -3862,7 +3617,6 @@ uint8_t svcWriteFile(uint8_t mode, enum FILE_TYPE type)
     // Request to createopen? Validate that we dont already have an open file and the create the file.
     if(mode == TZSVC_OPEN)
     {
-printf("Open\n");
         // Close if previously open.
         if(fileOpen == 1)
             svcWriteFile(TZSVC_CLOSE, type);
@@ -3873,11 +3627,9 @@ printf("Open\n");
        
         // Build the full filename from what has been provided.
         sprintf(fqfn, "0:\\%s\\%s.%s", svcControl.directory, svcControl.filename, (type == MZF ? TZSVC_DEFAULT_MZF_EXT : type == CAS ? TZSVC_DEFAULT_CAS_EXT : TZSVC_DEFAULT_BAS_EXT));
-printf("FQFN:%s\n", fqfn);
 
         // Create the file, fqfn has the FQFN of the correct file on the SD drive.
         result = f_open(&File, fqfn, FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
-printf("FOPEN:%d\n", result);
 
         // If the file was opened, set the flag to enable writing.
         if(!result)
@@ -3891,8 +3643,6 @@ printf("FOPEN:%d\n", result);
         //
         if(fileSector != svcControl.fileSector)
         {
-printf("Different sector:%d %d\n", fileSector, svcControl.fileSector);
-
             result = f_lseek(&File, (svcControl.fileSector * TZSVC_SECTOR_SIZE));
             fileSector = svcControl.fileSector;
         }
@@ -3903,22 +3653,15 @@ printf("Different sector:%d %d\n", fileSector, svcControl.fileSector);
         {
             // Write the required sector.
             result = f_write(&File, (char *)&svcControl.sector, svcControl.saveSize, &readSize);
- printf("Write block:%d, %d, %d\n", svcControl.sector, svcControl.saveSize, readSize);
- for(uint32_t idx=0; idx < svcControl.saveSize; idx++)
- {
-     printf("%02x ", svcControl.sector[idx]);
- }
         }
 
         // Move onto next sector.
         fileSector++;
-    printf("Sector:%d\n", fileSector);
     }
    
     // Close the currently open file.
     else if(mode == TZSVC_CLOSE)
     {
-printf("Close file\n");
         if(fileOpen)
             f_close(&File);
         fileOpen = 0;
@@ -4394,7 +4137,7 @@ void processServiceRequest(void)
             // Set the machine mode according to BIOS loaded.
             z80Control.machineMode    = MZ80A;
 
-            // setup the IRS's according to this machine.
+            // setup the IRQ's according to this machine.
             setupIRQ();
             break;
           
@@ -4411,7 +4154,7 @@ void processServiceRequest(void)
             // Set the machine mode according to BIOS loaded.
             z80Control.machineMode    = MZ80A;
 
-            // setup the IRS's according to this machine.
+            // setup the IRQ's according to this machine.
             setupIRQ();
             break;
            
@@ -4428,7 +4171,7 @@ void processServiceRequest(void)
             // Set the machine mode according to BIOS loaded.
             z80Control.machineMode    = MZ700;
 
-            // setup the IRS's according to this machine.
+            // setup the IRQ's according to this machine.
             setupIRQ();
             break;
 
@@ -4445,7 +4188,7 @@ void processServiceRequest(void)
             // Set the machine mode according to BIOS loaded.
             z80Control.machineMode    = MZ700;
 
-            // setup the IRS's according to this machine.
+            // setup the IRQ's according to this machine.
             setupIRQ();
             break;
            
@@ -4462,7 +4205,7 @@ void processServiceRequest(void)
             // Set the machine mode according to BIOS loaded.
             z80Control.machineMode    = MZ80B;
 
-            // setup the IRS's according to this machine.
+            // setup the IRQ's according to this machine.
             setupIRQ();
             break;
 
