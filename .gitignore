@@ -72,3 +72,5 @@ zOS/*.s
 zputa/*.i
 zputa/*.ii
 zputa/*.s
+zOS/main.save
+

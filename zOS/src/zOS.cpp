@@ -19,6 +19,7 @@
 //                                   enhanced to work with both the ZPU and K64F for the original purpose
 //                                   of testing but also now for end application programming using the 
 //                                   features of zOS where applicable.
+//                  July 2020      - Tweaks to accomodate v2.1 of the tranZPUter board.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //                  USELOADB              - The Byte write command is implemented in hw/sw so use it.

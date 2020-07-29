@@ -8,7 +8,10 @@
 // Credits:         
 // Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
 //
-// History:         May 2020 - Initial write of the TranZPUter software.
+// History:         May 2020  - Initial write of the TranZPUter software.
+//                  July 2020 - Another test, a bug with the VHDL on the v2.1 tranZPUter board, so 
+//                              needed to output a constant memory mode. The bug turned out to be
+//                              a delayed tri-stating of the bus.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -101,6 +104,25 @@ void testBus(void)
     }
 }
 
+void testSixtyBug(void)
+{
+    printf("Repeating a write to 0x0060\n");
+    while(true)
+    {
+        if(reqTranZPUterBus(100) == 0)
+        {
+            setupSignalsForZ80Access(WRITE);
+            uint8_t data = 0x07;
+            writeZ80Memory(0x0060, data);
+            releaseZ80();
+        }
+        else
+        {
+            printf("Failed to obtain the Z80 bus.\n");
+        }
+    }
+}
+
 
 // Main entry and start point of a zOS/ZPUTA Application. Only 2 parameters are catered for and a 32bit return code, additional parameters can be added by changing the appcrt0.s
 // startup code to add them to the stack prior to app() call.
@@ -125,6 +147,8 @@ uint32_t app(uint32_t param1, uint32_t param2)
     //}
    // _init_Teensyduino_internal_();
    // setupZ80Pins(1, G->millis);
+   //
+    testSixtyBug();
 
     printf("Loading Monitor ROM\n");
     loadZ80Memory("SA1510.rom", 0, 0x00000000, 0, 0, 0, 1);

@@ -34,6 +34,9 @@
 //                                   for Z80 A11:A0 and Port A 15:12 for Z80 A15:12. This was done due to the
 //                                   extra overhead required to piece together address and data lines in v1.0
 //                                   where the PCB was routed for linear reading and routing.
+//                  v1.2 July 2020 - Updates for the v2.1 tranZPUter board. I've used macro processing
+//                                   to seperate v1+ and v2+ but I may well create two seperate directories
+//                                   as both projects are updated. Alternatively I use git flow or similar, TBD!
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -164,6 +167,7 @@ static void __attribute((naked, noinline)) irqPortC_dummy(void)
 }
 #endif
 
+#if TZBOARD == 100 || TZBOARD == 110 || TZBOARD == 200 || TZBOARD == 210
 // This method is called everytime an active irq triggers on Port E. For this design, this means the two IO CS
 // lines, TZ_SVCREQ and TZ_SYSREQ. The SVCREQ is used when the Z80 requires a service, the SYSREQ is yet to
 // be utilised.
@@ -202,7 +206,9 @@ static void __attribute((naked, noinline)) irqPortE(void)
 
     return;
 }
+#endif
 
+#if TZBOARD == 110 || TZBOARD == 200 || TZBOARD == 210
 // This method is called everytime an active irq triggers on Port D. For this design, this means the IORQ and RESET lines.
 //
 // There are 3 versions of the same routine, originally using #if macro preprocessor statements but it became
@@ -227,10 +233,10 @@ static void __attribute((naked, noinline)) irqPortD_Mode0(void)
                  "                        str      r0, [r1, #0]             \n"
 
                                           // Is Z80_RESET active, set flag and exit.
-                 "                        movs     r0, #1                   \n"
-                 "                        tst      r5, #0x010               \n"
+                 "                        movs     r1, #1                   \n"
+                 "                        tst      r0, #0x0010              \n"
                  "                        beq      irqPortD_Exit            \n"
-                 "                        strb     r0, %[val0]              \n"
+                 "                        strb     r1, %[val0]              \n"
 
                  "              irqPortD_Exit:                              \n"
             
@@ -243,10 +249,11 @@ static void __attribute((naked, noinline)) irqPortD_Mode0(void)
 
     return;
 }
+#endif
 //
 // Mode 1 & 2 - Capture and store an IORQ or MREQ Memory Mapped event for the main thread to process.
 //
-#if 1
+#if TZBOARD == 110 
 static void __attribute((naked, noinline)) irqPortD_Mode12(void)
 {
                                           // Save minimum number of registers, cycles matter as we need to capture the address and halt the Z80 whilst we decode it.
@@ -462,6 +469,7 @@ static void __attribute((naked, noinline)) irqPortD_Mode12(void)
     return;
 }
 #endif
+#if TZBOARD == 110 
 //
 // Mode 3 - MZ700 processing.
 //
@@ -840,6 +848,7 @@ static void __attribute((naked, noinline)) irqPortD_Mode3(void)
 
     return;
 }
+#endif
 
 // Method to install the interrupt vector and enable it to capture Z80 memory/IO operations.
 //
@@ -853,10 +862,18 @@ static void setupIRQ(void)
         // For the MZ700 we need to enable IORQ to process the OUT statements the Z80 generates for memory mode selection. 
         case MZ700:
             // Install the dummy method to be called when PortE triggers.
+#if TZBOARD == 110 
             _VectorsRam[IRQ_PORTE + 16] = irqPortE_dummy;
-            
+#elif TZBOARD == 200 || TZBOARD == 210
+            _VectorsRam[IRQ_PORTE + 16] = irqPortE;
+#endif
+
             // Install the method to be called when PortD triggers.
+#if TZBOARD == 110 
             _VectorsRam[IRQ_PORTD + 16] = irqPortD_Mode3;
+#elif TZBOARD == 200 || TZBOARD == 210
+            _VectorsRam[IRQ_PORTD + 16] = irqPortD_Mode0;
+#endif
          
             // Setup the IRQ for Z80_IORQ.
             installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
@@ -864,12 +881,21 @@ static void setupIRQ(void)
             // Setup the IRQ for Z80_RESET.
             installIRQ(Z80_RESET, IRQ_MASK_FALLING);
           
+#if TZBOARD == 110 
             // Setup the IRQ for Z80_MREQ.
             //installIRQ(Z80_MREQ, IRQ_MASK_RISING);
             
             // Remove previous interrupts not needed in this mode.
             removeIRQ(TZ_SVCREQ);
             removeIRQ(TZ_SYSREQ);
+
+#elif TZBOARD == 200 || TZBOARD == 210
+            // Setup the IRQ for TZ_SYSREQ.
+            installIRQ(TZ_SYSREQ, IRQ_MASK_FALLING);
+           
+            // Setup the IRQ for Z80_RESET.
+            installIRQ(Z80_RESET, IRQ_MASK_FALLING);
+#endif
 
             // Set relevant priorities to meet latency.
             NVIC_SET_PRIORITY(IRQ_PORTD, 0);
@@ -882,7 +908,11 @@ static void setupIRQ(void)
             _VectorsRam[IRQ_PORTE + 16] = irqPortE_dummy;
       
             // Install the method to be called when PortD triggers.
+#if TZBOARD == 110 
             _VectorsRam[IRQ_PORTD + 16] = irqPortD_Mode3;
+#elif TZBOARD == 200 || TZBOARD == 210
+            _VectorsRam[IRQ_PORTD + 16] = irqPortD_Mode0;
+#endif
        
             // Setup the IRQ for Z80_IORQ.
             installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
@@ -890,8 +920,10 @@ static void setupIRQ(void)
             // Setup the IRQ for Z80_RESET.
             installIRQ(Z80_RESET, IRQ_MASK_FALLING);
          
+#if TZBOARD == 110 
             // Setup the IRQ for Z80_MREQ.
             //installIRQ(Z80_MREQ, IRQ_MASK_RISING);
+#endif
 
             // Remove previous interrupts not needed in this mode.
             removeIRQ(TZ_SVCREQ);
@@ -947,8 +979,10 @@ static void restoreIRQ(void)
             // Setup the IRQ for Z80_IORQ.
             installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
 
+#if TZBOARD == 110 
             // Setup the IRQ for Z80_MREQ.
             //installIRQ(Z80_MREQ, IRQ_MASK_FALLING);
+#endif
            
             // Setup the IRQ for Z80_RESET.
             installIRQ(Z80_RESET, IRQ_MASK_FALLING);
@@ -959,8 +993,10 @@ static void restoreIRQ(void)
             // Setup the IRQ for Z80_IORQ.
             installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
 
+#if TZBOARD == 110 
             // Setup the IRQ for Z80_MREQ.
             //installIRQ(Z80_MREQ, IRQ_MASK_FALLING);
+#endif
            
             // Setup the IRQ for Z80_RESET.
             installIRQ(Z80_RESET, IRQ_MASK_FALLING);
@@ -1361,7 +1397,6 @@ uint8_t writeZ80Memory(uint16_t addr, uint8_t data)
 {
     // Locals.
     uint32_t          startTime = *ms;
-    volatile uint32_t pulseWidth;
 
     // Set the data and address on the bus.
     //
@@ -1369,8 +1404,9 @@ uint8_t writeZ80Memory(uint16_t addr, uint8_t data)
     setZ80Data(data);
 
     // Setup time before applying control signals.
-    for(pulseWidth = 0; pulseWidth < 5; pulseWidth++);
+    for(volatile uint32_t pulseWidth = 0; pulseWidth < 3; pulseWidth++);
     pinLow(Z80_MREQ);
+    for(volatile uint32_t pulseWidth = 0; pulseWidth < 3; pulseWidth++);
 
     // Different logic according to what is being accessed. The mainboard needs to uphold timing and WAIT signals whereas the Tranzputer logic has no wait
     // signals and faster memory.
@@ -1385,7 +1421,11 @@ uint8_t writeZ80Memory(uint16_t addr, uint8_t data)
         pinLow(Z80_WR);
 
         // On a Teensy3.5 K64F running at 120MHz this delay gives a pulsewidth of 760nS.
-        for(volatile uint32_t pulseWidth=0; pulseWidth < 2; pulseWidth++);
+#if TZBOARD == 100 || TZBOARD == 110
+        for(volatile uint32_t pulseWidth=0; pulseWidth < 4; pulseWidth++);
+#elif TZBOARD == 200 || TZBOARD == 210
+        for(volatile uint32_t pulseWidth=0; pulseWidth < 5; pulseWidth++);
+#endif
 
         // Another wait loop check as the Z80 can assert wait at the time of Write or anytime before it is deasserted.
         while((*ms - startTime) < 200 && pinGet(Z80_WAIT) == 0);
@@ -1393,10 +1433,15 @@ uint8_t writeZ80Memory(uint16_t addr, uint8_t data)
     {
         // Start the write cycle, MREQ and WR go low.
         pinLow(Z80_WR);
-    }
 
-    // Hold time for the WR signal before clearing it.
-    for(pulseWidth = 0; pulseWidth < 5; pulseWidth++);
+        // On a Teensy3.5 K64F running at 120MHz this delay gives a pulsewidth of 760nS.
+#if TZBOARD == 100 || TZBOARD == 110
+        for(volatile uint32_t pulseWidth = 0; pulseWidth < 2; pulseWidth++);
+        // With the tranZPUter SW v2 boards, need to increase the write pulse width, alternatively wait until a positive edge on the CPU clock.
+#elif TZBOARD == 200 || TZBOARD == 210
+        for(volatile uint32_t pulseWidth=0; pulseWidth < 3; pulseWidth++);
+#endif
+    }
 
     // Complete the write cycle.
     //
@@ -1430,11 +1475,21 @@ uint8_t readZ80Memory(uint16_t addr)
         
         // On a Teensy3.5 K64F running at 120MHz this delay gives a pulsewidth of 760nS. This gives time for the addressed device to present the data
         // on the data bus.
+#if TZBOARD == 100 || TZBOARD == 110
         for(volatile uint32_t pulseWidth=0; pulseWidth < 1; pulseWidth++);
+        // With the tranZPUter SW v2 boards, need to increase the write pulse width, alternatively wait until a positive edge on the CPU clock.
+#elif TZBOARD == 200 || TZBOARD == 210
+        for(volatile uint32_t pulseWidth=0; pulseWidth < 4; pulseWidth++);
+#endif
     } else
     {
         // On the tranZPUter v1.1, because of reorganisation of the signals, the time to process is less and so the pulse width under v1.0 is insufficient.
+#if TZBOARD == 100 || TZBOARD == 110
         for(volatile uint32_t pulseWidth=0; pulseWidth < 1; pulseWidth++);
+        // With the tranZPUter SW v2 boards, need to increase the write pulse width to accommodate the different memories used.
+#elif TZBOARD == 200 || TZBOARD == 210
+        for(volatile uint32_t pulseWidth=0; pulseWidth < 4; pulseWidth++);
+#endif
     }
 
     // Fetch the data before deasserting the signals.
@@ -1481,14 +1536,23 @@ uint8_t writeZ80IO(uint16_t addr, uint8_t data)
         pinLow(Z80_WR);
 
         // On a Teensy3.5 K64F running at 120MHz this delay gives a pulsewidth of 760nS.
+#if TZBOARD == 100 || TZBOARD == 110
         //for(volatile uint32_t pulseWidth=0; pulseWidth < 2; pulseWidth++);
+#elif TZBOARD == 200 || TZBOARD == 210
+        for(volatile uint32_t pulseWidth=0; pulseWidth < 2; pulseWidth++);
+#endif
 
         // Another wait loop check as the Z80 can assert wait at the time of Write or anytime before it is deasserted.
         while((*ms - startTime) < 200 && pinGet(Z80_WAIT) == 0);
     } else
     {
-        // Start the write cycle, MREQ and WR go low.
+        // Start the write cycle, WR go low.
         pinLow(Z80_WR);
+
+        // With the tranZPUter SW v2 boards, need to increase the write pulse width as the latch is synchronous, alternatively wait until a positive edge on the CPU clock.
+#if TZBOARD == 200 || TZBOARD == 210
+        for(volatile uint32_t pulseWidth=0; pulseWidth < 8; pulseWidth++);
+#endif
     }
 
     // Complete the write cycle.
@@ -4013,7 +4077,7 @@ uint32_t getServiceAddr(void)
 {
     // Locals.
     uint32_t addr       = TZSVC_CMD_STRUCT_ADDR_TZFS;
-    uint8_t  memoryMode = readCtrlLatch();
+    uint8_t  memoryMode = readCtrlLatch() & 0x1F;
 
     // If in CPM mode then set the service address accordingly.
     if(memoryMode == TZMM_CPM || memoryMode == TZMM_CPM2)
@@ -4160,7 +4224,11 @@ void processServiceRequest(void)
            
         // Load the 40 column MZ700 1Z-013A bios into memory.
         case TZSVC_CMD_LOAD700BIOS40:
+#if TZBOARD == 100 || TZBOARD == 110
+            if((status=loadZ80Memory((const char *)MZ_ROM_1Z_013A_KM_40C, 0, MZ_MROM_ADDR, 0, 0, 0, 1)) != FR_OK)
+#elif TZBOARD == 200 || TZBOARD == 210
             if((status=loadZ80Memory((const char *)MZ_ROM_1Z_013A_40C, 0, MZ_MROM_ADDR, 0, 0, 0, 1)) != FR_OK)
+#endif
             {
                 printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_1Z_013A_40C);
             }
@@ -4177,7 +4245,11 @@ void processServiceRequest(void)
 
         // Load the 80 column MZ700 1Z-013A bios into memory.
         case TZSVC_CMD_LOAD700BIOS80:
+#if TZBOARD == 100 || TZBOARD == 110
+            if((status=loadZ80Memory((const char *)MZ_ROM_1Z_013A_KM_80C, 0, MZ_MROM_ADDR, 0, 0, 0, 1)) != FR_OK)
+#elif TZBOARD == 200 || TZBOARD == 210
             if((status=loadZ80Memory((const char *)MZ_ROM_1Z_013A_80C, 0, MZ_MROM_ADDR, 0, 0, 0, 1)) != FR_OK)
+#endif
             {
                 printf("Error: Failed to load %s into tranZPUter memory.\n", MZ_ROM_1Z_013A_80C);
             }

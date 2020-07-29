@@ -9,6 +9,7 @@
 // Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
 //
 // History:         May 2020 - Initial write of the TranZPUter software.
+//                  July 2020- Updates to accommodate v2.1 of the tranZPUter board.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -42,6 +43,7 @@
                                                                          // 3 = NZ700 memory mode decode - This doesnt work per original, the memory change occurs one instruction after the OUT instruction due to the way the Z80 functions in respect to BUSRQ.
 #define REFRESH_BYTE_COUNT           8                                   // This constant controls the number of bytes read/written to the z80 bus before a refresh cycle is needed.
 #define RFSH_BYTE_CNT                256                                 // Number of bytes we can write before needing a full refresh for the DRAM.
+#define TZBOARD                      210                                 // tranZPUter SW Hardware versions - v1.0 = 110, v1.1 = 110, v2.0 = 200 and v2.1 = 210
 
 // tranZPUter Memory Modes - select one of the 32 possible memory models using these constants.
 //
@@ -106,6 +108,8 @@
 #define MZ_ROM_SA1510_80C            "0:\\TZFS\\SA1510-8.ROM"            // Original Monitor ROM patched for 80 character screen mode.
 #define MZ_ROM_1Z_013A_40C           "0:\\TZFS\\1Z-013A.ROM"             // Original 40 character Monitor ROM for the Sharp MZ700.
 #define MZ_ROM_1Z_013A_80C           "0:\\TZFS\\1Z-013A-8.ROM"           // Original Monitor ROM patched for the Sharp MZ700 patched for 80 column mode.
+#define MZ_ROM_1Z_013A_KM_40C        "0:\\TZFS\\1Z-013A-KM.ROM"          // Original 40 character Monitor ROM for the Sharp MZ700 with keyboard remapped for the MZ80A.
+#define MZ_ROM_1Z_013A_KM_80C        "0:\\TZFS\\1Z-013A-KM-8.ROM"        // Original Monitor ROM patched for the Sharp MZ700 with keyboard remapped for the MZ80A and patched for 80 column mode.
 #define MZ_ROM_MZ80B_IPL             "0:\\TZFS\\MZ80B_IPL.ROM"           // Original IPL ROM for the Sharp MZ-80B.
 #define MZ_ROM_TZFS                  "0:\\TZFS\\TZFS.ROM"                // tranZPUter Filing System ROM.
 
