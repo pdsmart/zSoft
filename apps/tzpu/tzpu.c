@@ -123,6 +123,27 @@ void testSixtyBug(void)
     }
 }
 
+void testVRAMLocation(void)
+{
+    printf("Requesting Z80 BUS and Mainboard access\n");
+    if(reqMainboardBus(100) == 0)
+    {
+        setupSignalsForZ80Access(READ);
+
+        for(uint32_t idx=0; idx < 0xFFFFFFFF; idx++)
+        {
+            uint8_t dataV = readZ80Memory(0xD000);
+            uint8_t dataA = readZ80Memory(0xD800);
+            printf("%02x %02x\r", dataV, dataA);
+        }
+        releaseZ80();
+    }
+    else
+    {
+        printf("Failed to obtain the Z80 bus.\n");
+    }
+}
+
 
 // Main entry and start point of a zOS/ZPUTA Application. Only 2 parameters are catered for and a 32bit return code, additional parameters can be added by changing the appcrt0.s
 // startup code to add them to the stack prior to app() call.
@@ -148,6 +169,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
    // _init_Teensyduino_internal_();
    // setupZ80Pins(1, G->millis);
    //
+    testVRAMLocation();
     testSixtyBug();
 
     printf("Loading Monitor ROM\n");

@@ -36,7 +36,7 @@
 
 // Configurable constants.
 //
-//#define DECODE_Z80_IO                3                                   // Flag to enable code, via interrupt, to capture Z80 actions on I/O ports an Memory mapped I/O.
+//#define DECODE_Z80_IO              3                                   // Flag to enable code, via interrupt, to capture Z80 actions on I/O ports an Memory mapped I/O.
                                                                          // 0 = No code other than direct service request interrupts.
                                                                          // 1 = Decode Z80 I/O address operations.
                                                                          // 2 = Decode Z80 I/O operations with data.
@@ -44,6 +44,7 @@
 #define REFRESH_BYTE_COUNT           8                                   // This constant controls the number of bytes read/written to the z80 bus before a refresh cycle is needed.
 #define RFSH_BYTE_CNT                256                                 // Number of bytes we can write before needing a full refresh for the DRAM.
 #define TZBOARD                      210                                 // tranZPUter SW Hardware versions - v1.0 = 110, v1.1 = 110, v2.0 = 200 and v2.1 = 210
+#define HOST_MON_TEST_VECTOR         0x4                                 // Address in the host monitor to test to identify host type.
 
 // tranZPUter Memory Modes - select one of the 32 possible memory models using these constants.
 //
@@ -156,6 +157,7 @@
 #define TZSVC_CMD_CPU_BASEFREQ       0x40                                // Service command to switch to the mainboard frequency.
 #define TZSVC_CMD_CPU_ALTFREQ        0x41                                // Service command to switch to the alternate frequency provided by the K64F.
 #define TZSVC_CMD_CPU_CHGFREQ        0x42                                // Service command to set the alternate frequency in hertz.
+#define TZSVC_CMD_EXIT               0x7F                                // Service command to terminate TZFS and restart the machine in original mode.
 #define TZSVC_DEFAULT_MZF_DIR        "MZF"                               // Default directory where MZF files are stored.
 #define TZSVC_DEFAULT_CAS_DIR        "CAS"                               // Default directory where BASIC CASsette files are stored.
 #define TZSVC_DEFAULT_BAS_DIR        "BAS"                               // Default directory where BASIC text files are stored.
@@ -411,9 +413,17 @@ enum VIDEO_FRAMES {
     WORKING                          = 1
 };
 
-// Possible machines the tranZPUter can emulate.
+// Values in the host monitor ROM to identify a machine type.
 //
-enum MACHINE_MODE {
+enum MACHINE_MONITOR_ID {
+    MZ80A_MONITOR_ID                 = 0xa8,
+    MZ700_MONITOR_ID                 = 0xe6,
+    MZ80B_MONITOR_ID                 = 0x03
+};
+
+// Possible machines the tranZPUter can be hosted on and can emulate.
+//
+enum MACHINE_TYPES {
     MZ80A                            = 0,
     MZ700                            = 1,
     MZ80B                            = 2
@@ -519,8 +529,8 @@ typedef struct {
 
     enum CTRL_MODE                   ctrlMode;                           // Mode of control, ie normal Z80 Running, controlling mainboard, controlling tranZPUter.
     enum BUS_DIRECTION               busDir;                             // Direction the bus has been configured for.
-
-    enum MACHINE_MODE                machineMode;                        // Machine compatibility, 0 = Sharp MZ-80A, 1 = MZ-700, 2 = MZ-80B
+    enum MACHINE_TYPES               hostType;                           // The underlying host machine, 0 = Sharp MZ-80A, 1 = MZ-700, 2 = MZ-80B
+    enum MACHINE_TYPES               machineMode;                        // Machine compatibility, 0 = Sharp MZ-80A, 1 = MZ-700, 2 = MZ-80B
     t_mz700                          mz700;                              // MZ700 emulation control to detect IO commands and adjust the memory map accordingly.
     t_mz80b                          mz80b;                              // MZ-80B emulation control to detect IO commands and adjust the memory map and I/O forwarding accordingly.
 
@@ -675,9 +685,11 @@ uint8_t       svcReadCPMDrive(void);
 uint8_t       svcWriteCPMDrive(void);
 uint32_t      getServiceAddr(void);
 void          processServiceRequest(void);
+uint8_t       loadBIOS(const char *biosFileName, uint8_t machineMode, uint32_t loadAddr);
 void          loadTranZPUterDefaultROMS(void);
 void          tranZPUterControl(void);
 uint8_t       testTZFSAutoBoot(void);
+void          setHost(void);
 void          setupTranZPUter(void);
 
 #if defined __APP__
