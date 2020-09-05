@@ -9,7 +9,8 @@
 // Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
 //
 // History:         May 2020 - Initial write of the TranZPUter software.
-//                  July 2020- Updates to accommodate v2.1 of the tranZPUter board.
+//                  Jul 2020 - Updates to accommodate v2.1 of the tranZPUter board.
+//                  Sep 2020 - Updates to accommodate v2.2 of the tranZPUter board.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -36,15 +37,10 @@
 
 // Configurable constants.
 //
-//#define DECODE_Z80_IO              3                                   // Flag to enable code, via interrupt, to capture Z80 actions on I/O ports an Memory mapped I/O.
-                                                                         // 0 = No code other than direct service request interrupts.
-                                                                         // 1 = Decode Z80 I/O address operations.
-                                                                         // 2 = Decode Z80 I/O operations with data.
-                                                                         // 3 = NZ700 memory mode decode - This doesnt work per original, the memory change occurs one instruction after the OUT instruction due to the way the Z80 functions in respect to BUSRQ.
 #define REFRESH_BYTE_COUNT           8                                   // This constant controls the number of bytes read/written to the z80 bus before a refresh cycle is needed.
 #define RFSH_BYTE_CNT                256                                 // Number of bytes we can write before needing a full refresh for the DRAM.
-#define TZBOARD                      210                                 // tranZPUter SW Hardware versions - v1.0 = 110, v1.1 = 110, v2.0 = 200 and v2.1 = 210
 #define HOST_MON_TEST_VECTOR         0x4                                 // Address in the host monitor to test to identify host type.
+#define DEFAULT_BUSREQ_TIMEOUT       1000                                // Timeout for a Z80 Bus request operation in milliseconds.
 
 // tranZPUter Memory Modes - select one of the 32 possible memory models using these constants.
 //
@@ -199,15 +195,14 @@
 
 // Pin Constants - Pins assigned at the hardware level to specific tasks/signals.
 //
-#define MAX_TRANZPUTER_PINS          53
+#define MAX_TRANZPUTER_PINS          51
 #define Z80_MEM0_PIN                 16
 #define Z80_MEM1_PIN                 17
 #define Z80_MEM2_PIN                 19
 #define Z80_MEM3_PIN                 18
-#define Z80_MEM4_PIN                 49
-#define ENIOWAIT_PIN                 50
-#define Z80_WR_PIN                   48
-#define Z80_RD_PIN                   55
+#define Z80_MEM4_PIN                 71   // 49
+#define Z80_WR_PIN                   20   // 48
+#define Z80_RD_PIN                   5    // 55
 #define Z80_IORQ_PIN                 8
 #define Z80_MREQ_PIN                 7
 #define Z80_A0_PIN                   15
@@ -222,13 +217,13 @@
 #define Z80_A9_PIN                   36
 #define Z80_A10_PIN                  37
 #define Z80_A11_PIN                  38
-#define Z80_A12_PIN                  3
-#define Z80_A13_PIN                  4
-#define Z80_A14_PIN                  26
-#define Z80_A15_PIN                  27
-#define Z80_A16_PIN                  33
-#define Z80_A17_PIN                  34
-#define Z80_A18_PIN                  24
+#define Z80_A12_PIN                  64   // 3
+#define Z80_A13_PIN                  65   // 4
+#define Z80_A14_PIN                  66   // 26
+#define Z80_A15_PIN                  67   // 27
+#define Z80_A16_PIN                  68   // 33
+#define Z80_A17_PIN                  69   // 34
+#define Z80_A18_PIN                  70   // 24
 #define Z80_D0_PIN                   0
 #define Z80_D1_PIN                   1
 #define Z80_D2_PIN                   29
@@ -237,22 +232,21 @@
 #define Z80_D5_PIN                   46
 #define Z80_D6_PIN                   44
 #define Z80_D7_PIN                   45
-#define Z80_WAIT_PIN                 54
-#define Z80_BUSACK_PIN               5
+#define Z80_WAIT_PIN                 31   // 54
+#define Z80_BUSACK_PIN               24   // 5
 #define Z80_NMI_PIN                  39
 #define Z80_INT_PIN                  28
 #define Z80_RESET_PIN                6
 #define SYSCLK_PIN                   25
-#define CTL_RFSH_PIN                 53
-#define CTL_HALT_PIN                 51
-#define CTL_M1_PIN                   20
+#define CTL_RFSH_PIN                 4    // 53
+#define CTL_HALT_PIN                 26   // 51
+#define CTL_M1_PIN                   3    // 20
 #define CTL_BUSRQ_PIN                2
 #define CTL_BUSACK_PIN               21
 #define CTL_CLK_PIN                  14
-#define CTL_CLKSLCT_PIN              47
+#define CTL_CLKSLCT_PIN              32   // 47
 #define TZ_BUSACK_PIN                52
-#define TZ_SVCREQ_PIN                56
-#define TZ_SYSREQ_PIN                57
+#define TZ_SVCREQ_PIN                33   // 56
 
 // IRQ mask values for the different types of IRQ trigger.
 //
@@ -294,13 +288,13 @@
 #define pinIndex(a)                  getPinIndex(pinMap[a])
 
 #define setZ80Data(a)                { GPIOB_PDOR = (GPIOB_PDOR & 0xff00ffff) | ((a << 16) & 0x00ff0000); }
-#define setZ80Addr(a)                { GPIOA_PDOR = (GPIOA_PDOR & 0xffff0fff) | (a & 0x00000f000); GPIOC_PDOR = (GPIOC_PDOR & 0xfffff000) | (a & 0x00000fff); }
+#define setZ80Addr(a)                { GPIOC_PDOR = (GPIOC_PDOR & 0xffff0000) | (a & 0x0000ffff); }
 #define setZ80AddrLower(a)           { GPIOC_PDOR = (GPIOC_PDOR & 0xffffff00) | (a & 0x000000ff); }
 #define setZ80RefreshAddr(a)         { GPIOC_PDOR = (GPIOC_PDOR & 0xffffff80) | (a & 0x0000007f); }
 #define readZ80AddrLower()           ( GPIOC_PDIR & 0x000000ff )
-#define readZ80Addr()                ( (GPIOA_PDIR & 0x00000f000) | (GPIOC_PDIR & 0x00000fff) )
+#define readZ80Addr()                ( (GPIOC_PDIR & 0x0000ffff) )
 #define readZ80DataBus()             ( (GPIOB_PDIR >> 16) & 0x000000ff )
-#define readCtrlLatch()              ( GPIOB_PDIR & 0x0000003f )
+#define readCtrlLatch()              ( ((GPIOB_PDIR & 0x00000200) >> 5) | (GPIOB_PDIR & 0x0000000f) )
 #define writeCtrlLatch(a)            { writeZ80IO(IO_TZ_CTRLLATCH, a); } 
 #define setZ80Direction(a)           { for(uint8_t idx=Z80_D0; idx <= Z80_D7; idx++) { if(a == WRITE) { pinOutput(idx); } else { pinInput(idx); } }; z80Control.busDir = a; }
 #define reqZ80BusChange(a)           { if(a == MAINBOARD_ACCESS && z80Control.ctrlMode == TRANZPUTER_ACCESS) \
@@ -366,30 +360,28 @@ enum pinIdxToPinNumMap {
     Z80_MEM2                         = 29,
     Z80_MEM3                         = 30,
     Z80_MEM4                         = 31,
-    ENIOWAIT                         = 32,
 
-    Z80_IORQ                         = 33,
-    Z80_MREQ                         = 34,
-    Z80_RD                           = 35,
-    Z80_WR                           = 36,
-    Z80_WAIT                         = 37,
-    Z80_BUSACK                       = 38,
+    Z80_IORQ                         = 32,
+    Z80_MREQ                         = 33,
+    Z80_RD                           = 34,
+    Z80_WR                           = 35,
+    Z80_WAIT                         = 36,
+    Z80_BUSACK                       = 37,
 
-    Z80_NMI                          = 39,
-    Z80_INT                          = 40,
-    Z80_RESET                        = 41,
-    MB_SYSCLK                        = 42,
-    TZ_BUSACK                        = 43,
-    TZ_SVCREQ                        = 44,
-    TZ_SYSREQ                        = 45,
+    Z80_NMI                          = 38,
+    Z80_INT                          = 39,
+    Z80_RESET                        = 40,
+    MB_SYSCLK                        = 41,
+    TZ_BUSACK                        = 42,
+    TZ_SVCREQ                        = 43,
 
-    CTL_BUSACK                       = 46,
-    CTL_BUSRQ                        = 47,
-    CTL_RFSH                         = 48,
-    CTL_HALT                         = 49,
-    CTL_M1                           = 50,
-    CTL_CLK                          = 51,
-    CTL_CLKSLCT                      = 52 
+    CTL_BUSACK                       = 44,
+    CTL_BUSRQ                        = 45,
+    CTL_RFSH                         = 46,
+    CTL_HALT                         = 47,
+    CTL_M1                           = 48,
+    CTL_CLK                          = 49,
+    CTL_CLKSLCT                      = 50 
 };
 
 // Possible control modes that the K64F can be in, do nothing where the Z80 runs normally, control the Z80 and mainboard, or control the Z80 and tranZPUter.
