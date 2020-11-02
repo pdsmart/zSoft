@@ -40,7 +40,8 @@
 #define REFRESH_BYTE_COUNT           8                                   // This constant controls the number of bytes read/written to the z80 bus before a refresh cycle is needed.
 #define RFSH_BYTE_CNT                256                                 // Number of bytes we can write before needing a full refresh for the DRAM.
 #define HOST_MON_TEST_VECTOR         0x4                                 // Address in the host monitor to test to identify host type.
-#define DEFAULT_BUSREQ_TIMEOUT       1000                                // Timeout for a Z80 Bus request operation in milliseconds.
+#define DEFAULT_BUSREQ_TIMEOUT       5000                                // Timeout for a Z80 Bus request operation in milliseconds.
+#define DEFAULT_RESET_PULSE_WIDTH    1000                                // Pulse width of a reset signal in |K4F clock ticks.
 
 // tranZPUter Memory Modes - select one of the 32 possible memory models using these constants.
 //
@@ -76,8 +77,19 @@
 #define IO_TZ_CLKSELRD               0x66                                // Read the status of the clock select, ie. which clock is connected to the CPU.
 #define IO_TZ_SVCREQ                 0x68                                // Service request from the Z80 to be provided by the K64F.
 #define IO_TZ_SYSREQ                 0x6A                                // System request from the Z80 to be provided by the K64F.
+#define IO_TZ_CPLDCFG                0x6E                                // Version 2.1 CPLD configuration register.
+#define IO_TZ_CPLDSTATUS             0x6E                                // Version 2.1 CPLD status register.
+#define IO_TZ_CPLDINFO               0x6F                                // Version 2.1 CPLD version information register.
+#define IO_TZ_SYSCTRL                0xF0                                // System board control register. [2:0] - 000 MZ80A Mode, 2MHz CPU/Bus, 001 MZ80B Mode, 4MHz CPU/Bus, 010 MZ700 Mode, 3.54MHz CPU/Bus.
+#define IO_TZ_GRAMMODE               0xF4                                // MZ80B Graphics mode.  Bit 0 = 0, Write to Graphics RAM I, Bit 0 = 1, Write to Graphics RAM II. Bit 1 = 1, blend Graphics RAM I output on display, Bit 2 = 1, blend Graphics RAM II output on display.
+#define IO_TZ_VMCTRL                 0xF8                                // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
+#define IO_TZ_VMGRMODE               0xF9                                // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
+#define IO_TZ_VMREDMASK              0xFA                                // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define IO_TZ_VMGREENMASK            0xFB                                // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define IO_TZ_VMBLUEMASK             0xFC                                // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define IO_TZ_VMPAGE                 0xFD                                // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
 
-// Sharp MZ80A constants.
+// Sharp MZ constants.
 //
 #define MZ_MROM_ADDR                 0x0000                              // Monitor ROM start address.
 #define MZ_MROM_STACK_ADDR           0x1000                              // Monitor ROM start stack address.
@@ -141,8 +153,8 @@
 #define TZSVC_CMD_SAVEFILE           0x09                                // Service command to save a file directly from tranZPUter memory.
 #define TZSVC_CMD_ERASEFILE          0x0a                                // Service command to erase a file on the SD card.
 #define TZSVC_CMD_CHANGEDIR          0x0b                                // Service command to change active directory on the SD card.
-#define TZSVC_CMD_LOAD40BIOS         0x20                                // Service command requesting that the 40 column version of the SA1510 BIOS is loaded.
-#define TZSVC_CMD_LOAD80BIOS         0x21                                // Service command requesting that the 80 column version of the SA1510 BIOS is loaded.
+#define TZSVC_CMD_LOAD40ABIOS        0x20                                // Service command requesting that the 40 column version of the SA1510 BIOS is loaded.
+#define TZSVC_CMD_LOAD80ABIOS        0x21                                // Service command requesting that the 80 column version of the SA1510 BIOS is loaded.
 #define TZSVC_CMD_LOAD700BIOS40      0x22                                // Service command requesting that the MZ700 1Z-013A 40 column BIOS is loaded.
 #define TZSVC_CMD_LOAD700BIOS80      0x23                                // Service command requesting that the MZ700 1Z-013A 80 column patched BIOS is loaded.
 #define TZSVC_CMD_LOAD80BIPL         0x24                                // Service command requesting the MZ-80B IPL is loaded.
@@ -405,20 +417,24 @@ enum VIDEO_FRAMES {
     WORKING                          = 1
 };
 
-// Values in the host monitor ROM to identify a machine type.
-//
-enum MACHINE_MONITOR_ID {
-    MZ80A_MONITOR_ID                 = 0xa8,
-    MZ700_MONITOR_ID                 = 0xe6,
-    MZ80B_MONITOR_ID                 = 0x03
-};
-
 // Possible machines the tranZPUter can be hosted on and can emulate.
 //
 enum MACHINE_TYPES {
-    MZ80A                            = 0,
-    MZ700                            = 1,
-    MZ80B                            = 2
+    MZ80K                            = 0x00,                             // Machine = MZ-80K.
+    MZ80C                            = 0x01,                             // Machine = MZ-80C.
+    MZ1200                           = 0x02,                             // Machine = MZ-1200.
+    MZ80A                            = 0x03,                             // Machine = MZ-80A.
+    MZ700                            = 0x04,                             // Machine = MZ-700.
+    MZ800                            = 0x05,                             // Machine = MZ-800.
+    MZ80B                            = 0x06,                             // Machine = MZ-80B.
+    MZ2000                           = 0x07                              // Machine = MZ-2000.
+};
+
+// Get and Set flags within the CPLD config and status registers.
+//
+enum CPLD_FLAGS {
+    VIDEO_FPGA                       = 0x08,                             // Bit to test for available functionality or enabling of the FPGA video hardware.
+    CPLD_VERSION                     = 0xE0                              // CPLD version mask bits.
 };
 
 // Types of file which have handlers and can be processed.

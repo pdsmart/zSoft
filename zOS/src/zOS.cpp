@@ -253,6 +253,9 @@ void tranZPUterControl(void)
         //
         if(isZ80Reset())
         {
+            // Reset Z80 - This is to extend the reset signal to allow all the CPLD's/FPGA's to sync.
+            resetZ80();
+
             // Reload the memory on the tranZPUter to boot default.
             loadTranZPUterDefaultROMS();
 
