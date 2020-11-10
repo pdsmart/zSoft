@@ -41,7 +41,7 @@
 #define RFSH_BYTE_CNT                256                                 // Number of bytes we can write before needing a full refresh for the DRAM.
 #define HOST_MON_TEST_VECTOR         0x4                                 // Address in the host monitor to test to identify host type.
 #define DEFAULT_BUSREQ_TIMEOUT       5000                                // Timeout for a Z80 Bus request operation in milliseconds.
-#define DEFAULT_RESET_PULSE_WIDTH    1000                                // Pulse width of a reset signal in |K4F clock ticks.
+#define DEFAULT_RESET_PULSE_WIDTH    80000                               // Pulse width of a reset signal in K64F clock ticks.
 
 // tranZPUter Memory Modes - select one of the 32 possible memory models using these constants.
 //
@@ -642,7 +642,7 @@ extern uint8_t                        pinMap[MAX_TRANZPUTER_PINS];
 void          yield(void);
 #endif
 void          setupZ80Pins(uint8_t, volatile uint32_t *);
-void          resetZ80(void);
+void          resetZ80(uint8_t);
 uint8_t       reqZ80Bus(uint32_t);
 uint8_t       reqMainboardBus(uint32_t);
 uint8_t       reqTranZPUterBus(uint32_t);

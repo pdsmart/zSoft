@@ -532,7 +532,7 @@ void setupZ80Pins(uint8_t initK64F, volatile uint32_t *millisecondTick)
 
 // Method to reset the Z80 CPU.
 //
-void resetZ80(void)
+void resetZ80(uint8_t memoryMode)
 {
     // Locals.
     //
@@ -547,6 +547,13 @@ void resetZ80(void)
     pinHigh(Z80_RESET);
     pinInput(Z80_RESET);
     __enable_irq();
+
+    // Set the memory mode to the one provided.
+    //
+    if(memoryMode != TZMM_ORIG)
+    {
+        setCtrlLatch(memoryMode);
+    }
 
     // Wait a futher settling period before reinstating the interrupt.
     //
@@ -2083,14 +2090,11 @@ void loadTranZPUterDefaultROMS(void)
     //
     if(!result)
     {
-        // Set the memory model to BOOT so we can bootstrap TZFS.
-        setCtrlLatch(TZMM_BOOT);
-
         // If autoboot flag set, force a restart to the ROM which will call User ROM startup code.
         if(osControl.tzAutoBoot)
         {
-            delay(100);
-            fillZ80Memory(MZ_MROM_STACK_ADDR, MZ_MROM_STACK_SIZE, 0x00, 1);
+            // Set the memory model to BOOT so we can bootstrap TZFS.
+            resetZ80(TZMM_BOOT);
         }
 
         // No longer need refresh on the mainboard as all operations are in static RAM.
@@ -3722,7 +3726,7 @@ void processServiceRequest(void)
             z80Control.disableRefresh = 0;
            
             // Now reset the machine so everything starts as power on.
-            resetZ80();
+            resetZ80(TZMM_ORIG);
          
             // Disable the interrupts so no further service processing.
             disableIRQ();
@@ -3855,9 +3859,6 @@ void setupTranZPUter(void)
 
     // Check to see if autoboot is needed.
     osControl.tzAutoBoot = testTZFSAutoBoot();
-  
-    // Ensure the machine is ready by performing a RESET.
-    resetZ80();
 }
 
 //////////////////////////////////////////////////////////////

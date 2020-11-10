@@ -87,6 +87,7 @@ void usage(void)
     printf("  -h | --help              This help text.\n");
     printf("  -r | --reset             Perform a hardware reset.\n");
     printf("  -l | --load              Reload the default ROMS.\n");
+    printf("  -m | --memorymode <val>  Set the startup memory mode.\n");
     printf("\nOptions:-\n");
     printf("  -v | --verbose           Output more messages.\n");
 
@@ -111,6 +112,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
     int        verbose_flag      = 0;
     int        opt; 
     int        option_index      = 0; 
+    uint8_t    memoryMode        = TZMM_ORIG;
     long       val               = 0;
     char      *argv[20];
     char      *ptr               = strtok((char *)param1, " ");
@@ -137,6 +139,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
     {
         {"help",          no_argument,       0,   'h'},
         {"load",          no_argument,       0,   'l'},
+        {"memorymode",    required_argument, 0,   'm'},
         {"reset",         no_argument,       0,   'r'},
         {"verbose",       no_argument,       0,   'v'},
         {0,               0,                 0,    0}
@@ -144,7 +147,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
     // Parse the command line options.
     //
-    while((opt = getopt_long(argc, argv, ":hlrv", long_options, &option_index)) != -1)  
+    while((opt = getopt_long(argc, argv, ":hlm:rv", long_options, &option_index)) != -1)  
     {  
         switch(opt)  
         {  
@@ -154,6 +157,15 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
             case 'l':
                 load_flag = 1;
+                break;
+
+            case 'm':
+                if(xatoi(&argv[optind-1], &val) == 0 || val >= 0x20)
+                {
+                    printf("Illegal numeric:%s\n", argv[optind-1]);
+                    return(1);
+                }
+                memoryMode = (uint8_t)val;
                 break;
 
             case 'r':
@@ -180,17 +192,16 @@ uint32_t app(uint32_t param1, uint32_t param2)
         return(0);
     }
 
-    // Initialise the IO.
-    //setupZ80Pins(1, G->millis);
-
-    // Call the reset method to do the hard work.
+    // Reload the memory on the tranZPUter to boot default if load flag set.
     //
-    resetZ80();
-
-    // Reload the memory on the tranZPUter to boot default.
     if(load_flag)
     {
         loadTranZPUterDefaultROMS();
+    } else
+    {
+        // Call the reset method to do the hard work.
+        //
+        resetZ80(memoryMode);
     }
 
     return(0);
