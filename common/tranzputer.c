@@ -251,14 +251,20 @@ static void setupIRQ(void)
             // Install the method to be called when PortD triggers.
             _VectorsRam[IRQ_PORTD + 16] = irqPortD;
          
+            // Setup the IRQ for TZ_SVCREQ.
+            installIRQ(TZ_SVCREQ, IRQ_MASK_FALLING);
+          
             // Setup the IRQ for Z80_IORQ.
-            installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
+            //installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
            
             // Setup the IRQ for Z80_RESET.
             installIRQ(Z80_RESET, IRQ_MASK_FALLING);
           
             // Setup the IRQ for Z80_RESET.
             installIRQ(Z80_RESET, IRQ_MASK_FALLING);
+        
+            // Remove previous interrupts not needed in this mode.
+            removeIRQ(Z80_IORQ);
 
             // Set relevant priorities to meet latency.
             NVIC_SET_PRIORITY(IRQ_PORTD, 0);
@@ -348,7 +354,10 @@ static void restoreIRQ(void)
         // For the MZ700 we need to enable IORQ to process the OUT statements the Z80 generates for memory mode selection. 
         case MZ700:
             // Setup the IRQ for Z80_IORQ.
-            installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
+            //installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
+           
+            // Setup the IRQ for TZ_SVCREQ.
+            installIRQ(TZ_SVCREQ, IRQ_MASK_FALLING);
 
             // Setup the IRQ for Z80_RESET.
             installIRQ(Z80_RESET, IRQ_MASK_FALLING);
