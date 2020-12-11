@@ -20,6 +20,8 @@
 //                                   of testing but also now for end application programming using the 
 //                                   features of zOS where applicable.
 //                  July 2020      - Tweaks to accomodate v2.1 of the tranZPUter board.
+//                  December 2020  - Updates to allow soft CPU functionality on the v1.3 tranZPUter SW-700
+//                                   board.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //                  USELOADB              - The Byte write command is implemented in hw/sw so use it.
@@ -61,11 +63,21 @@
 
 #else // __ZPU__
   #include <stdint.h>
+  #include <stdlib.h>
   #include <string.h>
   #include <stdio.h>
   #include <stdmisc.h>
   #include "zpu_soc.h"
   #include "uart.h"
+
+//  #define     malloc     sys_malloc
+//  #define     realloc    sys_realloc
+//  #define     calloc     sys_calloc
+//  #define     free       sys_free
+//  void        *sys_malloc(size_t);            // Allocate memory managed by the OS.
+//  void        *sys_realloc(void *, size_t);   // Reallocate a block of memory managed by the OS.
+//  void        *sys_calloc(size_t, size_t);    // Allocate and zero a block of memory managed by the OS.
+//  void        sys_free(void *);               // Free memory managed by the OS.
 #endif
 
 #include "interrupts.h"
@@ -82,6 +94,10 @@
   #include <tranzputer.h>
 #endif
 
+#if defined __SHARPMZ__
+  #include <sharpmz.h>
+#endif
+
 #if defined(BUILTIN_TST_DHRYSTONE) && BUILTIN_TST_DHRYSTONE == 1
   #include <dhry.h>
 #endif
@@ -90,8 +106,8 @@
 #endif
 
 // Version info.
-#define VERSION      "v1.02"
-#define VERSION_DATE "02/05/2020"
+#define VERSION      "v1.1a"
+#define VERSION_DATE "11/12/2020"
 #define PROGRAM_NAME "zOS"
 
 // Utility functions.
@@ -196,7 +212,7 @@ uint8_t getCommandLine(char *buf, uint8_t bufSize)
     {
         // If we cant open an autoexec.bat file then disable further automated processing.
         //
-        if(f_open(&fAutoExec, "autoexec.bat", FA_OPEN_EXISTING | FA_READ))
+        if(f_open(&fAutoExec, AUTOEXEC_FILE, FA_OPEN_EXISTING | FA_READ))
         {
             autoExecState = 2;
         } else
@@ -344,7 +360,7 @@ int cmdProcessor(void)
         // Setup memory on Z80 to default.
         loadTranZPUterDefaultROMS();
 
-        // Cache initial director.
+        // Cache initial directory.
         svcCacheDir(TZSVC_DEFAULT_MZF_DIR, MZF, 1);
 
         // For the tranZPUter, once we know that an SD card is available, launch seperate thread to handle hardware and service functionality.
@@ -836,11 +852,67 @@ int main(int argc, char **argv)
 
     // I/O is connected in the _read and_write methods withiin startup file mx20dx128.c.
     setbuf(stdout, NULL);
+
+  #elif defined __SHARPMZ__
+    uint32_t memAddr;
+    uint32_t memBaseAddr;
+    uint32_t memBaseData;
+    uint8_t memBaseByteData;
+  //  for(memAddr=0x0D00000; memAddr < 0x0D40000; memAddr+=8)
+  //  {
+  //      *(uint32_t *)(memAddr) = memAddr; //0xABCD9876;
+  //      *(uint16_t *)(memAddr+4) = 0xAA55;
+  //      *(uint8_t *)(memAddr+6) = 0x11;
+  //      *(uint8_t *)(memAddr+7) = 0x22;
+//
+//    }
+//    memBaseAddr = 0x0E00000;
+//    for(memAddr=0x0D30000; memAddr < 0x0D40000; memAddr+=4)
+//    {
+//        memBaseData = *(uint32_t *)(memBaseAddr);
+//        *(uint32_t *)(memAddr) = memBaseData;
+//        memBaseAddr+=4;
+//    }
+//    memBaseAddr = 0x0E00000;
+//    for(memAddr=0x0D40000; memAddr < 0x0D4D000; memAddr+=4)
+//    {
+//        memBaseData = *(uint32_t *)(memBaseAddr);
+//        *(uint32_t *)(memAddr) = memBaseData;
+//        memBaseAddr+=4;
+//    }
+//
+//    memBaseAddr = 0x0D80000;
+//    for(memAddr=0x0D50000; memAddr < 0x0D5D000; memAddr+=1)
+//    {
+//        memBaseByteData = *(uint8_t *)(memBaseAddr);
+//        
+//        *(uint8_t *)(memAddr) = memBaseByteData;
+//        memBaseAddr+=4;
+//    }
+    for(memAddr=0X0E81000; memAddr < 0x0E817FF; memAddr+=4)
+    {
+        *(uint32_t *)(memAddr) = 0x00000000;
+    }
+    for(memAddr=0X0E81800; memAddr < 0x0E81FFF; memAddr+=4)
+    {
+        *(uint32_t *)(memAddr) = 0x71717171;
+    }
+
+mzPrintChar('H', NULL);
+mzPrintChar('E', NULL);
+mzPrintChar('L', NULL);
+mzPrintChar('L', NULL);
+mzPrintChar('O', NULL);
+mzPrintChar('\n', NULL);
+mzPrintChar('>', NULL);
+
+    fdev_setup_stream(&osIO, mzPrintChar, mzGetChar, _FDEV_SETUP_RW);
+    stdout = stdin = stderr = &osIO;
   #else
     fdev_setup_stream(&osIO, uart_putchar, uart_getchar, _FDEV_SETUP_RW);
     stdout = stdin = stderr = &osIO;
   #endif
-
+printf("Testing printf\n");
     // Setup the configuration using the SoC configuration register if implemented otherwise the compiled internals.
     setupSoCConfig();
 

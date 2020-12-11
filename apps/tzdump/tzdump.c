@@ -74,8 +74,8 @@
 #include <tools.c>
 
 // Version info.
-#define VERSION              "v1.0"
-#define VERSION_DATE         "15/05/2020"
+#define VERSION              "v1.1"
+#define VERSION_DATE         "10/12/2020"
 #define APP_NAME             "TZDUMP"
 
 // Simple help screen to remmber how this utility works!!
@@ -89,6 +89,7 @@ void usage(void)
     printf("\nOptions:-\n");
     printf("  -e | --end               End address (alternatively use --size).\n");
     printf("  -s | --size              Size of memory block to dump (alternatively use --end).\n");
+    printf("  -f | --fpga              Operations will take place in the FPGA memory. Default without this flag is to target the tranZPUter memory.\n");
     printf("  -m | --mainboard         Operations will take place on the MZ80A mainboard. Default without this flag is to target the tranZPUter memory.\n");
     printf("  -v | --verbose           Output more messages.\n");
 
@@ -112,6 +113,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
     uint32_t   memSize           = 0xFFFFFFFF;
     int        argc              = 0;
     int        help_flag         = 0;
+    int        fpga_flag         = 0;
     int        mainboard_flag    = 0;
     int        verbose_flag      = 0;
     int        opt; 
@@ -144,6 +146,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
         {"start",         required_argument, 0,   'a'},
         {"end",           required_argument, 0,   'e'},
         {"size",          required_argument, 0,   's'},
+        {"fpga",          no_argument,       0,   'f'},
         {"mainboard",     no_argument,       0,   'm'},
         {"verbose",       no_argument,       0,   'v'},
         {0,               0,                 0,    0}
@@ -151,12 +154,16 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
     // Parse the command line options.
     //
-    while((opt = getopt_long(argc, argv, ":hs:e:s:mv", long_options, &option_index)) != -1)  
+    while((opt = getopt_long(argc, argv, ":hs:e:s:fmv", long_options, &option_index)) != -1)  
     {  
         switch(opt)  
         {  
             case 'h':
                 help_flag = 1;
+                break;
+
+            case 'f':
+                fpga_flag = 1;
                 break;
 
             case 'm':
@@ -221,12 +228,22 @@ uint32_t app(uint32_t param1, uint32_t param2)
     {
         memSize = endAddr - startAddr;
     }
+    if(mainboard_flag == 1 && fpga_flag == 1)
+    {
+        printf("Please specify only one target, --mainboard, --fpga or default to tranZPUter memory.\n");
+        return(11);
+    }
     if(mainboard_flag == 1 && (startAddr > 0x10000 || startAddr + memSize > 0x10000))
     {
         printf("Mainboard only has 64K, please change the address or size.\n");
         return(11);
     }
-    if(mainboard_flag == 0 && (startAddr >= 0x80000 || startAddr + memSize > 0x80000))
+    if(fpga_flag == 1 && (startAddr >= 0x80000 || startAddr + memSize > 0x80000))
+    {
+        printf("FPGA only has a 512K window, please change the address or size.\n");
+        return(13);
+    }
+    if(mainboard_flag == 0 && fpga_flag == 0 && (startAddr >= 0x80000 || startAddr + memSize > 0x80000))
     {
         printf("tranZPUter board only has 512K, please change the address or size.\n");
         return(12);
@@ -237,7 +254,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
     // Call the dump utility to list out memory.
     //
-    memoryDumpZ80(startAddr, memSize, startAddr, 32, mainboard_flag);
+    memoryDumpZ80(startAddr, memSize, startAddr, 32, mainboard_flag == 1 ? MAINBOARD : fpga_flag == 1 ? FPGA : TRANZPUTER);
 
     return(0);
 }

@@ -16,6 +16,7 @@
 ## History:         January 2019   - Initial script written for the STORM processor then changed to the ZPU.
 ##                  April 2020     - Split from the latest ZPUTA and added K64F logic to support the
 ##                                   tranZPUter SW board.
+##                  December 2020  - Additions to support zOS running as host on Sharp MZ hardware.
 ##
 ## Notes:           Optional component enables:
 ##                  USELOADB              - The Byte write command is implemented in hw#sw so use it.
@@ -94,9 +95,12 @@ COMMON_SRC      = $(COMMON_DIR)/utils.c $(COMMON_DIR)/uart.c $(COMMON_DIR)/zpu_s
 COMMON_SRC     += #$(COMMON_DIR)/xprintf.c $(COMMON_DIR)/spi.c
 #COMMON_SRC     += $(COMMON_DIR)/divsi3.c $(COMMON_DIR)/udivsi3.c $(COMMON_DIR)/modsi3.c $(COMMON_DIR)/umodsi3.c
 UMM_C_SRC       = $(UMM_DIR)/umm_malloc.c
-FATFS_SRC       = $(FATFS_DIR)/sdmmc_zpu.c $(FATFS_DIR)/ff.c
+FATFS_SRC       = $(FATFS_DIR)/sdmmc_zpu.c $(FATFS_DIR)/ff.c $(FATFS_DIR)/ffunicode.c
 PFS_SRC         = $(PFS_DIR)/sdmmc_zpu.c   $(PFS_DIR)/pff.c
 MAIN_SRC        = $(CURDIR)/src/zOS.cpp
+ifeq ($(__SHARPMZ__),1)
+  COMMON_SRC   += $(COMMON_DIR)/sharpmz.c
+endif
 
 # Expand to targets.
 SOURCES        := $(MAIN_SRC:.cpp=.o) $(COMMON_SRC:.c=.o) $(UMM_C_SRC:.c=.o) $(FATFS_SRC:.c=.o) 
@@ -140,7 +144,7 @@ ZPUOPTS        += -mmult \
 	          	  -mneg
 endif
 
-CFLAGS          = -I. -I$(COMMON_DIR) -I$(FATFS_DIR) -I$(INCLUDE_DIR) -I$(LIB_INCLUDE_DIR)
+CFLAGS          = -I. -I$(COMMON_DIR) -I$(FATFS_DIR) -I$(DHRY_DIR) -I$(CORE_DIR) -I$(INCLUDE_DIR) -I$(LIB_INCLUDE_DIR)
 CFLAGS         += -nostartfiles -nostdlib -c -Os -ffunction-sections -fdata-sections $(ZPUOPTS)
 CFLAGS         += -DOS_BASEADDR=$(OS_BASEADDR) -DOS_APPADDR=$(OS_APPADDR)
 CFLAGS         += -D__ZPU__ -D__ZOS__
@@ -162,6 +166,9 @@ ifeq ($(HEAPSIZE),)
 else
   CFLAGS      += -D__HEAPSIZE__=$(HEAPSIZE)
 endif
+endif
+ifeq ($(__SHARPMZ__),1)
+  CFLAGS      += -D__SHARPMZ__
 endif
 #
 # Enable debug output.
@@ -198,7 +205,7 @@ $(MAIN_PRJ_IN_BOOT): $(BUILD_DIR) $(MAIN_PRJ_IN_BOOT).bin $(MAIN_PRJ_IN_BOOT).sr
 #
 $(MAIN_PRJ_TINY_BOOT): $(BUILD_DIR) $(MAIN_PRJ_TINY_BOOT).bin $(MAIN_PRJ_TINY_BOOT).rpt $(MAIN_PRJ_TINY_BOOT).lss $(MAIN_PRJ_TINY_BOOT).dmp
 #
-$(MAIN_PRJ_RAM): $(BUILD_DIR) $(MAIN_PRJ_RAM).bin $(MAIN_PRJ_RAM).srec $(MAIN_PRJ_RAM).rpt $(MAIN_PRJ_RAM).lss $(MAIN_PRJ_RAM).dmp $(MAIN_PRJ_RAM)_COMBINEDAPPRAM.vhd
+$(MAIN_PRJ_RAM): $(BUILD_DIR) $(MAIN_PRJ_RAM).bin $(MAIN_PRJ_RAM).srec $(MAIN_PRJ_RAM).rpt $(MAIN_PRJ_RAM).lss $(MAIN_PRJ_RAM).dmp $(MAIN_PRJ_RAM)_APPRAM.vhd $(MAIN_PRJ_RAM)_COMBINEDAPPRAM.vhd
 
 clean:
 	rm -fr $(BUILD_DIR)/*
@@ -280,10 +287,12 @@ $(ROMGEN): $(SWDIR)/tools/src/zpugen.c
 	@sed 's/byteaddr_dp_32bit_bram/DualPortBootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_dp_32bit_bram_tmpl.vhd
 	@$(ROMGEN) BA $*.bin /tmp/zpu_work.tmp 0 > zOS_DualPortBootBRAM.vhd
 	@cp zOS_DualPortBootBRAM.vhd $(RTL_DIR)/
+	@sed 's/zpu_soc_pkg/softZPU_pkg/' > $(RTL_DIR)/TZSW_DualPortBootBRAM.vhd < zOS_DualPortBootBRAM.vhd
 	@sed 's/byteaddr_sp_32bit_bram/SinglePortBootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_sp_32bit_bram_tmpl.vhd
 	@$(ROMGEN) BA $*.bin /tmp/zpu_work.tmp 0 > zOS_SinglePortBootBRAM.vhd
 	@rm -f /tmp/zpu_work.tmp
 	@cp zOS_SinglePortBootBRAM.vhd $(RTL_DIR)/
+	@sed 's/zpu_soc_pkg/softZPU_pkg/' > $(RTL_DIR)/TZSW_SinglePortBootBRAM.vhd < zOS_SinglePortBootBRAM.vhd
 	@rm zOS_DualPortBootBRAM.vhd zOS_SinglePortBootBRAM.vhd
 	@echo "zOS_DualPortBootBRAM.vhd and zOS_SinglePortBootBRAM updated."
 	@echo ""
@@ -308,6 +317,7 @@ $(ROMGEN): $(SWDIR)/tools/src/zpugen.c
 	@$(ROMGEN) BA $*.bin /tmp/zpu_work.tmp 0 > zOS_SinglePortBRAM.vhd
 	@rm -f /tmp/zpu_work.tmp
 	@cp zOS_SinglePortBRAM.vhd $(RTL_DIR)/
+	@sed 's/zpu_soc_pkg/softZPU_pkg/' > $(RTL_DIR)/TZSW_SinglePortBRAM.vhd < zOS_SinglePortBRAM.vhd
 	@rm zOS_SinglePortBRAM.vhd
 	@echo "zOS_SinglePortBRAM updated."
 

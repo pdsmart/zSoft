@@ -97,7 +97,7 @@ COMMON_SRC     += #$(COMMON_DIR)/xprintf.c $(COMMON_DIR)/spi.c
 UMM_C_SRC       = $(UMM_DIR)/umm_malloc.c
 DHRY_SRC        = $(DHRY_DIR)/dhry_1.c $(DHRY_DIR)/dhry_2.c
 CORE_SRC        = $(CORE_DIR)/core_list_join.c $(CORE_DIR)/core_main_embedded.c $(CORE_DIR)/core_matrix.c $(CORE_DIR)/core_state.c $(CORE_DIR)/core_util.c $(CORE_DIR)/ee_printf.c $(CORE_DIR)/core_portme.c
-FATFS_SRC       = $(FATFS_DIR)/sdmmc_zpu.c $(FATFS_DIR)/ff.c
+FATFS_SRC       = $(FATFS_DIR)/sdmmc_zpu.c $(FATFS_DIR)/ff.c $(FATFS_DIR)/ffunicode.c
 PFS_SRC         = $(PFS_DIR)/sdmmc_zpu.c   $(PFS_DIR)/pff.c
 MAIN_SRC        = $(CURDIR)/src/zputa.cpp
 

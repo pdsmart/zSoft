@@ -38,9 +38,9 @@ library work;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.zpu_pkg.all;
-use work.zpu_soc_pkg.all;
+use work.softZPU_pkg.all;
 
-entity SinglePortBootBRAM is
+entity DualPortBootBRAM is
     generic
     (
         addrbits             : integer := 16
@@ -53,11 +53,16 @@ entity SinglePortBootBRAM is
         memAWriteByte        : in  std_logic;
         memAWriteHalfWord    : in  std_logic;
         memAWrite            : in  std_logic_vector(WORD_32BIT_RANGE);
-        memARead             : out std_logic_vector(WORD_32BIT_RANGE)
-    );
-end SinglePortBootBRAM;
+        memARead             : out std_logic_vector(WORD_32BIT_RANGE);
 
-architecture arch of SinglePortBootBRAM is
+        memBAddr             : in  std_logic_vector(addrbits-1 downto 2);
+        memBWrite            : in  std_logic_vector(WORD_32BIT_RANGE);
+        memBWriteEnable      : in  std_logic;
+        memBRead             : out std_logic_vector(WORD_32BIT_RANGE)
+    );
+end DualPortBootBRAM;
+
+architecture arch of DualPortBootBRAM is
 
     type ramArray is array(natural range 0 to (2**(addrbits-2))-1) of std_logic_vector(7 downto 0);
 
@@ -44025,4 +44030,57 @@ begin
             end if;
         end if;
     end process;
+
+    -- BRAM Byte 0 - Port B - bits 7 downto 0
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if memBWriteEnable = '1' then
+                RAM0(to_integer(unsigned(memBAddr(addrbits-1 downto 2)))) := memBWrite(7 downto 0);
+                memBRead(7 downto 0) <= memBWrite(7 downto 0);
+            else
+                memBRead(7 downto 0) <= RAM0(to_integer(unsigned(memBAddr(addrbits-1 downto 2))));
+            end if;
+        end if;
+    end process;
+
+    -- BRAM Byte 1 - Port B - bits 15 downto 8
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if memBWriteEnable = '1' then
+                RAM1(to_integer(unsigned(memBAddr(addrbits-1 downto 2)))) := memBWrite(15 downto 8);
+                memBRead(15 downto 8) <= memBWrite(15 downto 8);
+            else
+                memBRead(15 downto 8) <= RAM1(to_integer(unsigned(memBAddr(addrbits-1 downto 2))));
+            end if;
+        end if;
+    end process;
+
+    -- BRAM Byte 2 - Port B - bits 23 downto 16
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if memBWriteEnable = '1' then
+                RAM2(to_integer(unsigned(memBAddr(addrbits-1 downto 2)))) := memBWrite(23 downto 16);
+                memBRead(23 downto 16) <= memBWrite(23 downto 16);
+            else
+                memBRead(23 downto 16) <= RAM2(to_integer(unsigned(memBAddr(addrbits-1 downto 2))));
+            end if;
+        end if;
+    end process;
+
+    -- BRAM Byte 3 - Port B - bits 31 downto 24
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if memBWriteEnable = '1' then
+                RAM3(to_integer(unsigned(memBAddr(addrbits-1 downto 2)))) := memBWrite(31 downto 24);
+                memBRead(31 downto 24) <= memBWrite(31 downto 24);
+            else
+                memBRead(31 downto 24) <= RAM3(to_integer(unsigned(memBAddr(addrbits-1 downto 2))));
+            end if;
+        end if;
+    end process;
+
 end arch;

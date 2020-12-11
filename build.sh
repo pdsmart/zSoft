@@ -24,6 +24,7 @@
 #     -a <size>     = Maximum size of an app, defaults to (BRAM SIZE - App Start Address - Stack Size) 
 #                     if the App Start is located within BRAM otherwise defaults to 0x10000.
 #     -T            = TranZPUter specific build, adds initialisation and setup code.
+#     -Z            = Sharp MZ series ZPU build, zOS runs as an OS host on Sharp MZ hardware.
 #     -d            = Debug mode.
 #     -x            = Shell trace mode.
 #     -h            = This help screen.
@@ -46,6 +47,7 @@
 #          v1.2          : Added more zOS logic and the K64F processor target for the tranZPUter board.
 #          v1.21         : Additional changes to manage heap.
 #          v1.22         : Added code to build the libraries.
+#          v1.23         : Added flags for Sharp MZ series specific build.
 #========================================================================================================
 # This source file is free software: you can redistribute it and#or modify
 # it under the terms of the GNU General Public License as published
@@ -71,7 +73,7 @@ ARGS=$*
 
 # VERSION of this RELEASE.
 #
-VERSION="1.10"
+VERSION="1.23"
 
 # Constants.
 BUILDPATH=`pwd`
@@ -249,12 +251,13 @@ APP_STACK_SIZE=0x400;
 OS_HEAP_SIZE=0x4000;
 OS_STACK_SIZE=0x1000;
 TRANZPUTER=0
+SHARPMZ=0
 OSVER=2;
 
 # Process parameters, loading up variables as necessary.
 #
 if [ $# -gt 0 ]; then
-    while getopts ":hC:I:O:o:M:B:A:N:n:S:s:da:xT" opt; do
+    while getopts ":hC:I:O:o:M:B:A:N:n:S:s:da:xTZ" opt; do
         case $opt in
             d)     DEBUGMODE=1;;
             C)     CPU=`echo ${OPTARG} | tr 'a-z' 'A-Z'`;;
@@ -270,6 +273,7 @@ if [ $# -gt 0 ]; then
             s)     getHex ${OPTARG} APP_STACK_SIZE;;
             a)     getHex ${OPTARG} APP_LEN;;
             T)     TRANZPUTER=1;;
+            Z)     SHARPMZ=1;;
             x)     set -x; TRACEMODE=1;;
             h)     Usage;;
            \?)     FatalUsage "Unknown option: -${OPTARG}";;
@@ -320,6 +324,16 @@ fi
 if [ ${TRANZPUTER} -eq 1 ]; then
     if [ "${CPU}" = "K64F" -a "${OS}" = "ZOS" ]; then 
         BUILDFLAGS="__TRANZPUTER__=1"
+    fi
+fi
+
+# Setup any specific build options.
+if [ ${SHARPMZ} -eq 1 ]; then
+    if [  "${CPU}" != "EVO" -o "${OS}" != "ZOS" ]; then
+        Fatal "-Z only valid for zOS build on ZPU hardware."
+    fi
+    if [ "${CPU}" = "EVO" -a "${OS}" = "ZOS" ]; then 
+        BUILDFLAGS="__SHARPMZ__=1"
     fi
 fi
 

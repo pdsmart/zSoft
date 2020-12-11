@@ -1,16 +1,20 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// Name:            tranzputer.h
-// Created:         May 2020
+// Name:            sharpmz.c
+// Created:         December 2020
+// Version:         v1.0
 // Author(s):       Philip Smart
-// Description:     The TranZPUter library.
-//                  This file contains methods which allow applications to access and control the traZPUter board and the underlying Sharp MZ80A host.
+// Description:     The Sharp MZ library.
+//                  This file contains methods which allow the ZPU to access and control the Sharp MZ
+//                  series computer hardware. The ZPU is instantiated within a physical Sharp MZ machine
+//                  or an FPGA hardware emulation and provides either a host CPU running zOS or as an 
+//                  I/O processor providing services.
+//
+//                  NB. This library is NOT yet thread safe.
 // Credits:         
 // Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
 //
-// History:         May 2020 - Initial write of the TranZPUter software.
-//                  Jul 2020 - Updates to accommodate v2.1 of the tranZPUter board.
-//                  Sep 2020 - Updates to accommodate v2.2 of the tranZPUter board.
+// History:         v1.0 Dec 2020  - Initial write of the Sharp MZ series hardware interface software.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -28,20 +32,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifndef TRANZPUTER_H
-#define TRANZPUTER_H
+#ifndef SHARPMZ_H
+#define SHARPMZ_H
 
 #ifdef __cplusplus
     extern "C" {
 #endif
-
-// Configurable constants.
-//
-#define REFRESH_BYTE_COUNT           8                                   // This constant controls the number of bytes read/written to the z80 bus before a refresh cycle is needed.
-#define RFSH_BYTE_CNT                256                                 // Number of bytes we can write before needing a full refresh for the DRAM.
-#define HOST_MON_TEST_VECTOR         0x4                                 // Address in the host monitor to test to identify host type.
-#define DEFAULT_BUSREQ_TIMEOUT       5000                                // Timeout for a Z80 Bus request operation in milliseconds.
-#define DEFAULT_RESET_PULSE_WIDTH    80000                               // Pulse width of a reset signal in K64F clock ticks.
 
 // tranZPUter Memory Modes - select one of the 32 possible memory models using these constants.
 //
@@ -59,9 +55,6 @@
 #define TZMM_MZ700_2                 0x0c                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 6, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is on the tranZPUter in block 6.
 #define TZMM_MZ700_3                 0x0d                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 0, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is inaccessible.
 #define TZMM_MZ700_4                 0x0e                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 6, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is inaccessible.
-#define TZMM_FPGA                    0x15                                // Open up access for the K64F to the FPGA resources such as memory. All other access to RAM or mainboard is blocked.
-#define TZMM_TZPUM                   0x16                                // Everything is on mainboard, no access to tranZPUter memory.
-#define TZMM_TZPU                    0x17                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory. K64F drives A18-A16 allowing full access to RAM.
 #define TZMM_TZPU0                   0x18                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 0 is selected.
 #define TZMM_TZPU1                   0x19                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 1 is selected.
 #define TZMM_TZPU2                   0x1A                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 2 is selected.
@@ -139,22 +132,6 @@
 #define MZ_80A_CPU_FREQ              2000000                             // CPU Speed of the Sharp MZ-80A
 #define MZ_700_CPU_FREQ              3580000                             // CPU Speed of the Sharp MZ-700
 #define MZ_80B_CPU_FREQ              4000000                             // CPU Speed of the Sharp MZ-80B
-#define MZ_ROM_SA1510_40C            "0:\\TZFS\\SA1510.ROM"              // Original 40 character Monitor ROM.
-#define MZ_ROM_SA1510_80C            "0:\\TZFS\\SA1510-8.ROM"            // Original Monitor ROM patched for 80 character screen mode.
-#define MZ_ROM_1Z_013A_40C           "0:\\TZFS\\1Z-013A.ROM"             // Original 40 character Monitor ROM for the Sharp MZ700.
-#define MZ_ROM_1Z_013A_80C           "0:\\TZFS\\1Z-013A-8.ROM"           // Original Monitor ROM patched for the Sharp MZ700 patched for 80 column mode.
-#define MZ_ROM_1Z_013A_KM_40C        "0:\\TZFS\\1Z-013A-KM.ROM"          // Original 40 character Monitor ROM for the Sharp MZ700 with keyboard remapped for the MZ80A.
-#define MZ_ROM_1Z_013A_KM_80C        "0:\\TZFS\\1Z-013A-KM-8.ROM"        // Original Monitor ROM patched for the Sharp MZ700 with keyboard remapped for the MZ80A and patched for 80 column mode.
-#define MZ_ROM_MZ80B_IPL             "0:\\TZFS\\MZ80B_IPL.ROM"           // Original IPL ROM for the Sharp MZ-80B.
-#define MZ_ROM_TZFS                  "0:\\TZFS\\TZFS.ROM"                // tranZPUter Filing System ROM.
-
-// CP/M constants.
-//
-#define CPM_MAX_DRIVES               16                                  // Maximum number of drives in CP/M.
-#define CPM_FILE_CCPBDOS             "0:\\CPM\\CPM22.BIN"                // CP/M CCP and BDOS for warm start reloads.
-#define CPM_DRIVE_TMPL               "0:\\CPM\\CPMDSK%02u.RAW"           // Template for CPM disk drives stored on the SD card.
-#define CPM_SECTORS_PER_TRACK        32                                  // Number of sectors in a track on the virtual CPM disk.
-#define CPM_TRACKS_PER_DISK          1024                                // Number of tracks on a disk.
 
 // Service request constants.
 //
@@ -229,233 +206,6 @@
 #define MZF_COMMENT                  0x18                                // Comment, used for details of the file or startup code.
 #define MZF_COMMENT_LEN              104                                 // Length of the comment field.
 
-// Constants for other handled file formats.
-//
-#define CAS_HEADER_SIZE              256                                 // Size of the CASsette header.
-
-
-// Pin Constants - Pins assigned at the hardware level to specific tasks/signals.
-//
-#define MAX_TRANZPUTER_PINS          51
-#define Z80_MEM0_PIN                 16
-#define Z80_MEM1_PIN                 17
-#define Z80_MEM2_PIN                 19
-#define Z80_MEM3_PIN                 18
-#define Z80_MEM4_PIN                 71   // 49
-#define Z80_WR_PIN                   20   // 48
-#define Z80_RD_PIN                   5    // 55
-#define Z80_IORQ_PIN                 8
-#define Z80_MREQ_PIN                 7
-#define Z80_A0_PIN                   15
-#define Z80_A1_PIN                   22
-#define Z80_A2_PIN                   23
-#define Z80_A3_PIN                   9
-#define Z80_A4_PIN                   10
-#define Z80_A5_PIN                   13
-#define Z80_A6_PIN                   11
-#define Z80_A7_PIN                   12
-#define Z80_A8_PIN                   35
-#define Z80_A9_PIN                   36
-#define Z80_A10_PIN                  37
-#define Z80_A11_PIN                  38
-#define Z80_A12_PIN                  64   // 3
-#define Z80_A13_PIN                  65   // 4
-#define Z80_A14_PIN                  66   // 26
-#define Z80_A15_PIN                  67   // 27
-#define Z80_A16_PIN                  68   // 33
-#define Z80_A17_PIN                  69   // 34
-#define Z80_A18_PIN                  70   // 24
-#define Z80_D0_PIN                   0
-#define Z80_D1_PIN                   1
-#define Z80_D2_PIN                   29
-#define Z80_D3_PIN                   30
-#define Z80_D4_PIN                   43
-#define Z80_D5_PIN                   46
-#define Z80_D6_PIN                   44
-#define Z80_D7_PIN                   45
-#define Z80_WAIT_PIN                 31   // 54
-#define Z80_BUSACK_PIN               24   // 5
-#define Z80_NMI_PIN                  39
-#define Z80_INT_PIN                  28
-#define Z80_RESET_PIN                6
-#define SYSCLK_PIN                   25
-#define CTL_RFSH_PIN                 4    // 53
-#define CTL_HALT_PIN                 26   // 51
-#define CTL_M1_PIN                   3    // 20
-#define CTL_BUSRQ_PIN                2
-#define CTL_MBSEL_PIN                21
-#define CTL_CLK_PIN                  14
-#define CTL_BUSACK_PIN               32   // 47
-#define TZ_BUSACK_PIN                52
-#define TZ_SVCREQ_PIN                33   // 56
-
-// IRQ mask values for the different types of IRQ trigger.
-//
-#define IRQ_MASK_CHANGE              0x10B0000
-#define IRQ_MASK_RISING              0x1090000 //0x040040
-#define IRQ_MASK_FALLING             0x10A0000
-#define IRQ_MASK_LOW                 0x1080000
-#define IRQ_MASK_HIGH                0x10C0000
-
-// Customised pin manipulation methods implemented as stripped down macros. The original had too much additional overhead with procedure call and validation tests,
-// speed is of the essence for this project as pins change mode and value constantly.
-//
-#define STR(x)                       #x
-#define XSTR(s)                      STR(s)
-#define pinLow(a)                    *portClearRegister(pinMap[a]) = 1
-#define pinHigh(a)                   *portSetRegister(pinMap[a]) = 1
-#define pinSet(a, b)                 if(b) { *portSetRegister(pinMap[a]) = 1; } else { *portClearRegister(pinMap[a]) = 1; }
-#define pinGet(a)                    *portInputRegister(pinMap[a])
-#define pinInput(a)                  { *portModeRegister(pinMap[a]) = 0; *ioPin[a] = PORT_PCR_MUX(1) | PORT_PCR_PE | PORT_PCR_PS; }
-#define pinOutput(a)                 { *portModeRegister(pinMap[a]) = 1;\
-                                       *ioPin[a] = PORT_PCR_SRE | PORT_PCR_DSE | PORT_PCR_MUX(1);\
-                                       *ioPin[a] &= ~PORT_PCR_ODE; }
-#define pinOutputSet(a,b)            { if(b) { *portSetRegister(pinMap[a]) = 1; } else { *portClearRegister(pinMap[a]) = 1; }\
-                                       *portModeRegister(pinMap[a]) = 1;\
-                                       *ioPin[a] = PORT_PCR_SRE | PORT_PCR_DSE | PORT_PCR_MUX(1);\
-                                       *ioPin[a] &= ~PORT_PCR_ODE; }
-#define installIRQ(a, mask)          { uint32_t cfg;\
-                                       cfg = *ioPin[a];\
-                                       cfg &= ~0x000F0000;\
-                                       *ioPin[a] = cfg;\
-                                       cfg |= mask;\
-                                       *ioPin[a] = cfg;\
-                                     }
-#define removeIRQ(a)                 { \
-                                       *ioPin[a] = ((*ioPin[a] & ~0x000F0000) | 0x01000000);\
-                                     }
-#define pinIndex(a)                  getPinIndex(pinMap[a])
-
-#define setZ80Data(a)                { GPIOB_PDOR = (GPIOB_PDOR & 0xff00ffff) | ((a << 16) & 0x00ff0000); }
-#define setZ80DataAsOutput()         { GPIOB_PDDR = (GPIOB_PDDR & 0x0000ffff) | 0x00ff0000; }
-#define setZ80DataAsInput()          { GPIOB_PDDR = (GPIOB_PDDR & 0x0000ffff); }
-#define setZ80Addr(a)                { GPIOC_PDOR = (GPIOC_PDOR & 0xfff80000) | (a & 0x0007ffff); }
-#define setZ80AddrAsOutput()         { GPIOC_PDDR = 0x0007ffff; }
-#define setZ80AddrAsInput()          { GPIOC_PDDR = 0x00000000; }
-#define setZ80AddrLower(a)           { GPIOC_PDOR = (GPIOC_PDOR & 0xffffff00) | (a & 0x000000ff); }
-#define setZ80RefreshAddr(a)         { GPIOC_PDOR = (GPIOC_PDOR & 0xffffff80) | (a & 0x0000007f); }
-#define readZ80AddrLower()           ( GPIOC_PDIR & 0x000000ff )
-#define readZ80Addr()                ( (GPIOC_PDIR & 0x0000ffff) )
-#define readZ80DataBus()             ( (GPIOB_PDIR >> 16) & 0x000000ff )
-#define readCtrlLatch()              ( ((GPIOB_PDIR & 0x00000200) >> 5) | (GPIOB_PDIR & 0x0000000f) )
-#define writeCtrlLatch(a)            { outZ80IO(IO_TZ_CTRLLATCH, a); } 
-//#define setZ80Direction(a)           { for(uint8_t idx=Z80_D0; idx <= Z80_D7; idx++) { if(a == WRITE) { pinOutput(idx); } else { pinInput(idx); } }; z80Control.busDir = a; }
-#define setZ80Direction(a)           {{ if(a == WRITE) { setZ80DataAsOutput(); } else { setZ80DataAsInput(); } }; z80Control.busDir = a; }
-#define reqZ80BusChange(a)           { if(a == MAINBOARD_ACCESS && z80Control.ctrlMode == TRANZPUTER_ACCESS) \
-                                       {\
-                                           pinHigh(CTL_MBSEL);\
-                                           z80Control.ctrlMode = MAINBOARD_ACCESS;\
-                                           z80Control.curCtrlLatch = TZMM_ORIG | TZMM_ENIOWAIT;\
-                                           writeCtrlLatch(z80Control.curCtrlLatch);\
-                                       } else if(a == TRANZPUTER_ACCESS && z80Control.ctrlMode == MAINBOARD_ACCESS)\
-                                       {\
-                                           pinLow(CTL_MBSEL);\
-                                           z80Control.ctrlMode = TRANZPUTER_ACCESS;\
-                                           z80Control.curCtrlLatch = TZMM_TZPU | TZMM_ENIOWAIT;\
-                                           writeCtrlLatch(z80Control.curCtrlLatch);\
-                                       } }
-// Lower level macro without pin mapping as this is called in the ResetHandler to halt the Z80 whilst the K64F starts up and is able to load up tranZPUter software.
-#define holdZ80()                    { \
-                                         *portModeRegister(CTL_BUSRQ_PIN) = 1; \
-                                         *portConfigRegister(CTL_BUSRQ_PIN) = PORT_PCR_SRE | PORT_PCR_DSE | PORT_PCR_MUX(1); \
-                                         *portConfigRegister(CTL_BUSRQ_PIN) &= ~PORT_PCR_ODE; \
-                                         *portClearRegister(CTL_BUSRQ_PIN) = 1; \
-                                     }
-
-
-
-// Enumeration of the various pins on the project. These enums make it easy to refer to a signal and they are mapped
-// to the actual hardware pin via the pinMap array.
-// One of the big advantages is that a swath of pins, such as the address lines, can be switched in a tight loop rather than 
-// individual pin assignments or clunky lists.
-//
-enum pinIdxToPinNumMap { 
-    Z80_A0                           = 0,
-    Z80_A1                           = 1,
-    Z80_A2                           = 2,
-    Z80_A3                           = 3,
-    Z80_A4                           = 4,
-    Z80_A5                           = 5,
-    Z80_A6                           = 6,
-    Z80_A7                           = 7,
-    Z80_A8                           = 8,
-    Z80_A9                           = 9,
-    Z80_A10                          = 10,
-    Z80_A11                          = 11,
-    Z80_A12                          = 12,
-    Z80_A13                          = 13,
-    Z80_A14                          = 14,
-    Z80_A15                          = 15,
-    Z80_A16                          = 16,
-    Z80_A17                          = 17,
-    Z80_A18                          = 18,
-
-    Z80_D0                           = 19,
-    Z80_D1                           = 20,
-    Z80_D2                           = 21,
-    Z80_D3                           = 22,
-    Z80_D4                           = 23,
-    Z80_D5                           = 24,
-    Z80_D6                           = 25,
-    Z80_D7                           = 26,
-
-    Z80_MEM0                         = 27,
-    Z80_MEM1                         = 28,
-    Z80_MEM2                         = 29,
-    Z80_MEM3                         = 30,
-    Z80_MEM4                         = 31,
-
-    Z80_IORQ                         = 32,
-    Z80_MREQ                         = 33,
-    Z80_RD                           = 34,
-    Z80_WR                           = 35,
-    Z80_WAIT                         = 36,
-    Z80_BUSACK                       = 37,
-
-    Z80_NMI                          = 38,
-    Z80_INT                          = 39,
-    Z80_RESET                        = 40,
-    MB_SYSCLK                        = 41,
-    TZ_BUSACK                        = 42,
-    TZ_SVCREQ                        = 43,
-
-    CTL_MBSEL                        = 44,
-    CTL_BUSRQ                        = 45,
-    CTL_RFSH                         = 46,
-    CTL_HALT                         = 47,
-    CTL_M1                           = 48,
-    CTL_CLK                          = 49,
-    CTL_BUSACK                       = 50 
-};
-
-// Possible control modes that the K64F can be in, do nothing where the Z80 runs normally, control the Z80 and mainboard, or control the Z80 and tranZPUter.
-enum CTRL_MODE {
-    Z80_RUN                          = 0,
-    TRANZPUTER_ACCESS                = 1,
-    MAINBOARD_ACCESS                 = 2
-};
-
-// Possible targets the K64F can read from/write to.
-enum TARGETS {
-    MAINBOARD                        = 0,
-    TRANZPUTER                       = 1,
-    FPGA                             = 2
-};
-
-// Possible bus directions that the K64F can setup for controlling the Z80.
-enum BUS_DIRECTION {
-    READ                             = 0,
-    WRITE                            = 1,
-    TRISTATE                         = 2
-};
-
-// Possible video frames stored internally.
-//
-enum VIDEO_FRAMES {
-    SAVED                            = 0,
-    WORKING                          = 1
-};
-
 // Possible machines the tranZPUter can be hosted on and can emulate.
 //
 enum MACHINE_TYPES {
@@ -474,16 +224,6 @@ enum MACHINE_TYPES {
 enum CPLD_FLAGS {
     VIDEO_FPGA                       = 0x08,                             // Bit to test for available functionality or enabling of the FPGA video hardware.
     CPLD_VERSION                     = 0xE0                              // CPLD version mask bits.
-};
-
-// Types of file which have handlers and can be processed.
-//
-enum FILE_TYPE {
-    MZF                              = 0,                                // Sharp MZF tape image files.
-    CAS                              = 1,                                // BASIC CASsette image files.
-    BAS                              = 2,                                // BASic ASCII text script files.
-    ALL                              = 10,                               // All files to be considered.
-    ALLFMT                           = 11                                // Special case for directory listings, all files but truncated and formatted.
 };
 
 // Structure to define a Sharp MZ80A MZF directory structure. This header appears at the beginning of every Sharp MZ80A tape (and more recently archived/emulator) images.
@@ -516,21 +256,6 @@ typedef struct __attribute__((__packed__)) {
     uint8_t                          *sdFileName;                        // Name of file on the SD card.
     t_svcCmpDirEnt                   mzfHeader;                          // Compact Sharp header data of this file.
 } t_sharpToSDMap;
-
-// Structure to define the control information for a CP/M disk drive.
-//
-typedef struct {
-    uint8_t                          *fileName;                          // FQFN of the CPM disk image file.
-    uint32_t                         lastTrack;                          // Track of last successful operation.
-    uint32_t                         lastSector;                         // Sector of last successful operation.
-    FIL                              File;                               // Opened file handle of the CPM disk image.
-} t_cpmDrive;
-
-// Structure to define which CP/M drives are added to the system, mapping a number from CP/M into a record containing the details of the file on the SD card.
-//
-typedef struct {
-    t_cpmDrive                       *drive[CPM_MAX_DRIVES];             // 1:1 map of CP/M drive number to an actual file on the SD card.
-} t_cpmDriveMap;
 
 // Structure to hold a map of an entire directory of files on the SD card and their associated Sharp MZ0A filename.
 typedef struct __attribute__((__packed__)) {
@@ -574,8 +299,6 @@ typedef struct {
     uint8_t                          videoRAM[2][2048];                  // Two video memory buffer frames, allows for storage of original frame in [0] and working frame in [1].
     uint8_t                          attributeRAM[2][2048];              // Two attribute memory buffer frames, allows for storage of original frame in [0] and working frame in [1].
 
-    enum CTRL_MODE                   ctrlMode;                           // Mode of control, ie normal Z80 Running, controlling mainboard, controlling tranZPUter.
-    enum BUS_DIRECTION               busDir;                             // Direction the bus has been configured for.
     enum MACHINE_TYPES               hostType;                           // The underlying host machine, 0 = Sharp MZ-80A, 1 = MZ-700, 2 = MZ-80B
     enum MACHINE_TYPES               machineMode;                        // Machine compatibility, 0 = Sharp MZ-80A, 1 = MZ-700, 2 = MZ-80B
     t_mz700                          mz700;                              // MZ700 emulation control to detect IO commands and adjust the memory map accordingly.
@@ -603,7 +326,6 @@ typedef struct {
 typedef struct {
 	uint8_t                          tzAutoBoot;                         // Autoboot the tranZPUter into TZFS mode.
     t_dirMap                         dirMap;                             // Directory map of SD filenames to Sharp MZ80A filenames.
-    t_cpmDriveMap                    cpmDriveMap;                        // Map of file number to an open SD disk file to be used as a CPM drive.
     uint8_t                          *lastFile;                          // Last file loaded - typically used for CPM to reload itself.
 } t_osControl;
 
@@ -657,100 +379,23 @@ typedef struct {
     uint8_t    asciiCode;
 } t_asciiMap;
 
+// Mapping table from Ascii to Sharp MZ display code.
+//
+typedef struct {
+    uint8_t    dispCode;
+} t_dispCodeMap;
+
 // Application execution constants.
 //
 
-// For the ARM Cortex-M compiler, the standard filestreams in an app are set by the CRT0 startup code,
-// the original reentrant definition is undefined as it is not needed in the app.
-#if defined __APP__ && defined __K64F__
-  #undef stdout
-  #undef stdin
-  #undef stderr
-  FILE   *stdout;
-  FILE   *stdin;
-  FILE   *stderr;
-#endif
-
-// References to variables within the main library code.
-extern volatile uint32_t              *ioPin[MAX_TRANZPUTER_PINS];
-extern uint8_t                        pinMap[MAX_TRANZPUTER_PINS];
-
 // Prototypes.
 //
-#if defined __APP__
-void          yield(void);
-#endif
-void          setupZ80Pins(uint8_t, volatile uint32_t *);
-void          resetZ80(uint8_t);
-uint8_t       reqZ80Bus(uint32_t);
-uint8_t       reqMainboardBus(uint32_t);
-uint8_t       reqTranZPUterBus(uint32_t, enum TARGETS);
-void          setupSignalsForZ80Access(enum BUS_DIRECTION);
-void          releaseZ80(void);
-void          refreshZ80(void);
-void          setCtrlLatch(uint8_t);
-uint32_t      setZ80CPUFrequency(float, uint8_t);
-uint8_t       copyFromZ80(uint8_t *, uint32_t, uint32_t, enum TARGETS);
-uint8_t       copyToZ80(uint32_t, uint8_t *, uint32_t, enum TARGETS);
-uint8_t       writeZ80Memory(uint32_t, uint8_t);
-uint8_t       readZ80Memory(uint32_t);
-uint8_t       outZ80IO(uint32_t, uint8_t);
-uint8_t       inZ80IO(uint32_t);
-uint8_t       writeZ80IO(uint32_t, uint8_t, enum TARGETS);
-uint8_t       readZ80IO(uint32_t, enum TARGETS);
-void          fillZ80Memory(uint32_t, uint32_t, uint8_t, enum TARGETS);
-void          captureVideoFrame(enum VIDEO_FRAMES, uint8_t);
-void          refreshVideoFrame(enum VIDEO_FRAMES, uint8_t, uint8_t);
-FRESULT       loadVideoFrameBuffer(char *, enum VIDEO_FRAMES);
-FRESULT       saveVideoFrameBuffer(char *, enum VIDEO_FRAMES);   
-char          *getVideoFrame(enum VIDEO_FRAMES);
-char          *getAttributeFrame(enum VIDEO_FRAMES);
-FRESULT       loadZ80Memory(const char *, uint32_t, uint32_t, uint32_t, uint32_t *, enum TARGETS, uint8_t);
-FRESULT       saveZ80Memory(const char *, uint32_t, uint32_t, t_svcDirEnt *, enum TARGETS);
-FRESULT       loadMZFZ80Memory(const char *, uint32_t, uint32_t *, enum TARGETS, uint8_t);
+int mzPrintChar(char, FILE *);
+int mzGetChar(FILE *);
 
 // Getter/Setter methods!
-uint8_t       isZ80Reset(void);
-uint8_t       isZ80MemorySwapped(void);
-uint8_t       getZ80IO(uint8_t *);
-void          clearZ80Reset(void);
-void          convertSharpFilenameToAscii(char *, char *, uint8_t);
-
-// tranZPUter OS i/f methods.
-uint8_t       setZ80SvcStatus(uint8_t);
-void          svcSetDefaults(enum FILE_TYPE);
-uint8_t       svcReadDir(uint8_t, enum FILE_TYPE);
-uint8_t       svcFindFile(char *, char *, uint8_t, enum FILE_TYPE);
-uint8_t       svcReadDirCache(uint8_t, enum FILE_TYPE);
-uint8_t       svcFindFileCache(char *, char *, uint8_t, enum FILE_TYPE);
-uint8_t       svcCacheDir(const char *, enum FILE_TYPE, uint8_t);
-uint8_t       svcReadFile(uint8_t, enum FILE_TYPE);
-uint8_t       svcWriteFile(uint8_t, enum FILE_TYPE);
-uint8_t       svcLoadFile(enum FILE_TYPE);
-uint8_t       svcSaveFile(enum FILE_TYPE);
-uint8_t       svcEraseFile(enum FILE_TYPE);
-uint8_t       svcAddCPMDrive(void);
-uint8_t       svcReadCPMDrive(void);
-uint8_t       svcWriteCPMDrive(void);
-uint32_t      getServiceAddr(void);
-void          processServiceRequest(void);
-uint8_t       loadBIOS(const char *biosFileName, uint8_t machineMode, uint32_t loadAddr);
-void          loadTranZPUterDefaultROMS(void);
-void          tranZPUterControl(void);
-uint8_t       testTZFSAutoBoot(void);
-void          setHost(void);
-void          setupTranZPUter(void);
-
-#if defined __APP__
-int           memoryDumpZ80(uint32_t, uint32_t, uint32_t, uint8_t, enum TARGETS);
-#endif
-
-// Debug methods.
-#if defined __APP__ && defined __TZPU_DEBUG__
-void          displaySignals(void);
-#endif
 
 #ifdef __cplusplus
 }
 #endif
-#endif // TRANZPUTER_H
+#endif // SHARPMZ_H

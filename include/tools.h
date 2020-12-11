@@ -109,6 +109,7 @@ extern "C" {
 #define CMD_TZ_CLEAR              153              // tranZPUter memory clear tool.
 #define CMD_TZ_CLK                154              // tranZPUter secondary frequency set tool.
 #define CMD_TZ_RESET              155              // tranZPUter memory reset tool.
+#define CMD_TZ_IO                 156              // tranZPUter memory IO read/write tool.
 #define CMD_BADKEY                 -1
 #define CMD_NOKEY                   0 
 #define CMD_GROUP_DISK              1
@@ -393,6 +394,7 @@ static t_cmdstruct cmdTable[] = {
     { "tzclear",    BUILTIN_DEFAULT,          CMD_TZ_CLEAR,         CMD_GROUP_TZ },
     { "tzclk",      BUILTIN_DEFAULT,          CMD_TZ_CLK,           CMD_GROUP_TZ },
     { "tzreset",    BUILTIN_DEFAULT,          CMD_TZ_RESET,         CMD_GROUP_TZ },
+    { "tzio",       BUILTIN_DEFAULT,          CMD_TZ_IO,            CMD_GROUP_TZ },
   #endif
 };
 #endif
@@ -502,6 +504,7 @@ static t_helpstruct helpTable[] = {
     { CMD_TZ_CLEAR,         "--help",                             "Memory clearing tool" },
     { CMD_TZ_CLK,           "--help",                             "CPU Freq set tool" },
     { CMD_TZ_RESET,         "--help",                             "Remote reset tool" },
+    { CMD_TZ_IO,            "--help",                             "I/O read/write tool" },
   #endif
 };
 #endif

@@ -38,7 +38,7 @@ library work;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.zpu_pkg.all;
-use work.zpu_soc_pkg.all;
+use work.softZPU_pkg.all;
 
 entity SinglePortBootBRAM is
     generic

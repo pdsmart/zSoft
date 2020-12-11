@@ -70,6 +70,7 @@ extern "C" {
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
 #define HISTORY_FILE                "zOS.hst"
+#define AUTOEXEC_FILE               "autoexec.bat"
 #define APP_CMD_LOAD_ADDR           OS_APPADDR
 #define APP_CMD_EXEC_ADDR           OS_APPADDR
 #define APP_CMD_BIN_DIR             "bin"

@@ -78,8 +78,8 @@
 #include <tools.c>
 
 // Version info.
-#define VERSION              "v1.0"
-#define VERSION_DATE         "15/05/2020"
+#define VERSION              "v1.1"
+#define VERSION_DATE         "10/12/2020"
 #define APP_NAME             "TZPU"
 
 void testBus(void)
@@ -109,7 +109,7 @@ void testSixtyBug(void)
     printf("Repeating a write to 0x0060\n");
     while(true)
     {
-        if(reqTranZPUterBus(100) == 0)
+        if(reqTranZPUterBus(100, TRANZPUTER) == 0)
         {
             setupSignalsForZ80Access(WRITE);
             uint8_t data = 0x07;
@@ -173,10 +173,10 @@ uint32_t app(uint32_t param1, uint32_t param2)
     testSixtyBug();
 
     printf("Loading Monitor ROM\n");
-    loadZ80Memory("SA1510.rom", 0, 0x00000000, 0, 0, 0, 1);
+    loadZ80Memory("SA1510.rom", 0, 0x00000000, 0, 0, TRANZPUTER, 1);
 
     printf("Loading Floppy ROM\n");
-    loadZ80Memory("1Z-013A.rom", 0, 0x0000F000, 0, 0, 0, 1);
+    loadZ80Memory("1Z-013A.rom", 0, 0x0000F000, 0, 0, TRANZPUTER, 1);
 
     printf("Testing Display\n");
     testBus();

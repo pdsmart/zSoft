@@ -189,6 +189,9 @@ else
   CFLAGS      += -D__HEAPSIZE__=$(HEAPSIZE)
 endif
 endif
+ifeq ($(__SHARPMZ__),1)
+  CFLAGS      += -D__SHARPMZ__
+endif
 #
 # Enable debug output.
 OFLAGS        += -DDEBUG

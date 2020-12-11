@@ -74,8 +74,8 @@
 #include <tools.c>
 
 // Version info.
-#define VERSION              "v1.0"
-#define VERSION_DATE         "15/05/2020"
+#define VERSION              "v1.1"
+#define VERSION_DATE         "10/12/2020"
 #define APP_NAME             "TZLOAD"
 
 // Simple help screen to remmber how this utility works!!
@@ -94,6 +94,7 @@ void usage(void)
     printf("  -a | --addr              Memory address to read/write.\n");
     printf("  -l | --size              Size of memory block to read. This option is only used when reading tranZPUter memory, for writing, the file size is used.\n");
     printf("  -s | --swap              Read tranZPUter memory and store in <infile> then write out <outfile> to the same memory location.\n");
+    printf("  -f | --fpga              Operations will take place in the FPGA memory. Default without this flag is to target the tranZPUter memory.\n");
     printf("  -m | --mainboard         Operations will take place on the MZ80A mainboard. Default without this flag is to target the tranZPUter memory.\n");
     printf("  -z | --mzf               File operations are to process the file as an MZF format file, --addr and --size will override the MZF header values if needed.\n");
     printf("  -v | --verbose           Output more messages.\n");
@@ -117,6 +118,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
     uint32_t   memSize           = 0xFFFFFFFF;
     int        argc              = 0;
     int        help_flag         = 0;
+    int        fpga_flag         = 0;
     int        mainboard_flag    = 0;
     int        mzf_flag          = 0;
     int        swap_flag         = 0;
@@ -162,6 +164,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
         {"uploadset",     required_argument, 0,   'U'},
         {"addr",          required_argument, 0,   'a'},
         {"size",          required_argument, 0,   'l'},
+        {"fpga",          no_argument,       0,   'f'},
         {"mainboard",     no_argument,       0,   'm'},
         {"mzf",           no_argument,       0,   'z'},
         {"swap",          no_argument,       0,   's'},
@@ -172,12 +175,16 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
     // Parse the command line options.
     //
-    while((opt = getopt_long(argc, argv, ":ha:l:mvU:Vzsd:u:", long_options, &option_index)) != -1)  
+    while((opt = getopt_long(argc, argv, ":ha:l:fmvU:Vzsd:u:", long_options, &option_index)) != -1)  
     {  
         switch(opt)  
         {  
             case 'h':
                 help_flag = 1;
+                break;
+
+            case 'f':
+                fpga_flag = 1;
                 break;
 
             case 'm':
@@ -312,10 +319,15 @@ uint32_t app(uint32_t param1, uint32_t param2)
             printf("Mainboard only has 64K, please change the address and size.\n");
             return(19);
         }
-        if(mainboard_flag == 0 && mzf_flag == 0 && (memAddr >= 0x80000 || memAddr + memSize > 0x80000))
+        if(fpga_flag == 1 && mzf_flag == 0 && (memAddr >= 0x80000 || memAddr + memSize > 0x80000))
+        {
+            printf("FPGA only has a 512K window, please change the address or size.\n");
+            return(20);
+        }    
+        if(mainboard_flag == 0 && fpga_flag == 0 && mzf_flag == 0 && (memAddr >= 0x80000 || memAddr + memSize > 0x80000))
         {
             printf("tranZPUter board only has 512K, please change the address and size.\n");
-            return(20);
+            return(21);
         }
     }
 
@@ -343,10 +355,10 @@ uint32_t app(uint32_t param1, uint32_t param2)
             //
             if(mzf_flag == 0)
             {
-                loadZ80Memory(uploadFile, 0, memAddr, 0, 0, mainboard_flag, (idx == uploadCnt-1) ? 1 : 0);
+                loadZ80Memory(uploadFile, 0, memAddr, 0, 0, mainboard_flag == 1 ? MAINBOARD : fpga_flag == 1 ? FPGA : TRANZPUTER, (idx == uploadCnt-1) ? 1 : 0);
             } else
             {
-                loadMZFZ80Memory(uploadFile, memAddr,    0, mainboard_flag, (idx == uploadCnt-1) ? 1 : 0);
+                loadMZFZ80Memory(uploadFile, memAddr,    0, mainboard_flag == 1 ? MAINBOARD : fpga_flag == 1 ? FPGA : TRANZPUTER, (idx == uploadCnt-1) ? 1 : 0);
             }
         }
     }
@@ -372,23 +384,23 @@ uint32_t app(uint32_t param1, uint32_t param2)
         {
             if(verbose_flag)
             {
-                printf("Saving %s memory at address:%06lx into file:%s\n", (mainboard_flag == 0 ? "tranZPUter" : "mainboard"), memAddr, downloadFile);
+                printf("Saving %s memory at address:%06lx into file:%s\n", (mainboard_flag == 1 ? "mainboard" : fpga_flag == 1 ? "fpga" : "tranZPUter"), memAddr, downloadFile);
             }
-            saveZ80Memory(downloadFile, memAddr, memSize, 0, mainboard_flag);
+            saveZ80Memory(downloadFile, memAddr, memSize, 0, mainboard_flag == 1 ? MAINBOARD : fpga_flag == 1 ? FPGA : TRANZPUTER);
         }
         if(uploadFNLen > 0)
         {
             if(verbose_flag)
             {
-                printf("Loading file:%s into the %s memory\n", uploadFile, (mainboard_flag == 0 ? "tranZPUter" : "mainboard"));
+                printf("Loading file:%s into the %s memory\n", uploadFile, (mainboard_flag == 1 ? "mainboard" : fpga_flag == 1 ? "fpga" : "tranZPUter"));
             }
 
             if(mzf_flag == 0)
             {
-                loadZ80Memory(uploadFile, 0, memAddr, 0, 0, mainboard_flag, 1);
+                loadZ80Memory(uploadFile, 0, memAddr, 0, 0, mainboard_flag == 1 ? MAINBOARD : fpga_flag == 1 ? FPGA : TRANZPUTER, 1);
             } else
             {
-                loadMZFZ80Memory(uploadFile, memAddr,    0, mainboard_flag, 1);
+                loadMZFZ80Memory(uploadFile, memAddr,    0, mainboard_flag == 1 ? MAINBOARD : fpga_flag == 1 ? FPGA : TRANZPUTER, 1);
             }
         }
     }

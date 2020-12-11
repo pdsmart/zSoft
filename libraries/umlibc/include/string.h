@@ -42,6 +42,7 @@ _PROTOTYPE( size_t strspn, (const char *_s1, const char *_s2)		);
 _PROTOTYPE( char *strstr, (const char *_s1, const char *_s2)		);
 _PROTOTYPE( char *strtok, (char *_s1, const char *_s2)			);
 _PROTOTYPE( size_t strxfrm, (char *_s1, const char *_s2, size_t _n)	);
+_PROTOTYPE( char *strndup, (const char *s, size_t n)			);
 
 #ifdef _POSIX_SOURCE
 /* Open Group Base Specifications Issue 6 (not complete) */

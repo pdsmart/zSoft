@@ -64,7 +64,7 @@ MISC_SUBDIRS      := help time
 APP_SUBDIRS       := tbasic mbasic kilo ed
 ifeq ($(__K64F__),1)
   ifeq ($(__TRANZPUTER__),1)
-    TZPU_SUBDIRS  := tzpu tzload tzdump tzclear tzclk tzreset
+    TZPU_SUBDIRS  := tzpu tzload tzdump tzclear tzclk tzreset tzio
   endif
 else
   TZPU_SUBDIRS    :=
