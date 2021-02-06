@@ -92,7 +92,7 @@ void testBus(void)
      //   while(digitalRead(Z80_WAIT) == 0);
         for(uint16_t idx=0xD000; idx < 0xD800; idx++)
         {
-            writeZ80Memory(idx, data);
+            writeZ80Memory(idx, data, MAINBOARD);
            // delay(1000000);
             data++;
         }
@@ -101,6 +101,25 @@ void testBus(void)
     else
     {
         printf("Failed to obtain the Z80 bus.\n");
+    }
+}
+
+void testT80BusReqBug(void)
+{
+    printf("Repeating a bus request 100 times\n");
+    while(true)
+    {
+        if(reqTranZPUterBus(100, TRANZPUTER) == 0)
+        {
+            setupSignalsForZ80Access(WRITE);
+            uint8_t data = 0x07;
+            writeZ80Memory(0x0060, data, TRANZPUTER);
+            releaseZ80();
+        }
+        else
+        {
+            printf("Failed to obtain the Z80 bus.\n");
+        }
     }
 }
 
@@ -113,7 +132,7 @@ void testSixtyBug(void)
         {
             setupSignalsForZ80Access(WRITE);
             uint8_t data = 0x07;
-            writeZ80Memory(0x0060, data);
+            writeZ80Memory(0x0060, data, TRANZPUTER);
             releaseZ80();
         }
         else

@@ -58,6 +58,8 @@ char         *getStrParam(char **);
 uint32_t      getUintParam(char **ptr);
 uint8_t       rtcSet(RTC *);
 void          rtcGet(RTC *);    
+int8_t        getKey(uint8_t);
+int8_t        getKeyNonBlocking(void);
 
 // Debug only macros which dont generate code when debugging disabled.
 #ifdef DEBUG

@@ -44,7 +44,7 @@ Original Author: Shay Gal-on
 #if HAS_STDIO
 #include <stdio.h>
 #endif
-#if HAS_PRINTF
+#if defined HAS_PRINTF && HAS_PRINTF == 1
 #define ee_printf printf
 #endif
 

@@ -41,7 +41,7 @@
 #define RFSH_BYTE_CNT                256                                 // Number of bytes we can write before needing a full refresh for the DRAM.
 #define HOST_MON_TEST_VECTOR         0x4                                 // Address in the host monitor to test to identify host type.
 #define DEFAULT_BUSREQ_TIMEOUT       5000                                // Timeout for a Z80 Bus request operation in milliseconds.
-#define DEFAULT_RESET_PULSE_WIDTH    80000                               // Pulse width of a reset signal in K64F clock ticks.
+#define DEFAULT_RESET_PULSE_WIDTH    500000                              // Pulse width of a reset signal in K64F clock ticks.
 
 // tranZPUter Memory Modes - select one of the 32 possible memory models using these constants.
 //
@@ -106,14 +106,73 @@
 #define CPUMODE_SET_DDD              0x20                                // Place holder for a future soft CPU.
 #define CPUMODE_IS_Z80               0x00                                // Status value to indicate if the hard Z80 available.
 #define CPUMODE_IS_T80               0x01                                // Status value to indicate if the soft T80 available.
-#define CPUMODE_IS_ZPU_EVOL          0x02                                // Status value to indicate if the soft ZPU Evolution available.
+#define CPUMODE_IS_ZPU_EVO           0x02                                // Status value to indicate if the soft ZPU Evolution available.
 #define CPUMODE_IS_AAA               0x04                                // Place holder to indicate if a future soft CPU is available.
 #define CPUMODE_IS_BBB               0x08                                // Place holder to indicate if a future soft CPU is available.
 #define CPUMODE_IS_CCC               0x10                                // Place holder to indicate if a future soft CPU is available.
 #define CPUMODE_IS_DDD               0x20                                // Place holder to indicate if a future soft CPU is available.
+#define CPUMODE_CLK_EN               0x40                                // Toggle the soft CPU clock, 1 = enable, 0 = disable.
 #define CPUMODE_RESET_CPU            0x80                                // Reset the soft CPU. Active high, when high the CPU is held in RESET, when low the CPU runs.
 #define CPUMODE_IS_SOFT_AVAIL        0x040                               // Marker to indicate if the underlying FPGA can support soft CPU's.
-#define CPUMODE_IS_SOFT_MASK         0x0C0                               // Mask to filter out the Soft CPU availability flags.
+#define CPUMODE_IS_SOFT_MASK         0x03F                               // Mask to filter out the Soft CPU availability flags.
+
+// Video Module control bits.
+#define SYSMODE_MZ80A                0x00                                // System board mode MZ80A, 2MHz CPU/Bus.
+#define SYSMODE_MZ80B                0x01                                // System board mode MZ80B, 4MHz CPU/Bus.
+#define SYSMODE_MZ700                0x02                                // System board mode MZ700, 3.54MHz CPU/Bus.
+#define VMMODE_MASK                  0xF8                                // Mask to mask out video mode.
+#define VMMODE_MZ80K                 0x00                                // Video mode = MZ80K
+#define VMMODE_MZ80C                 0x01                                // Video mode = MZ80C
+#define VMMODE_MZ1200                0x02                                // Video mode = MZ1200
+#define VMMODE_MZ80A                 0x03                                // Video mode = MZ80A
+#define VMMODE_MZ700                 0x04                                // Video mode = MZ700
+#define VMMODE_MZ800                 0x05                                // Video mode = MZ800
+#define VMMODE_MZ80B                 0x06                                // Video mode = MZ80B
+#define VMMODE_MZ2000                0x07                                // Video mode = MZ2000
+#define VMMODE_80CHAR                0x08                                // Enable 80 character display.
+#define VMMODE_80CHAR_MASK           0xF7                                // Mask to filter out display width control bit.
+#define VMMODE_COLOUR                0x10                                // Enable colour display.
+#define VMMODE_COLOUR_MASK           0xEF                                // Mask to filter out colour control bit.
+#define VMMODE_PCGRAM                0x20                                // Enable PCG RAM.
+#define VMMODE_VGA_MASK              0x3F                                // Mask to filter out the VGA mode bits.
+#define VMMODE_VGA_OFF               0x00                                // Set VGA mode off, external monitor is driven by standard internal signals.
+#define VMMODE_VGA_640x480           0x40                                // Set external monitor to VGA 640x480 @ 60Hz mode.
+#define VMMODE_VGA_1024x768          0x80                                // Set external monitor to VGA 1024x768 @ 60Hz mode.
+#define VMMODE_VGA_800x600           0xC0                                // Set external monitor to VGA 800x600 @ 60Hz mode.
+
+// VGA mode border control constants.
+//
+#define VMBORDER_BLACK               0x00                                // VGA has a black border.
+#define VMBORDER_BLUE                0x01                                // VGA has a blue border.
+#define VMBORDER_RED                 0x02                                // VGA has a red border.
+#define VMBORDER_PURPLE              0x03                                // VGA has a purple border.
+#define VMBORDER_GREEN               0x04                                // VGA has a green border.
+#define VMBORDER_CYAN                0x05                                // VGA has a cyan border.
+#define VMBORDER_YELLOW              0x06                                // VGA has a yellow border.
+#define VMBORDER_WHITE               0x07                                // VGA has a white border.
+#define VMBORDER_MASK                0xF8                                // Mask to filter out current border setting.
+
+// Sharp MZ colour attributes.
+#define VMATTR_FG_BLACK              0x00                                // Foreground black character attribute.
+#define VMATTR_FG_BLUE               0x10                                // Foreground blue character attribute.
+#define VMATTR_FG_RED                0x20                                // Foreground red character attribute.
+#define VMATTR_FG_PURPLE             0x30                                // Foreground purple character attribute.
+#define VMATTR_FG_GREEN              0x40                                // Foreground green character attribute.
+#define VMATTR_FG_CYAN               0x50                                // Foreground cyan character attribute.
+#define VMATTR_FG_YELLOW             0x60                                // Foreground yellow character attribute.
+#define VMATTR_FG_WHITE              0x70                                // Foreground white character attribute.
+#define VMATTR_FG_MASKOUT            0x8F                                // Mask to filter out foreground attribute.
+#define VMATTR_FG_MASKIN             0x70                                // Mask to filter out foreground attribute.
+#define VMATTR_BG_BLACK              0x00                                // Background black character attribute.
+#define VMATTR_BG_BLUE               0x01                                // Background blue character attribute.
+#define VMATTR_BG_RED                0x02                                // Background red character attribute.
+#define VMATTR_BG_PURPLE             0x03                                // Background purple character attribute.
+#define VMATTR_BG_GREEN              0x04                                // Background green character attribute.
+#define VMATTR_BG_CYAN               0x05                                // Background cyan character attribute.
+#define VMATTR_BG_YELLOW             0x06                                // Background yellow character attribute.
+#define VMATTR_BG_WHITE              0x07                                // Background white character attribute.
+#define VMATTR_BG_MASKOUT            0xF8                                // Mask to filter out background attribute.
+#define VMATTR_BG_MASKIN             0x07                                // Mask to filter out background attribute.
 
 // Sharp MZ constants.
 //
@@ -122,6 +181,7 @@
 #define MZ_MROM_STACK_SIZE           0x0200                              // Monitor ROM stack size.
 #define MZ_UROM_ADDR                 0xE800                              // User ROM start address.
 #define MZ_BANKRAM_ADDR              0xF000                              // Floppy API address which is used in TZFS as the paged RAM for additional functionality.
+#define MZ_ZOS_ADDR                  0x100000                            // zOS boot location for the ZPU in FPGA BRAM memory.
 #define MZ_CMT_ADDR                  0x10F0                              // Address of the CMT (tape) header record.
 #define MZ_CMT_DEFAULT_LOAD_ADDR     0x1200                              // The default load address for a CMT, anything below this is normally illegal.
 #define MZ_VID_RAM_ADDR              0xD000                              // Start of Video RAM
@@ -147,6 +207,7 @@
 #define MZ_ROM_1Z_013A_KM_80C        "0:\\TZFS\\1Z-013A-KM-8.ROM"        // Original Monitor ROM patched for the Sharp MZ700 with keyboard remapped for the MZ80A and patched for 80 column mode.
 #define MZ_ROM_MZ80B_IPL             "0:\\TZFS\\MZ80B_IPL.ROM"           // Original IPL ROM for the Sharp MZ-80B.
 #define MZ_ROM_TZFS                  "0:\\TZFS\\TZFS.ROM"                // tranZPUter Filing System ROM.
+#define MZ_ROM_ZPU_ZOS               "0:\\ZOS\\ZOS.ROM"                  // zOS for the ZPU running on the tranZPUter SW-700 board.
 
 // CP/M constants.
 //
@@ -161,6 +222,7 @@
 #define TZSVC_CMD_STRUCT_ADDR_TZFS   0x0ED80                             // Address of the command structure within TZFS - exists in 64K Block 0.
 #define TZSVC_CMD_STRUCT_ADDR_CPM    0x4F560                             // Address of the command structure within CP/M - exists in 64K Block 4.
 #define TZSVC_CMD_STRUCT_ADDR_MZ700  0x6FD80                             // Address of the command structure within MZ700 compatible programs - exists in 64K Block 6.
+#define TZSVC_CMD_STRUCT_ADDR_ZOS    0x11FD80 // 0x7FD80                             // Address of the command structure for zOS use, exists in shared memory rather than FPGA. Spans top of block 6 and all of block 7.
 #define TZSVC_CMD_STRUCT_SIZE        0x280                               // Size of the inter z80/K64 service command memory.
 #define TZSVC_CMD_SIZE               (sizeof(t_svcControl)-TZSVC_SECTOR_SIZE)
 #define TZVC_MAX_CMPCT_DIRENT_BLOCK  TZSVC_SECTOR_SIZE/TZSVC_CMPHDR_SIZE // Maximum number of directory entries per sector.
@@ -194,6 +256,9 @@
 #define TZSVC_CMD_CPU_SETZ80         0x50                                // Service command to switch to the external Z80 hard cpu.
 #define TZSVC_CMD_CPU_SETT80         0x51                                // Service command to switch to the internal T80 soft cpu.
 #define TZSVC_CMD_CPU_SETZPUEVO      0x52                                // Service command to switch to the internal ZPU Evolution cpu.
+#define TZSVC_CMD_SD_DISKINIT        0x60                                // Service command to initialise and provide raw access to the underlying SD card.
+#define TZSVC_CMD_SD_READSECTOR      0x61                                // Service command to provide raw read access to the underlying SD card.
+#define TZSVC_CMD_SD_WRITESECTOR     0x62                                // Service command to provide raw write access to the underlying SD card.
 #define TZSVC_CMD_EXIT               0x7F                                // Service command to terminate TZFS and restart the machine in original mode.
 #define TZSVC_DEFAULT_MZF_DIR        "MZF"                               // Default directory where MZF files are stored.
 #define TZSVC_DEFAULT_CAS_DIR        "CAS"                               // Default directory where BASIC CASsette files are stored.
@@ -211,6 +276,8 @@
 #define TZSVC_SECTOR_SIZE            512                                 // SD Card sector buffer size.
 #define TZSVC_STATUS_OK              0x00                                // Flag to indicate the K64F processing completed successfully.
 #define TZSVC_STATUS_FILE_ERROR      0x01                                // Flag to indicate a file or directory error.
+#define TZSVC_STATUS_BAD_CMD         0x02                                // Flag to indicate a bad service command was requested.
+#define TZSVC_STATUS_BAD_REQ         0x03                                // Flag to indicate a bad request was made, the service status request flag was not set.
 #define TZSVC_STATUS_REQUEST         0xFE                                // Flag to indicate Z80 has posted a request.
 #define TZSVC_STATUS_PROCESSING      0xFF                                // Flag to indicate the K64F is processing a command.
 #define TZSVC_OPEN                   0x00                                // Service request to open a directory or file.
@@ -237,11 +304,6 @@
 // Pin Constants - Pins assigned at the hardware level to specific tasks/signals.
 //
 #define MAX_TRANZPUTER_PINS          51
-#define Z80_MEM0_PIN                 16
-#define Z80_MEM1_PIN                 17
-#define Z80_MEM2_PIN                 19
-#define Z80_MEM3_PIN                 18
-#define Z80_MEM4_PIN                 71   // 49
 #define Z80_WR_PIN                   20   // 48
 #define Z80_RD_PIN                   5    // 55
 #define Z80_IORQ_PIN                 8
@@ -265,6 +327,11 @@
 #define Z80_A16_PIN                  68   // 33
 #define Z80_A17_PIN                  69   // 34
 #define Z80_A18_PIN                  70   // 24
+#define Z80_A19_PIN                  16
+#define Z80_A20_PIN                  17
+#define Z80_A21_PIN                  19
+#define Z80_A22_PIN                  18
+#define Z80_A23_PIN                  71   // 49
 #define Z80_D0_PIN                   0
 #define Z80_D1_PIN                   1
 #define Z80_D2_PIN                   29
@@ -282,12 +349,12 @@
 #define CTL_RFSH_PIN                 4    // 53
 #define CTL_HALT_PIN                 26   // 51
 #define CTL_M1_PIN                   3    // 20
+#define CTL_WAIT_PIN                 27
 #define CTL_BUSRQ_PIN                2
 #define CTL_MBSEL_PIN                21
 #define CTL_CLK_PIN                  14
 #define CTL_BUSACK_PIN               32   // 47
-#define TZ_BUSACK_PIN                52
-#define TZ_SVCREQ_PIN                33   // 56
+#define CTL_SVCREQ_PIN               33   // 56
 
 // IRQ mask values for the different types of IRQ trigger.
 //
@@ -306,7 +373,7 @@
 #define pinHigh(a)                   *portSetRegister(pinMap[a]) = 1
 #define pinSet(a, b)                 if(b) { *portSetRegister(pinMap[a]) = 1; } else { *portClearRegister(pinMap[a]) = 1; }
 #define pinGet(a)                    *portInputRegister(pinMap[a])
-#define pinInput(a)                  { *portModeRegister(pinMap[a]) = 0; *ioPin[a] = PORT_PCR_MUX(1) | PORT_PCR_PE | PORT_PCR_PS; }
+#define pinInput(a)                  { *portModeRegister(pinMap[a]) = 0; *ioPin[a] = PORT_PCR_MUX(1) | PORT_PCR_PFE | PORT_PCR_PE | PORT_PCR_PS; }
 #define pinOutput(a)                 { *portModeRegister(pinMap[a]) = 1;\
                                        *ioPin[a] = PORT_PCR_SRE | PORT_PCR_DSE | PORT_PCR_MUX(1);\
                                        *ioPin[a] &= ~PORT_PCR_ODE; }
@@ -329,16 +396,18 @@
 #define setZ80Data(a)                { GPIOB_PDOR = (GPIOB_PDOR & 0xff00ffff) | ((a << 16) & 0x00ff0000); }
 #define setZ80DataAsOutput()         { GPIOB_PDDR = (GPIOB_PDDR & 0x0000ffff) | 0x00ff0000; }
 #define setZ80DataAsInput()          { GPIOB_PDDR = (GPIOB_PDDR & 0x0000ffff); }
-#define setZ80Addr(a)                { GPIOC_PDOR = (GPIOC_PDOR & 0xfff80000) | (a & 0x0007ffff); }
-#define setZ80AddrAsOutput()         { GPIOC_PDDR = 0x0007ffff; }
-#define setZ80AddrAsInput()          { GPIOC_PDDR = 0x00000000; }
+#define setZ80Addr(a)                { GPIOC_PDOR = (GPIOC_PDOR & 0xfff80000) | (a & 0x0007ffff); GPIOB_PDOR = (GPIOB_PDOR & 0xFFFFFDF0) | (((a >> 14)&0x200) | ((a >> 19)&0xF)); }
+#define setZ80AddrAsOutput()         { GPIOC_PDDR = 0x0007ffff; GPIOB_PDDR = GPIOB_PDDR | 0x20F; }
+#define setZ80AddrAsInput()          { GPIOC_PDDR = 0x00000000; GPIOB_PDDR = GPIOB_PDDR & 0xFFFFFDF0; }
 #define setZ80AddrLower(a)           { GPIOC_PDOR = (GPIOC_PDOR & 0xffffff00) | (a & 0x000000ff); }
 #define setZ80RefreshAddr(a)         { GPIOC_PDOR = (GPIOC_PDOR & 0xffffff80) | (a & 0x0000007f); }
 #define readZ80AddrLower()           ( GPIOC_PDIR & 0x000000ff )
 #define readZ80Addr()                ( (GPIOC_PDIR & 0x0000ffff) )
 #define readZ80DataBus()             ( (GPIOB_PDIR >> 16) & 0x000000ff )
-#define readCtrlLatch()              ( ((GPIOB_PDIR & 0x00000200) >> 5) | (GPIOB_PDIR & 0x0000000f) )
-#define writeCtrlLatch(a)            { outZ80IO(IO_TZ_CTRLLATCH, a); } 
+//#define readCtrlLatch()              ( ((GPIOB_PDIR & 0x00000200) >> 5) | (GPIOB_PDIR & 0x0000000f) )
+#define readCtrlLatchDirect()        ( inZ80IO(IO_TZ_CTRLLATCH) )
+#define readCtrlLatch()              ( readZ80IO(IO_TZ_CTRLLATCH, TRANZPUTER) )
+#define writeCtrlLatch(a)            { setZ80Direction(WRITE); outZ80IO(IO_TZ_CTRLLATCH, a); } 
 //#define setZ80Direction(a)           { for(uint8_t idx=Z80_D0; idx <= Z80_D7; idx++) { if(a == WRITE) { pinOutput(idx); } else { pinInput(idx); } }; z80Control.busDir = a; }
 #define setZ80Direction(a)           {{ if(a == WRITE) { setZ80DataAsOutput(); } else { setZ80DataAsInput(); } }; z80Control.busDir = a; }
 #define reqZ80BusChange(a)           { if(a == MAINBOARD_ACCESS && z80Control.ctrlMode == TRANZPUTER_ACCESS) \
@@ -389,21 +458,20 @@ enum pinIdxToPinNumMap {
     Z80_A16                          = 16,
     Z80_A17                          = 17,
     Z80_A18                          = 18,
+    Z80_A19                          = 19,
+    Z80_A20                          = 20,
+    Z80_A21                          = 21,
+    Z80_A22                          = 22,
+    Z80_A23                          = 23,
 
-    Z80_D0                           = 19,
-    Z80_D1                           = 20,
-    Z80_D2                           = 21,
-    Z80_D3                           = 22,
-    Z80_D4                           = 23,
-    Z80_D5                           = 24,
-    Z80_D6                           = 25,
-    Z80_D7                           = 26,
-
-    Z80_MEM0                         = 27,
-    Z80_MEM1                         = 28,
-    Z80_MEM2                         = 29,
-    Z80_MEM3                         = 30,
-    Z80_MEM4                         = 31,
+    Z80_D0                           = 24,
+    Z80_D1                           = 25,
+    Z80_D2                           = 26,
+    Z80_D3                           = 27,
+    Z80_D4                           = 28,
+    Z80_D5                           = 29,
+    Z80_D6                           = 30,
+    Z80_D7                           = 31,
 
     Z80_IORQ                         = 32,
     Z80_MREQ                         = 33,
@@ -416,14 +484,14 @@ enum pinIdxToPinNumMap {
     Z80_INT                          = 39,
     Z80_RESET                        = 40,
     MB_SYSCLK                        = 41,
-    TZ_BUSACK                        = 42,
-    TZ_SVCREQ                        = 43,
+    CTL_SVCREQ                       = 42,
 
-    CTL_MBSEL                        = 44,
-    CTL_BUSRQ                        = 45,
-    CTL_RFSH                         = 46,
-    CTL_HALT                         = 47,
-    CTL_M1                           = 48,
+    CTL_MBSEL                        = 43,
+    CTL_BUSRQ                        = 44,
+    CTL_RFSH                         = 45,
+    CTL_HALT                         = 46,
+    CTL_M1                           = 47,
+    CTL_WAIT                         = 48,
     CTL_CLK                          = 49,
     CTL_BUSACK                       = 50 
 };
@@ -571,6 +639,7 @@ typedef struct {
     uint8_t                          disableRefresh;                     // Disable refresh if the mainboard DRAM isnt being used.
     uint8_t                          runCtrlLatch;                       // Latch value the Z80 is running with.
     uint8_t                          curCtrlLatch;                       // Latch value set during tranZPUter access of the Z80 bus.
+    uint8_t                          holdZ80;                            // A flag to hold the Z80 bus when multiple transactions need to take place.
     uint8_t                          videoRAM[2][2048];                  // Two video memory buffer frames, allows for storage of original frame in [0] and working frame in [1].
     uint8_t                          attributeRAM[2][2048];              // Two attribute memory buffer frames, allows for storage of original frame in [0] and working frame in [1].
 
@@ -619,9 +688,15 @@ typedef struct __attribute__((__packed__)) {
     union {
         uint8_t                      dirSector;                          // Virtual directory sector number.
         uint8_t                      fileSector;                         // Sector within open file to read/write.
+        uint8_t                      vDriveNo;                           // Virtual or physical SD card drive number.
     };
-    uint16_t                         trackNo;                            // For virtual drives with track and sector this is the track number
-    uint16_t                         sectorNo;                           // For virtual drives with tracl and sector this is the sector number.
+    union {
+        struct {
+            uint16_t                 trackNo;                            // For virtual drives with track and sector this is the track number
+            uint16_t                 sectorNo;                           // For virtual drives with track and sector this is the sector number. NB For LBA access, this is 32bit and overwrites fileNo/fileType which arent used during raw SD access.
+        };
+        uint32_t                     sectorLBA;                          // For LBA access, this is 32bit and used during raw SD access.
+    };
     uint8_t                          fileNo;                             // File number of a file within the last directory listing to open/update.
     uint8_t                          fileType;                           // Type of file being processed.
     union {
@@ -654,7 +729,7 @@ typedef struct __attribute__((__packed__)) {
 // Mapping table from Sharp MZ80A Ascii to real Ascii.
 //
 typedef struct {
-    uint8_t    asciiCode;
+    uint8_t                          asciiCode;
 } t_asciiMap;
 
 // Application execution constants.
@@ -678,76 +753,78 @@ extern uint8_t                        pinMap[MAX_TRANZPUTER_PINS];
 // Prototypes.
 //
 #if defined __APP__
-void          yield(void);
+void                                  yield(void);
 #endif
-void          setupZ80Pins(uint8_t, volatile uint32_t *);
-void          resetZ80(uint8_t);
-uint8_t       reqZ80Bus(uint32_t);
-uint8_t       reqMainboardBus(uint32_t);
-uint8_t       reqTranZPUterBus(uint32_t, enum TARGETS);
-void          setupSignalsForZ80Access(enum BUS_DIRECTION);
-void          releaseZ80(void);
-void          refreshZ80(void);
-void          setCtrlLatch(uint8_t);
-uint32_t      setZ80CPUFrequency(float, uint8_t);
-uint8_t       copyFromZ80(uint8_t *, uint32_t, uint32_t, enum TARGETS);
-uint8_t       copyToZ80(uint32_t, uint8_t *, uint32_t, enum TARGETS);
-uint8_t       writeZ80Memory(uint32_t, uint8_t);
-uint8_t       readZ80Memory(uint32_t);
-uint8_t       outZ80IO(uint32_t, uint8_t);
-uint8_t       inZ80IO(uint32_t);
-uint8_t       writeZ80IO(uint32_t, uint8_t, enum TARGETS);
-uint8_t       readZ80IO(uint32_t, enum TARGETS);
-void          fillZ80Memory(uint32_t, uint32_t, uint8_t, enum TARGETS);
-void          captureVideoFrame(enum VIDEO_FRAMES, uint8_t);
-void          refreshVideoFrame(enum VIDEO_FRAMES, uint8_t, uint8_t);
-FRESULT       loadVideoFrameBuffer(char *, enum VIDEO_FRAMES);
-FRESULT       saveVideoFrameBuffer(char *, enum VIDEO_FRAMES);   
-char          *getVideoFrame(enum VIDEO_FRAMES);
-char          *getAttributeFrame(enum VIDEO_FRAMES);
-FRESULT       loadZ80Memory(const char *, uint32_t, uint32_t, uint32_t, uint32_t *, enum TARGETS, uint8_t);
-FRESULT       saveZ80Memory(const char *, uint32_t, uint32_t, t_svcDirEnt *, enum TARGETS);
-FRESULT       loadMZFZ80Memory(const char *, uint32_t, uint32_t *, enum TARGETS, uint8_t);
+void                                  setupZ80Pins(uint8_t, volatile uint32_t *);
+void                                  resetZ80(uint8_t);
+uint8_t                               reqZ80Bus(uint32_t);
+uint8_t                               reqMainboardBus(uint32_t);
+uint8_t                               reqTranZPUterBus(uint32_t, enum TARGETS);
+void                                  setupSignalsForZ80Access(enum BUS_DIRECTION);
+void                                  releaseZ80(void);
+void                                  refreshZ80(void);
+void                                  setCtrlLatch(uint8_t);
+uint32_t                              setZ80CPUFrequency(float, uint8_t);
+uint8_t                               copyFromZ80(uint8_t *, uint32_t, uint32_t, enum TARGETS);
+uint8_t                               copyToZ80(uint32_t, uint8_t *, uint32_t, enum TARGETS);
+uint8_t                               writeZ80Memory(uint32_t, uint8_t, enum TARGETS);
+uint8_t                               readZ80Memory(uint32_t);
+uint8_t                               outZ80IO(uint32_t, uint8_t);
+uint8_t                               inZ80IO(uint32_t);
+uint8_t                               writeZ80IO(uint32_t, uint8_t, enum TARGETS);
+uint8_t                               readZ80IO(uint32_t, enum TARGETS);
+void                                  fillZ80Memory(uint32_t, uint32_t, uint8_t, enum TARGETS);
+void                                  captureVideoFrame(enum VIDEO_FRAMES, uint8_t);
+void                                  refreshVideoFrame(enum VIDEO_FRAMES, uint8_t, uint8_t);
+FRESULT                               loadVideoFrameBuffer(char *, enum VIDEO_FRAMES);
+FRESULT                               saveVideoFrameBuffer(char *, enum VIDEO_FRAMES);   
+char                                  *getVideoFrame(enum VIDEO_FRAMES);
+char                                  *getAttributeFrame(enum VIDEO_FRAMES);
+FRESULT                               loadZ80Memory(const char *, uint32_t, uint32_t, uint32_t, uint32_t *, enum TARGETS, uint8_t);
+FRESULT                               saveZ80Memory(const char *, uint32_t, uint32_t, t_svcDirEnt *, enum TARGETS);
+FRESULT                               loadMZFZ80Memory(const char *, uint32_t, uint32_t *, enum TARGETS, uint8_t);
 
 // Getter/Setter methods!
-uint8_t       isZ80Reset(void);
-uint8_t       isZ80MemorySwapped(void);
-uint8_t       getZ80IO(uint8_t *);
-void          clearZ80Reset(void);
-void          convertSharpFilenameToAscii(char *, char *, uint8_t);
+uint8_t                               isZ80Reset(void);
+uint8_t                               isZ80MemorySwapped(void);
+uint8_t                               getZ80IO(uint8_t *);
+void                                  clearZ80Reset(void);
+void                                  convertSharpFilenameToAscii(char *, char *, uint8_t);
 
 // tranZPUter OS i/f methods.
-uint8_t       setZ80SvcStatus(uint8_t);
-void          svcSetDefaults(enum FILE_TYPE);
-uint8_t       svcReadDir(uint8_t, enum FILE_TYPE);
-uint8_t       svcFindFile(char *, char *, uint8_t, enum FILE_TYPE);
-uint8_t       svcReadDirCache(uint8_t, enum FILE_TYPE);
-uint8_t       svcFindFileCache(char *, char *, uint8_t, enum FILE_TYPE);
-uint8_t       svcCacheDir(const char *, enum FILE_TYPE, uint8_t);
-uint8_t       svcReadFile(uint8_t, enum FILE_TYPE);
-uint8_t       svcWriteFile(uint8_t, enum FILE_TYPE);
-uint8_t       svcLoadFile(enum FILE_TYPE);
-uint8_t       svcSaveFile(enum FILE_TYPE);
-uint8_t       svcEraseFile(enum FILE_TYPE);
-uint8_t       svcAddCPMDrive(void);
-uint8_t       svcReadCPMDrive(void);
-uint8_t       svcWriteCPMDrive(void);
-uint32_t      getServiceAddr(void);
-void          processServiceRequest(void);
-uint8_t       loadBIOS(const char *biosFileName, uint8_t machineMode, uint32_t loadAddr);
-void          loadTranZPUterDefaultROMS(void);
-void          tranZPUterControl(void);
-uint8_t       testTZFSAutoBoot(void);
-void          setHost(void);
-void          setupTranZPUter(void);
+uint8_t                               setZ80SvcStatus(uint8_t);
+void                                  svcSetDefaults(enum FILE_TYPE);
+uint8_t                               svcReadDir(uint8_t, enum FILE_TYPE);
+uint8_t                               svcFindFile(char *, char *, uint8_t, enum FILE_TYPE);
+uint8_t                               svcReadDirCache(uint8_t, enum FILE_TYPE);
+uint8_t                               svcFindFileCache(char *, char *, uint8_t, enum FILE_TYPE);
+uint8_t                               svcCacheDir(const char *, enum FILE_TYPE, uint8_t);
+uint8_t                               svcReadFile(uint8_t, enum FILE_TYPE);
+uint8_t                               svcWriteFile(uint8_t, enum FILE_TYPE);
+uint8_t                               svcLoadFile(enum FILE_TYPE);
+uint8_t                               svcSaveFile(enum FILE_TYPE);
+uint8_t                               svcEraseFile(enum FILE_TYPE);
+uint8_t                               svcAddCPMDrive(void);
+uint8_t                               svcReadCPMDrive(void);
+uint8_t                               svcWriteCPMDrive(void);
+uint32_t                              getServiceAddr(void);
+void                                  processServiceRequest(void);
+uint8_t                               loadBIOS(const char *biosFileName, uint8_t machineMode, uint32_t loadAddr);
+void                                  hardResetTranZPUter(void);
+void                                  loadTranZPUterDefaultROMS(uint8_t);
+void                                  tranZPUterControl(void);
+uint8_t                               testTZFSAutoBoot(void);
+void                                  setHost(void);
+void                                  setupTranZPUter(void);
+void                                  testRoutine(void);
 
 #if defined __APP__
-int           memoryDumpZ80(uint32_t, uint32_t, uint32_t, uint8_t, enum TARGETS);
+int                                   memoryDumpZ80(uint32_t, uint32_t, uint32_t, uint8_t, enum TARGETS);
 #endif
 
 // Debug methods.
 #if defined __APP__ && defined __TZPU_DEBUG__
-void          displaySignals(void);
+void                                  displaySignals(void);
 #endif
 
 #ifdef __cplusplus

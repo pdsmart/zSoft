@@ -40,7 +40,6 @@ extern "C" {
   #if ! defined __APP__
     #include <WProgram.h>
   #endif
-  #include <usb_serial.h>
   #include "k64f_soc.h"
 #endif
 
@@ -79,6 +78,17 @@ int16_t decodeCommand(char **ptr)
 
     // No command found, so raise error.
     return CMD_BADKEY;
+}
+
+// Method to obtain and return the output screen width.
+//
+uint8_t getScreenWidth(void)
+{
+ #if defined __SHARPMZ__
+   return(mzGetScreenWidth());
+ #else
+   return(MAX_SCREEN_WIDTH);
+ #endif
 }
 #endif
 
@@ -589,10 +599,9 @@ FRESULT fileCat(char *src)
         {
             if (fr0 || readSize == 0) break;   /* error or eof */
 			idx=0;
-			while(idx++ < readSize)
-			{
+            do {
 				fputc(fsBuff[idx], stdout);
-			}
+			} while(idx++ < readSize);
             if (f_eof(&File[0])) break;
         }
         fputc('\n', stdout);
@@ -747,7 +756,7 @@ FRESULT fileDump(char *src, uint32_t width)
     // Sanity check on parameters.
     if(src == NULL || (width != 8 && width != 16 && width != 32))
         return(FR_INVALID_PARAMETER);
-    
+
     // Try and open the source file.
     fr0 = f_open(&File[0], src, FA_OPEN_EXISTING | FA_READ);
    
@@ -769,7 +778,7 @@ FRESULT fileDump(char *src, uint32_t width)
             fr0 = f_read(&File[0], fsBuff, sizeToRead, &readSize);
 
             if (fr0 || readSize == 0) break;   /* error or eof */
-            if(memoryDump((uint32_t)fsBuff, readSize, width, loadSize, 32) == 0) { break; }
+            if(memoryDump((uint32_t)fsBuff, readSize, width, loadSize, 0) == 0) { break; }
             loadSize += readSize;
         }
     }
@@ -829,7 +838,8 @@ uint32_t fileExec(char *src, uint32_t addr, uint32_t execAddr, uint8_t execMode,
             // Call the loaded program entry address, return expected.
             case EXEC_MODE_CALL:
               #if defined __ZPU__
-printf("0=%08lx, 1=%08lx, 2=%08lx, _IOB=%08lx %08lx %08lx\n", __iob[0], __iob[1], __iob[2], (uint32_t)(__iob), (uint32_t *)__iob, __iob   );
+                //printf("0=%08lx, 1=%08lx, 2=%08lx, _IOB=%08lx %08lx %08lx\n", __iob[0], __iob[1], __iob[2], (uint32_t)(__iob), (uint32_t *)__iob, __iob   );
+                //printf("ExecAddr=%08lx, execMode=%02x, param1=%08lx, param2=%08lx, G=%08lx, cfg=%08lx\n", execAddr, execMode, param1, param2, G, cfg);
                 retCode = func(param1, param2, &_memreg, G, cfg, (uint32_t)__iob);
               #elif defined __K64F__
                 retCode = func(param1, param2, G, cfg, (uint32_t)stdin, (uint32_t)stdout, (uint32_t)stderr);
@@ -976,7 +986,7 @@ FRESULT fileBlockDump(uint32_t offset, uint32_t len)
         return(FR_INVALID_PARAMETER);
 
     // Dump out the memory.
-    memoryDump((uint32_t)&fsBuff[offset], dumpSize, 16, offset, 16);
+    memoryDump((uint32_t)&fsBuff[offset], dumpSize, 16, offset, 0);
 
     return(fr0);
 }
@@ -1004,13 +1014,32 @@ FRESULT fileSetBlockLen(uint32_t len)
 #if (defined(BUILTIN_FS_DUMP) && BUILTIN_FS_DUMP == 1) || (defined(BUILTIN_FS_INSPECT) && BUILTIN_FS_INSPECT == 1) || (defined(BUILTIN_DISK_DUMP) && BUILTIN_DISK_DUMP == 1) || (defined(BUILTIN_DISK_STATUS) && BUILTIN_DISK_STATUS == 1) || (defined(BUILTIN_BUFFER_DUMP) && BUILTIN_BUFFER_DUMP == 1) || (defined(BUILTIN_MEM_DUMP) && BUILTIN_MEM_DUMP == 1)
 int memoryDump(uint32_t memaddr, uint32_t memsize, uint32_t memwidth, uint32_t dispaddr, uint8_t dispwidth)
 {
-    uint32_t pnt     = memaddr;
-    uint32_t endAddr = memaddr + memsize;
-    uint32_t addr    = dispaddr;
+    uint8_t  displayWidth = dispwidth;;
+    uint32_t pnt          = memaddr;
+    uint32_t endAddr      = memaddr + memsize;
+    uint32_t addr         = dispaddr;
     uint32_t i = 0;
     //uint32_t data;
     int8_t   keyIn;
     char c = 0;
+
+    // If not set, calculate output line width according to connected display width.
+    //
+    if(displayWidth == 0)
+    {
+        switch(getScreenWidth())
+        {
+            case 40:
+                displayWidth = 8;
+                break;
+            case 80:
+                displayWidth = 16;
+                break;
+            default:
+                displayWidth = 32;
+                break;
+        }
+    }
 
     while (1)
     {
@@ -1018,7 +1047,7 @@ int memoryDump(uint32_t memaddr, uint32_t memsize, uint32_t memwidth, uint32_t d
         printf(":  ");
 
         // print hexadecimal data
-        for (i=0; i < dispwidth; )
+        for (i=0; i < displayWidth; )
         {
             switch(memwidth)
             {
@@ -1055,7 +1084,7 @@ int memoryDump(uint32_t memaddr, uint32_t memsize, uint32_t memwidth, uint32_t d
         printf(" |");
 
         // print single ascii char
-        for (i=0; i < dispwidth; i++)
+        for (i=0; i < displayWidth; i++)
         {
             c = (char)*(uint8_t *)(pnt+i);
             if ((pnt+i < endAddr) && (c >= ' ') && (c <= '~'))
@@ -1067,28 +1096,16 @@ int memoryDump(uint32_t memaddr, uint32_t memsize, uint32_t memwidth, uint32_t d
         puts("|");
 
         // Move on one row.
-        pnt  += dispwidth;
-        addr += dispwidth;
+        pnt  += displayWidth;
+        addr += displayWidth;
 
         // User abort (ESC), pause (Space) or all done?
         //
-        #if defined __K64F__
-            keyIn = usb_serial_getchar();
-        #elif defined __ZPU__
-            keyIn = getserial_nonblocking();
-        #else
-            #error "Target CPU not defined, use __ZPU__ or __K64F__"
-        #endif
+        keyIn = getKey(0);
         if(keyIn == ' ')
         {
             do {
-                #if defined __K64F__
-                    keyIn = usb_serial_getchar();
-                #elif defined __ZPU__
-                    keyIn = getserial_nonblocking();
-                #else
-                    #error "Target CPU not defined, use __ZPU__ or __K64F__"
-                #endif
+                keyIn = getKey(0);
             } while(keyIn != ' ' && keyIn != 0x1b);
         }
         // Escape key pressed, exit with 0 to indicate this to caller.
@@ -1118,9 +1135,11 @@ void displayHelp(char *cmd)
     uint8_t cidx;
     uint8_t hidx;
     uint8_t dispColumn = 0;
+    uint8_t dispWidth  = getScreenWidth();
     uint8_t noParam;
     uint8_t matchCmd;
     uint8_t matchGroup;
+    int8_t  keyIn;
     char    cmdSynopsis[50];
 
     // Display the program details.
@@ -1158,18 +1177,33 @@ void displayHelp(char *cmd)
                     strcpy(cmdSynopsis, cmdsym->cmd);
                     strcat(cmdSynopsis, " ");
                     strcat(cmdSynopsis, helpsym->params);
-                    printf("%-40s %c %-40s", cmdSynopsis, cmdsym->builtin == 1 ? '-' : '*', helpsym->description);
+                    printf("%-40s %c %-36s", cmdSynopsis, cmdsym->builtin == 1 ? '-' : '*', helpsym->description);
                 } else
                 {
                     strcpy(cmdSynopsis, cmdsym->cmd);
                     strcat(cmdSynopsis, " No help available.");
-                    printf("%-40s %c %-40s", cmdSynopsis, cmdsym->builtin == 1 ? '-' : '*', " No help available.");
+                    printf("%-40s %c %-36s", cmdSynopsis, cmdsym->builtin == 1 ? '-' : '*', " No help available.");
                 }
-                if(dispColumn++ == 1)
+                if(dispColumn++ == 1 || dispWidth <= 80)
                 {
                     dispColumn = 0;
                     fputc('\n', stdout);
                 }
+            }
+          
+            // User abort (ESC), pause (Space) or all done?
+            //
+            keyIn = getKey(0);
+            if(keyIn == ' ')
+            {
+                do {
+                    keyIn = getKey(0);
+                } while(keyIn != ' ' && keyIn != 0x1b);
+            }
+            // Escape key pressed, exit with 0 to indicate this to caller.
+            if (keyIn == 0x1b)
+            {
+                return;
             }
         }
         if(dispColumn == 1) { fputc('\n', stdout); }
@@ -1187,7 +1221,10 @@ void printVersion(uint8_t showConfig)
   #if !defined(__APP__)
 
     #if defined __ZPU__
-      printf("\n** %s (", PROGRAM_NAME);
+     #if !defined __SHARPMZ__
+      printf("\n");
+     #endif
+      printf("** %s (", PROGRAM_NAME);
       printZPUId(cfgSoC.zpuId);
       printf(" ZPU, rev %02x) %s %s **\n\n", (uint8_t)cfgSoC.zpuId,  VERSION, VERSION_DATE);
     #elif defined __K64F__

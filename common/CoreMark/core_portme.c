@@ -70,7 +70,7 @@ CORETIMETYPE barebones_clock() {
 
 #ifdef DEBUG
     // For debug, output the time components.
-    ee_printf("Time: clock=%ul\n", clockInuS);
+    ee_printf("Time(ms): clock=%u\n", clockInuS);
 #endif
 
     // Return clock in microseconds.

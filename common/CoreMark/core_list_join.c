@@ -220,7 +220,6 @@ list_head *core_list_init(ee_u32 blksize, list_head *memblock, ee_s16 seed) {
 	ee_u32 i;
 	list_head *finder,*list=memblock;
 	list_data info;
-
 	/* create a fake items for the list head and tail */
 	list->next=NULL;
 	list->info=datablock;

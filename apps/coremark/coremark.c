@@ -90,7 +90,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
     uint32_t  retCode = 0xffffffff;
 
     // Run a CoreMark test to evaluate CPU speed.
-    puts("Running CoreMark test, please wait ...\n\n");
+    puts("Running CoreMark test, please wait ...\n");
     CoreMarkTest();
     retCode = 0;
 

@@ -113,23 +113,11 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
             // User abort (ESC), pause (Space) or all done?
             //
-          #if defined __K64F__
-            keyIn = usb_serial_getchar();
-          #elif defined __ZPU__
-            keyIn = getserial_nonblocking();
-          #else
-            #error "Target CPU not defined, use __ZPU__ or __K64F__"
-          #endif			
+	    keyIn = getKey(0);
             if(keyIn == ' ')
             {
                 do {
-                #if defined __K64F__
-                    keyIn = usb_serial_getchar();
-                #elif defined __ZPU__
-                    keyIn = getserial_nonblocking();
-                #else
-                    #error "Target CPU not defined, use __ZPU__ or __K64F__"
-                #endif					
+		    keyIn = getKey(0);
                 } while(keyIn != ' ' && keyIn != 0x1b);
             }
             // Escape key pressed, exit with 0 to indicate this to caller.

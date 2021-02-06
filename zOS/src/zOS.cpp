@@ -106,7 +106,7 @@
 #endif
 
 // Version info.
-#define VERSION      "v1.1a"
+#define VERSION      "v1.1d"
 #define VERSION_DATE "11/12/2020"
 #define PROGRAM_NAME "zOS"
 
@@ -239,7 +239,11 @@ uint8_t getCommandLine(char *buf, uint8_t bufSize)
     {
         // Standard line input from command line (UART).
       #if defined BUILTIN_READLINE
-        readline((uint8_t *)buf, bufSize, HISTORY_FILE);
+        #if defined __ZPU__
+        readline((uint8_t *)buf, bufSize, HISTORY_FILE_ZPU);
+        #else
+        readline((uint8_t *)buf, bufSize, HISTORY_FILE_K64F);
+        #endif
       #else
         ptr = buf;
         gets(ptr, bufSize);
@@ -269,8 +273,9 @@ void tranZPUterControl(void)
         //
         if(isZ80Reset())
         {
-            // Reload the memory on the tranZPUter to boot default.
-            loadTranZPUterDefaultROMS();
+            // Reset tranZPUter board, set memory map and ROMS as necessary.
+            //
+            hardResetTranZPUter();
 
             // Clear reset event which caused this reload.
             clearZ80Reset();
@@ -358,7 +363,7 @@ int cmdProcessor(void)
         setupTranZPUter();
        
         // Setup memory on Z80 to default.
-        loadTranZPUterDefaultROMS();
+        loadTranZPUterDefaultROMS(CPUMODE_SET_Z80);
 
         // Cache initial directory.
         svcCacheDir(TZSVC_DEFAULT_MZF_DIR, MZF, 1);
@@ -500,7 +505,7 @@ int cmdProcessor(void)
                     p3 = 8;
                 }
                 printf("Dump Memory\n");
-                memoryDump(p1, p2, p3, p1, 32);
+                memoryDump(p1, p2, p3, p1, 0);
                 printf("\nComplete.\n");
                 break;
           #endif
@@ -697,10 +702,49 @@ int cmdProcessor(void)
             }
             break;
 
+          #if defined __SHARPMZ__
+            // Clear the screen.
+            //
+            case CMD_MISC_CLS:
+                mzClearScreen(3, 1);
+                break;
+               
+            // Exit zOS and return to the Z80 host processor.
+            //
+            case CMD_MISC_Z80:
+                mzSetZ80();
+                break;
+          #endif            
+
             // Configuration information
             case CMD_MISC_INFO:
                 showSoCConfig();
                 break;
+
+            // Test point - add code here when a test is needed on a kernel element then invoke after boot.
+            case CMD_MISC_TEST:
+                testRoutine();
+                break;
+
+        #if defined(__SD_CARD__)
+            // CMD_FS_CAT <name> - cat/output file
+          #if defined(BUILTIN_FS_CAT) && BUILTIN_FS_CAT == 1
+            case CMD_FS_CAT:
+                fr = fileCat(getStrParam(&ptr));
+                if(fr) { printFSCode(fr); } 
+                break;
+          #endif
+
+            // CMD_FS_LOAD <name> <addr> - Load a file into memory
+          #if defined(BUILTIN_FS_LOAD) && BUILTIN_FS_LOAD == 1
+            case CMD_FS_LOAD:
+                src1FileName = getStrParam(&ptr);
+                memAddr = getUintParam(&ptr);
+                fr = fileLoad(src1FileName, memAddr, 1);
+                if(fr) { printFSCode(fr); } 
+                break;
+          #endif
+        #endif
             
             // Unrecognised command, if SD card enabled, see if the command exists as an app. If it is an app, load and execute
             // otherwise throw error..
@@ -854,65 +898,18 @@ int main(int argc, char **argv)
     setbuf(stdout, NULL);
 
   #elif defined __SHARPMZ__
-    uint32_t memAddr;
-    uint32_t memBaseAddr;
-    uint32_t memBaseData;
-    uint8_t memBaseByteData;
-  //  for(memAddr=0x0D00000; memAddr < 0x0D40000; memAddr+=8)
-  //  {
-  //      *(uint32_t *)(memAddr) = memAddr; //0xABCD9876;
-  //      *(uint16_t *)(memAddr+4) = 0xAA55;
-  //      *(uint8_t *)(memAddr+6) = 0x11;
-  //      *(uint8_t *)(memAddr+7) = 0x22;
-//
-//    }
-//    memBaseAddr = 0x0E00000;
-//    for(memAddr=0x0D30000; memAddr < 0x0D40000; memAddr+=4)
-//    {
-//        memBaseData = *(uint32_t *)(memBaseAddr);
-//        *(uint32_t *)(memAddr) = memBaseData;
-//        memBaseAddr+=4;
-//    }
-//    memBaseAddr = 0x0E00000;
-//    for(memAddr=0x0D40000; memAddr < 0x0D4D000; memAddr+=4)
-//    {
-//        memBaseData = *(uint32_t *)(memBaseAddr);
-//        *(uint32_t *)(memAddr) = memBaseData;
-//        memBaseAddr+=4;
-//    }
-//
-//    memBaseAddr = 0x0D80000;
-//    for(memAddr=0x0D50000; memAddr < 0x0D5D000; memAddr+=1)
-//    {
-//        memBaseByteData = *(uint8_t *)(memBaseAddr);
-//        
-//        *(uint8_t *)(memAddr) = memBaseByteData;
-//        memBaseAddr+=4;
-//    }
-    for(memAddr=0X0E81000; memAddr < 0x0E817FF; memAddr+=4)
-    {
-        *(uint32_t *)(memAddr) = 0x00000000;
-    }
-    for(memAddr=0X0E81800; memAddr < 0x0E81FFF; memAddr+=4)
-    {
-        *(uint32_t *)(memAddr) = 0x71717171;
-    }
-
-mzPrintChar('H', NULL);
-mzPrintChar('E', NULL);
-mzPrintChar('L', NULL);
-mzPrintChar('L', NULL);
-mzPrintChar('O', NULL);
-mzPrintChar('\n', NULL);
-mzPrintChar('>', NULL);
-
+    // Setup the Input/Output streams to use the screen drivers.
     fdev_setup_stream(&osIO, mzPrintChar, mzGetChar, _FDEV_SETUP_RW);
     stdout = stdin = stderr = &osIO;
+
+    // Initialise and clear screen.
+    mzInit();
+
   #else
     fdev_setup_stream(&osIO, uart_putchar, uart_getchar, _FDEV_SETUP_RW);
     stdout = stdin = stderr = &osIO;
   #endif
-printf("Testing printf\n");
+
     // Setup the configuration using the SoC configuration register if implemented otherwise the compiled internals.
     setupSoCConfig();
 
@@ -925,9 +922,14 @@ printf("Testing printf\n");
     //enableTimer();
 
     // Indicate life...
+    //
+  #if !defined __SHARPMZ__
     printf("Running...\n");
+  #endif
 
+  #if !defined __SHARPMZ__
     printf("Enabling interrupts...\n");
+  #endif
     SetIntHandler(interrupt_handler);
   #if defined __ZPU__
     //EnableInterrupt(INTR_TIMER | INTR_PS2 | INTR_IOCTL_RD | INTR_IOCTL_WR | INTR_UART0_RX | INTR_UART0_TX | INTR_UART1_RX | INTR_UART1_TX);

@@ -51,7 +51,7 @@ RANLIB                = $(BASE)-ranlib
 
 # Version etc.
 TITLE                 = "uM Library"
-COPYRIGHT             = "This make system and enhancements (C) P.D. Smart 2020, Version 1.0\n"
+COPYRIGHT             = "This make system and enhancements (C) P.D. Smart 2020-21, Version 1.0\n"
 COPYRIGHT            += "Component files, (C) Various authors, please see component files." 
 
 # Working directory to build object files.
@@ -101,6 +101,37 @@ IMATH_CPP_SRC         = $(wildcard $(IMATH_DIR)/*.cpp)
 IMATH_SRC             = $(IMATH_C_SRC:.c=.o)  $(IMATH_CPP_SRC:.cpp=.o)
 IMATH_OBJS            = $(foreach src,$(IMATH_SRC), $(BUILD_DIR)/$(src))
 
+# Commandline options for each tool.
+# To disable use of a given instruction, prefix it with no-
+ZPUOPTS         = -mloadsp \
+	          	  -mstoresp \
+	          	  -mpushspadd \
+	          	  -mneqbranch \
+	          	  -maddsp \
+	          	  -mashiftrt \
+	          	  -mashiftl \
+	          	  -mlshiftrt \
+	          	  -mcall \
+	          	  -mcallpcrel \
+	          	  -mshortop \
+	          	  -mbyteop \
+	          	  -meq \
+	          	  -mcompare \
+	          	  -mpoppcrel \
+	          	  -mmemreg
+#ifeq ($(CPU), $(filter $(CPU),SMALL MEDIUM FLEX EVOMIN))
+#ZPUOPTS        += -mno-mult \
+#				  -mno-div \
+#				  -mno-mod \
+#				  -mno-neg
+#endif
+#ifeq ($(CPU), $(filter $(CPU),EVO))
+ZPUOPTS        += -mmult \
+	 	          -mdiv \
+	          	  -mmod \
+	          	  -mneg
+#endif
+
 # Build time flags dependent on CPU target.
 CFLAGS                = -I. -I$(UMLIBC_DIR)/include -I$(COMMON_DIR) -I$(INCLUDE_DIR) -I$(TEENSY35_DIR)
 ifeq ($(__ZPU__),)
@@ -108,6 +139,9 @@ ifeq ($(__ZPU__),)
   CFLAGS             +=  -fno-builtin -mlong-calls -mthumb -MMD -g -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
 else
   CFLAGS             +=  -D__ZPU__
+  CFLAGS             +=  -O3
+  CFLAGS             +=  $(ZPUOPTS)
+  CFLAGS             +=  --std=gnu99 # Use C99 + GNU extensions to provide anonymous unions.
 endif
 
 # Linker flags.

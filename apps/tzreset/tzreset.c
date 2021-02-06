@@ -196,7 +196,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
     //
     if(load_flag)
     {
-        loadTranZPUterDefaultROMS();
+        hardResetTranZPUter();
     } else
     {
         // Call the reset method to do the hard work.

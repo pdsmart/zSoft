@@ -62,7 +62,7 @@ else
   #override STACKSIZE = 0x00000000
 
   # Modules making up Mbasic.
-  APP_C_SRC    = basic.c ed.c $(APP_COMMON_DIR)/sbrk.c $(COMMON_DIR)/readline.c $(APP_COMMON_DIR)/sysutils.c
+  APP_C_SRC    = basic.c ed.c $(COMMON_DIR)/readline.c #$(APP_COMMON_DIR)/sysutils.c #$(APP_COMMON_DIR)/sbrk.c 
   UMM_C_SRC    =
   CFLAGS       = -Os
   CPPFLAGS     = #-D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)

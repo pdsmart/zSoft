@@ -148,6 +148,7 @@ CFLAGS         += -nostartfiles -nostdlib -c -Os -ffunction-sections -fdata-sect
 CFLAGS         += -DOS_BASEADDR=$(OS_BASEADDR) -DOS_APPADDR=$(OS_APPADDR)
 CFLAGS         += -D__ZPU__ -D__ZPUTA__
 CFLAGS         += -DUMM_BEST_FIT -DUMM_INFO -DUMM_DBG_LOG_LEVEL=0
+CFLAGS         += --std=gnu99 # Use C99 + GNU extensions to provide anonymous unions.
 #
 # Allow local overrides to the HEAPADDR for certain applications.
 ifeq (,$(findstring __HEAPADDR__,$(CFLAGS)))
@@ -166,6 +167,9 @@ else
   CFLAGS      += -D__HEAPSIZE__=$(HEAPSIZE)
 endif
 endif
+ifeq ($(__SHARPMZ__),1)
+  CFLAGS      += -D__SHARPMZ__
+endif
 #
 # Enable debug output.
 OFLAGS         += -DDEBUG
@@ -181,7 +185,7 @@ OFLAGS         += -DUSELOADB
 OFLAGS         += -D__SD_CARD__
 FLAGS_STR       = -DFLAGS_STR="$(CFLAGS)"
 LFLAGS          = -nostartfiles -nostdlib -Wl,--gc-sections -Wl,--relax -Os -L$(LIB_DIR)
-LIBS            = -lumstdio-zpu -lumansi-zpu -limath-zpu -lummisc-zpu
+LIBS            = -lumstdio-zpu -lumansi-zpu -limath2-zpu -lummisc-zpu
 
 # compiler options for C++ only
 CXXFLAGS      = -std=gnu++98 -felide-constructors -fno-exceptions -fno-rtti
@@ -263,7 +267,7 @@ $(ROMGEN): $(SWDIR)/tools/src/zpugen.c
 # Put the boot code and app code into a ROM compatible with the Small, Medium and Flex CPU
 %_BOOTROM.vhd: %.bin $(ROMGEN)
 	@sed 's/dualportram/BootROM/' >ZPUTA_BootROM.vhd <$(RTL_DIR)/rom_prologue.vhd
-	@$(ROMGEN) 4 $*.bin 0 > ROMCODE.dat
+	@$(ROMGEN) 32 $*.bin 0 > ROMCODE.dat
 	@cat ROMCODE.dat $(RTL_DIR)/rom_epilogue.vhd >> ZPUTA_BootROM.vhd
 	@cp ZPUTA_BootROM.vhd $(RTL_DIR)/
 	@rm ROMCOD*.dat ZPUTA_BootROM.vhd
@@ -271,8 +275,8 @@ $(ROMGEN): $(SWDIR)/tools/src/zpugen.c
 
 %_COMBINEDBOOTROM.vhd: %.bin $(ROMGEN)
 	@sed 's/dualportram/BootROM/' >IOCP_ZPUTA_BootROM.vhd <$(RTL_DIR)/rom_prologue.vhd
-	@$(ROMGEN) 4 $(IOCPDIR)/iocp.bin 0 > ROMCODE.dat
-	@$(ROMGEN) 4 $*.bin 2048 > APPCODE.dat
+	@$(ROMGEN) 32 $(IOCPDIR)/iocp.bin 0 > ROMCODE.dat
+	@$(ROMGEN) 32 $*.bin 2048 > APPCODE.dat
 	@cat ROMCODE.dat APPCODE.dat $(RTL_DIR)/rom_epilogue.vhd >> IOCP_ZPUTA_BootROM.vhd
 	@cp IOCP_ZPUTA_BootROM.vhd $(RTL_DIR)/
 	@rm ROMCOD*.dat APPCODE*.dat IOCP_ZPUTA_BootROM.vhd
@@ -281,34 +285,40 @@ $(ROMGEN): $(SWDIR)/tools/src/zpugen.c
 # Put the boot code into a BRAM used for boot code.
 %_BOOTBRAM.vhd: %.bin $(ROMGEN)
 	@sed 's/byteaddr_dp_32bit_bram/DualPortBootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_dp_32bit_bram_tmpl.vhd
-	@$(ROMGEN) BA $*.bin /tmp/zpu_work.tmp 0 > ZPUTA_DualPortBootBRAM.vhd
+	@$(ROMGEN) BA 32 $*.bin /tmp/zpu_work.tmp 0 > ZPUTA_DualPortBootBRAM.vhd
 	@cp ZPUTA_DualPortBootBRAM.vhd $(RTL_DIR)/
+	@sed 's/byteaddr_dp_3264bit_bram/DualPort3264BootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_dp_3264bit_bram_tmpl.vhd
+	@$(ROMGEN) BA 64 $*.bin /tmp/zpu_work.tmp 0 > ZPUTA_DualPort3264BootBRAM.vhd
+	@cp ZPUTA_DualPort3264BootBRAM.vhd $(RTL_DIR)/
 	@sed 's/byteaddr_sp_32bit_bram/SinglePortBootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_sp_32bit_bram_tmpl.vhd
-	@$(ROMGEN) BA $*.bin /tmp/zpu_work.tmp 0 > ZPUTA_SinglePortBootBRAM.vhd
+	@$(ROMGEN) BA 32 $*.bin /tmp/zpu_work.tmp 0 > ZPUTA_SinglePortBootBRAM.vhd
 	@rm -f /tmp/zpu_work.tmp
 	@cp ZPUTA_SinglePortBootBRAM.vhd $(RTL_DIR)/
-	@rm ZPUTA_DualPortBootBRAM.vhd ZPUTA_SinglePortBootBRAM.vhd
-	@echo "ZPUTA_DualPortBootBRAM.vhd and ZPUTA_SinglePortBootBRAM updated."
+	@rm ZPUTA_DualPortBootBRAM.vhd ZPUTA_DualPort3264BootBRAM.vhd ZPUTA_SinglePortBootBRAM.vhd
+	@echo "ZPUTA_DualPortBootBRAM.vhd, ZPUTA_DualPort3264BootBRAM.vhd and ZPUTA_SinglePortBootBRAM updated."
 	@echo ""
 
 # Put the boot code and app code into a BRAM used for both boot code and application, ie. one block of BRAM.
 %_COMBINEDBOOTBRAM.vhd: %.bin $(ROMGEN)
 	@sed 's/byteaddr_dp_32bit_bram/DualPortBootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_dp_32bit_bram_tmpl.vhd
-	@$(ROMGEN) BC $(IOCPDIR)/iocp.bin 0 $*.bin 2048 /tmp/zpu_work.tmp > IOCP_ZPUTA_DualPortBootBRAM.vhd
+	@$(ROMGEN) BC 32 $(IOCPDIR)/iocp.bin 0 $*.bin 2048 /tmp/zpu_work.tmp > IOCP_ZPUTA_DualPortBootBRAM.vhd
+	@sed 's/byteaddr_dp_3264bit_bram/DualPort3264BootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_dp_3264bit_bram_tmpl.vhd
+	@$(ROMGEN) BC 64 $(IOCPDIR)/iocp.bin 0 $*.bin 2048 /tmp/zpu_work.tmp > IOCP_ZPUTA_DualPort3264BootBRAM.vhd
 	@rm -f /tmp/zpu_work.tmp
 	@cp IOCP_ZPUTA_DualPortBootBRAM.vhd $(RTL_DIR)/
+	@cp IOCP_ZPUTA_DualPort3264BootBRAM.vhd $(RTL_DIR)/
 	@sed 's/byteaddr_sp_32bit_bram/SinglePortBootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_sp_32bit_bram_tmpl.vhd
-	@$(ROMGEN) BC $(IOCPDIR)/iocp.bin 0 $*.bin 2048 /tmp/zpu_work.tmp > IOCP_ZPUTA_SinglePortBootBRAM.vhd
+	@$(ROMGEN) BC 32 $(IOCPDIR)/iocp.bin 0 $*.bin 2048 /tmp/zpu_work.tmp > IOCP_ZPUTA_SinglePortBootBRAM.vhd
 	@rm -f /tmp/zpu_work.tmp
 	@cp IOCP_ZPUTA_SinglePortBootBRAM.vhd $(RTL_DIR)/
-	@rm IOCP_ZPUTA_DualPortBootBRAM.vhd IOCP_ZPUTA_SinglePortBootBRAM.vhd
-	@echo "IOCP_ZPUTA_DualPortBootBRAM.vhd and IOCP_ZPUTA_SinglePortBootBRAM updated."
+	@rm IOCP_ZPUTA_DualPortBootBRAM.vhd IOCP_ZPUTA_DualPort3264BootBRAM.vhd IOCP_ZPUTA_SinglePortBootBRAM.vhd
+	@echo "IOCP_ZPUTA_DualPortBootBRAM.vhd, IOCP_ZPUTA_DualPort3264BootBRAM.vhd and IOCP_ZPUTA_SinglePortBootBRAM updated."
 	@echo ""
 
 # Put the app code into a seperate BRAM instantiation file, used when a 2nd block of App BRAM is created seperate to the boot BRAM and requires to be preloaded.
 %_APPRAM.vhd: %.bin $(ROMGEN)
 	@sed 's/byteaddr_sp_32bit_bram/SinglePortBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_sp_32bit_bram_tmpl.vhd
-	@$(ROMGEN) BA $*.bin /tmp/zpu_work.tmp 0 > ZPUTA_SinglePortBRAM.vhd
+	@$(ROMGEN) BA 32 $*.bin /tmp/zpu_work.tmp 0 > ZPUTA_SinglePortBRAM.vhd
 	@rm -f /tmp/zpu_work.tmp
 	@cp ZPUTA_SinglePortBRAM.vhd $(RTL_DIR)/
 	@rm ZPUTA_SinglePortBRAM.vhd
@@ -316,7 +326,7 @@ $(ROMGEN): $(SWDIR)/tools/src/zpugen.c
 
 %_COMBINEDAPPRAM.vhd: %.bin $(ROMGEN)
 	@sed 's/byteaddr_sp_32bit_bram/SinglePortBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_sp_32bit_bram_tmpl.vhd
-	@$(ROMGEN) BA $*.bin /tmp/zpu_work.tmp 0 > IOCP_ZPUTA_SinglePortBRAM.vhd
+	@$(ROMGEN) BA 32 $*.bin /tmp/zpu_work.tmp 0 > IOCP_ZPUTA_SinglePortBRAM.vhd
 	@rm -f /tmp/zpu_work.tmp
 	@cp IOCP_ZPUTA_SinglePortBRAM.vhd $(RTL_DIR)/
 	@rm IOCP_ZPUTA_SinglePortBRAM.vhd

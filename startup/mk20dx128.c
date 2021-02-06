@@ -918,7 +918,8 @@ void _ZPUTA_Vectors(void)
     //
     // getc calls
     //
-    __asm__ volatile ("b usb_serial_getchar");
+    __asm__ volatile ("b getScreenWidth");
+    __asm__ volatile ("b getKey");
     //
     // Util calls.
     //
@@ -1022,7 +1023,7 @@ void _ZPUTA_Vectors(void)
     __asm__ volatile ("b isZ80MemorySwapped");
     __asm__ volatile ("b getZ80IO");
     __asm__ volatile ("b clearZ80Reset");
-    __asm__ volatile ("b loadTranZPUterDefaultROMS");
+    __asm__ volatile ("b hardResetTranZPUter");
     __asm__ volatile ("b convertSharpFilenameToAscii");
   #endif
 }

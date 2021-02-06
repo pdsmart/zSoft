@@ -821,8 +821,8 @@ _callpcrel:
         ;
         ; getc calls
         ;
-        jmp     _getserial
-        jmp     _getserial_nonblocking
+        jmp     _getScreenWidth
+        jmp     _getKey
         ;
         ; Util calls.
         ;
@@ -930,8 +930,8 @@ _break:
         ;
         ; getc calls
         ;
-        defapi  getserial
-        defapi  getserial_nonblocking
+        defapi  getScreenWidth
+        defapi  getKey
         ;
         ; Util calls.
         ;

@@ -10,7 +10,7 @@
 ##                  a user application for zOS.
 ##
 ## Credits:         
-## Copyright:       (c) 2019-20 Philip Smart <philip.smart@net2net.org>
+## Copyright:       (c) 2019-21 Philip Smart <philip.smart@net2net.org>
 ##
 ## History:         July 2019   - Initial Makefile created for template use.
 ##                  April 2020  - Added K64F as an additional target and resplit ZPUTA into zOS.

@@ -210,28 +210,25 @@ zpugen: $(SWDIR)/tools/src/zpugen.c
 	gcc -o $(SWDIR)/tools/zpugen $(SWDIR)/tools/src/zpugen.c
 
 %_ROM.vhd: %.bin $(ROMGEN)
-	@sed 's/dualportram/BootROM/' >IOCP_BootROM.vhd <$(RTL_DIR)/rom_prologue.vhd
-	@$(ROMGEN) 4 $*.bin >>IOCP_BootROM.vhd
-	@cat >>IOCP_BootROM.vhd $(RTL_DIR)/rom_epilogue.vhd
-	@cp IOCP_BootROM.vhd $(RTL_DIR)/
+	sed 's/dualportram/BootROM/' >IOCP_BootROM.vhd <$(RTL_DIR)/rom_prologue.vhd
+	$(ROMGEN) 32 $*.bin >>IOCP_BootROM.vhd
+	cat >>IOCP_BootROM.vhd $(RTL_DIR)/rom_epilogue.vhd
+	cp IOCP_BootROM.vhd $(RTL_DIR)/
+	sed 's/byteaddr_dp_32bit_bram/DualPortBootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_dp_32bit_bram_tmpl.vhd
+	$(ROMGEN) BA 32 $*.bin /tmp/zpu_work.tmp >IOCP_DualPortBootBRAM.vhd
+	rm -f /tmp/zpu_work.tmp
+	cp IOCP_DualPortBootBRAM.vhd $(RTL_DIR)/
+	sed 's/byteaddr_sp_32bit_bram/SinglePortBootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_sp_32bit_bram_tmpl.vhd
+	$(ROMGEN) BA 32 $*.bin /tmp/zpu_work.tmp >IOCP_SinglePortBootBRAM.vhd
+	rm -f /tmp/zpu_work.tmp
+	cp IOCP_SinglePortBootBRAM.vhd $(RTL_DIR)/
+	sed 's/byteaddr_sp_32bit_bram/SinglePortBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_sp_32bit_bram_tmpl.vhd
+	grep -v BYTEARRAY_ < /tmp/zpu_work.tmp > IOCP_SinglePortBRAM.vhd
+	rm -f /tmp/zpu_work.tmp
+	cp IOCP_SinglePortBRAM.vhd $(RTL_DIR)/
 
-	@sed 's/byteaddr_dp_32bit_bram/DualPortBootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_dp_32bit_bram_tmpl.vhd
-	@$(ROMGEN) BA $*.bin /tmp/zpu_work.tmp >IOCP_DualPortBootBRAM.vhd
-	@rm -f /tmp/zpu_work.tmp
-	@cp IOCP_DualPortBootBRAM.vhd $(RTL_DIR)/
-
-	@sed 's/byteaddr_sp_32bit_bram/SinglePortBootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_sp_32bit_bram_tmpl.vhd
-	@$(ROMGEN) BA $*.bin /tmp/zpu_work.tmp >IOCP_SinglePortBootBRAM.vhd
-	@rm -f /tmp/zpu_work.tmp
-	@cp IOCP_SinglePortBootBRAM.vhd $(RTL_DIR)/
-
-	@sed 's/byteaddr_sp_32bit_bram/SinglePortBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_sp_32bit_bram_tmpl.vhd
-	@grep -v BYTEARRAY_ < /tmp/zpu_work.tmp > IOCP_SinglePortBRAM.vhd
-	@rm -f /tmp/zpu_work.tmp
-	@cp IOCP_SinglePortBRAM.vhd $(RTL_DIR)/
-
-	@rm IOCP_BootROM.vhd IOCP_DualPortBootBRAM.vhd IOCP_SinglePortBootBRAM.vhd IOCP_SinglePortBRAM.vhd
-	@echo "IOCP_BootROM.vhd, IOCP_DualPortBootBRAM.vhd, IOCP_SinglePortBootBRAM and IOCP_SinglePortBRAM updated."
+	rm IOCP_BootROM.vhd IOCP_DualPortBootBRAM.vhd IOCP_SinglePortBootBRAM.vhd IOCP_SinglePortBRAM.vhd
+	echo "IOCP_BootROM.vhd, IOCP_DualPortBootBRAM.vhd, IOCP_SinglePortBootBRAM and IOCP_SinglePortBRAM updated."
 
 # Link - this produces an ELF binary.
 

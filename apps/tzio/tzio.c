@@ -74,8 +74,8 @@
 #include <tools.c>
 
 // Version info.
-#define VERSION              "v1.0"
-#define VERSION_DATE         "25/11/2020"
+#define VERSION              "v1.1"
+#define VERSION_DATE         "08/12/2020"
 #define APP_NAME             "TZIO"
 
 // Simple help screen to remmber how this utility works!!
@@ -93,7 +93,7 @@ void usage(void)
     printf("  -v | --verbose           Output more messages.\n");
 
     printf("\nExamples:\n");
-    printf("  tzio --out --addr 0xf8 --byte 0x10    # Setup the FPGA Video mode at address 0xf8.\n");
+    printf("  tzio --out 0xf8 --byte 0x10    # Setup the FPGA Video mode at address 0xf8.\n");
 }
 
 // Main entry and start point of a zOS/ZPUTA Application. Only 2 parameters are catered for and a 32bit return code, additional parameters can be added by changing the appcrt0.s

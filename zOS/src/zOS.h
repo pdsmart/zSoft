@@ -59,6 +59,11 @@ extern "C" {
 
 // Miscellaneous components to be embedded in this program.
 #define BUILTIN_MISC_SETTIME        0
+#define BUILTIN_MISC_TEST           1
+#if defined __SHARPMZ__
+#define BUILTIN_MISC_CLS            1
+#define BUILTIN_MISC_Z80            1
+#endif
 
 // Application execution constants.
 //
@@ -69,7 +74,8 @@ extern "C" {
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
-#define HISTORY_FILE                "zOS.hst"
+#define HISTORY_FILE_ZPU            "zOS_zpu.hst"
+#define HISTORY_FILE_K64F           "zOS_k64f.hst"
 #define AUTOEXEC_FILE               "autoexec.bat"
 #define APP_CMD_LOAD_ADDR           OS_APPADDR
 #define APP_CMD_EXEC_ADDR           OS_APPADDR

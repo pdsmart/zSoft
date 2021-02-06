@@ -293,7 +293,7 @@ typedef struct
 // Prototypes.
 uint32_t           sysmillis(void);
 void               syswait(uint32_t);
-int8_t             getKey(uint32_t);
+int8_t             getKeyChar(uint32_t);
 int                editorReadKey(void);
 int                getCursorPosition(uint32_t *, uint32_t *);
 int                getWindowSize(int *, int *);

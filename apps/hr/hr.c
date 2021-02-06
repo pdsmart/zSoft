@@ -88,11 +88,13 @@ uint32_t app(uint32_t param1, uint32_t param2)
   #if defined __ZPU__
     char      *ptr = (char *)param1;
     uint32_t  memAddr;
+    uint32_t  delay;
 
-    puts("Register information\n");
+    puts("Register information and status:\n");
+    for(delay=0; delay < 10000000; delay++);
     puts("Interrupt: ");
     printf("%08X %08X\n", INTERRUPT_STATUS(INTR0), INTERRUPT_CTRL(INTR0));
-    while(getserial_nonblocking() == -1)
+    while(getKey(0) == -1)
     {
         printf("UART 0/1: %08X %08X %08X %08X %08X %08X\r", UART_STATUS(UART0), UART_FIFO_STATUS(UART0), UART_BRGEN(UART0), UART_STATUS(UART1), UART_FIFO_STATUS(UART1), UART_BRGEN(UART1));
         memAddr = INTERRUPT_STATUS(INTR0);

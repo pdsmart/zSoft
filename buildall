@@ -1,0 +1,123 @@
+#!/bin/bash
+
+ZPU_SHARPMZ_BUILD=1
+ZPU_SHARPMZ_APPADDR=0x100000
+ZPU_SHARPMZ_APPSIZE=0x70000
+ZPU_SHARPMZ_HEAPSIZE=0x8000
+ZPU_SHARPMZ_STACKSIZE=0x3D80
+
+ZPU_E115_BUILD=0
+ZPU_E115_APPADDR=0x10000
+ZPU_E115_APPSIZE=0x8000
+ZPU_E115_HEAPSIZE=0x4000
+ZPU_E115_STACKSIZE=0x3D80
+
+(
+# Ensure the zOS target directories exist.
+cd /dvlp/Projects/dev/github/zSoft
+mkdir -p SD/SharpMZ
+mkdir -p SD/Dev
+mkdir -p SD/K64F
+
+if [ "${ZPU_SHARPMZ_BUILD}x" != "x" -a ${ZPU_SHARPMZ_BUILD} = 1 ]; then
+    echo "Building ZPU for Sharp MZ"
+    ./build.sh -C EVO -O zos -o 0 -M 0x1FD80 -B 0x0000 -S ${ZPU_SHARPMZ_STACKSIZE} -N ${ZPU_SHARPMZ_HEAPSIZE} -A ${ZPU_SHARPMZ_APPADDR} -a ${ZPU_SHARPMZ_APPSIZE} -n 0x0000 -s 0x0000 -d -Z
+    if [ $? != 0 ]; then
+    	echo "Error building Sharp MZ Distribution..."
+    	exit 1
+    fi
+    cp rtl/TZSW_* ../tranZPUter/FPGA/SW700/v1.3/devices/sysbus/BRAM/
+    cp -r build/SD/* SD/SharpMZ/
+    cp build/SD/ZOS/* SD/K64F/ZOS/
+fi
+    
+if [ "${ZPU_E115_BUILD}x" != "x" -a ${ZPU_E115_BUILD} = 1 ]; then
+    echo "Building ZPU for Dev board"
+    ./build.sh -C EVO -O zos -o 0 -M 0x1FD80 -B 0x0000 -S ${ZPU_E115_STACKSIZE} -N ${ZPU_E115_HEAPSIZE} -A ${ZPU_E115_APPADDR} -a ${ZPU_E115_APPSIZE} -n 0x0000 -s 0x0000 -d 
+    if [ $? != 0 ]; then
+    	echo "Error building Dev board Distribution..."
+    	exit 1
+    fi
+    cp rtl/zOS_* rtl/IOCP* rtl/ZPUTA* ../zpu/devices/sysbus/BRAM/
+    cp -r build/SD/* SD/Dev/
+fi
+
+echo "Building for K64F"
+./build.sh -C K64F -O zos  -N 0x10000 -d -T
+if [ $? != 0 ]; then
+	echo "Error building K64F Distribution..."
+	exit 1
+fi
+cp -r build/SD/* SD/K64F/
+rsync -avh * psmart@192.168.15.205:/dvlp/Projects/dev/github/zSoft/
+if [ $? != 0 ]; then
+	echo "Error syncing K64F Distribution..."
+	exit 1
+fi
+# Simple mechanism to prevent remote build and programming of the K64F.
+diff /dvlp/Projects/dev/github/zSoft/zOS/main.bin /dvlp/Projects/dev/github/zSoft/zOS/main.bak
+if [ $? -ne 0 ]; then
+    echo "GO" >  /dvlp/Projects/dev/github/zSoft/.dobuild
+    rsync -avh .dobuild psmart@192.168.15.205:/dvlp/Projects/dev/github/zSoft/
+    if [ $? != 0 ]; then
+        echo "Error syncing K64F Distribution..."
+        exit 1
+    fi
+fi
+cp /dvlp/Projects/dev/github/zSoft/zOS/main.bin /dvlp/Projects/dev/github/zSoft/zOS/main.bak
+)
+if [ $? != 0 ]; then
+	exit 1
+fi
+
+# Ensure the TZFS target directories exist
+k64fsddir=/dvlp/Projects/dev/github/zSoft/SD/K64F
+tzfsdir=/dvlp/Projects/dev/github/tranZPUter/software
+mkdir -p $k64fsddir/TZFS/
+mkdir -p $k64fsddir/MZF/
+mkdir -p $k64fsddir/CPM/
+mkdir -p $k64fsddir/BAS
+mkdir -p $k64fsddir/CAS
+
+(
+cd $tzfsdir
+tools/assemble_tzfs.sh
+if [ $? != 0 ]; then
+	echo "TZFS assembly failed..."
+	exit 1
+fi
+tools/assemble_roms.sh
+if [ $? != 0 ]; then
+	echo "ROMS assembly failed..."
+	exit 1
+fi
+tools/assemble_cpm.sh
+if [ $? != 0 ]; then
+	echo "CPM assembly failed..."
+	exit 1
+fi
+tools/make_cpmdisks.sh
+if [ $? != 0 ]; then
+	echo "CPM disks assembly failed..."
+	exit 1
+fi
+
+# Copy across all the Z80/TZFS software into the target, keep it in one place for placing onto an SD card!
+cp $tzfsdir/roms/tzfs.rom                   $k64fsddir/TZFS/
+cp $tzfsdir/roms/monitor_SA1510.rom         $k64fsddir/TZFS/SA1510.rom
+cp $tzfsdir/roms/monitor_80c_SA1510.rom     $k64fsddir/TZFS/SA1510-8.rom
+cp $tzfsdir/roms/monitor_1Z-013A.rom        $k64fsddir/TZFS/1Z-013A.rom
+cp $tzfsdir/roms/monitor_80c_1Z-013A.rom    $k64fsddir/TZFS/1Z-013A-8.rom
+cp $tzfsdir/roms/monitor_1Z-013A-KM.rom     $k64fsddir/TZFS/1Z-013A-KM.rom
+cp $tzfsdir/roms/monitor_80c_1Z-013A-KM.rom $k64fsddir/TZFS/1Z-013A-KM-8.rom
+cp $tzfsdir/roms/MZ80B_IPL.rom              $k64fsddir/TZFS/MZ80B_IPL.rom
+cp $tzfsdir/MZF/CPM223.MZF                  $k64fsddir/MZF/
+cp $tzfsdir/roms/cpm22.bin                  $k64fsddir/CPM/
+cp $tzfsdir/CPM/SDC16M/RAW/*                $k64fsddir/CPM/
+cp $tzfsdir/MZF/*                           $k64fsddir/MZF/
+cp $tzfsdir/BAS/*                           $k64fsddir/BAS/
+cp $tzfsdir/CAS/*                           $k64fsddir/CAS/
+)
+if [ $? != 0 ]; then
+	exit 1
+fi

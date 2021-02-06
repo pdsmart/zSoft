@@ -119,7 +119,7 @@ int uart_puts(const char *msg)
 #endif
 
 #if !defined(FUNCTIONALITY) || FUNCTIONALITY <= 1
-char getserial()
+char getserial(void)
 {
     uint32_t reg;
 
@@ -140,7 +140,7 @@ int uart_getchar(FILE *stream)
 }
 #endif
 
-int8_t getserial_nonblocking()
+int8_t getserial_nonblocking(void)
 {
     int8_t reg;
 

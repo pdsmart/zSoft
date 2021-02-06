@@ -97,6 +97,16 @@ uint8_t card_type;
 ---------------------------------------------------------------------------*/
 
 
+// Volume to partiion map. This map specifies which Volume resides on which disk/partition.
+// NB. When using the ZPU as a host on the Sharp MZ computers, the K64F hosts the SD card so the first volume will be the second on the actual physical SD card.
+//
+PARTITION VolToPart[FF_VOLUMES] = {
+    {0, 1},     /* "0:" ==> 1st partition on physical drive 0 */
+    {0, 2},     /* "1:" ==> 2nd partition on physical drive 0 */
+    {0, 3},     /* "2:" ==> 3rd partition on physical drive 0 */
+    {1, 0}      /* "3:" ==> Physical drive 1 */    
+};
+
 /*-----------------------------------------------------------------------*/
 /* Get Disk Status                                                       */
 /*-----------------------------------------------------------------------*/
@@ -126,7 +136,7 @@ DSTATUS disk_initialize ( BYTE drv,             /* Physical drive nmuber */
     // Check parameters, only 1 drive allowed.
     if(drv > 0) return RES_NOTRDY;
 
-    // Call the methos in the NXP_SDHC class to initialise and obtain the
+    // Call the methods in the NXP_SDHC class to initialise and obtain the
     // card type. Chip Select is embedded within this module so we dont
     // need to seperately enable/disable it.
     //

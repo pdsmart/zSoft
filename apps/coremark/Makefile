@@ -63,7 +63,8 @@ else
   #override STACKSIZE = 0x00000000	
 
   # Coremark specific settings.
-  COREMARK_SRC = $(COREMARK_DIR)/core_list_join.c $(COREMARK_DIR)/core_main_embedded.c $(COREMARK_DIR)/core_matrix.c $(COREMARK_DIR)/core_state.c $(COREMARK_DIR)/core_util.c $(COREMARK_DIR)/ee_printf.c $(COREMARK_DIR)/core_portme.c
+  #COREMARK_SRC = $(COREMARK_DIR)/core_list_join.c $(COREMARK_DIR)/core_main_embedded.c $(COREMARK_DIR)/core_matrix.c $(COREMARK_DIR)/core_state.c $(COREMARK_DIR)/core_util.c $(COREMARK_DIR)/ee_printf.c $(COREMARK_DIR)/core_portme.c
+  COREMARK_SRC = $(COREMARK_DIR)/core_list_join.c $(COREMARK_DIR)/core_main_embedded.c $(COREMARK_DIR)/core_matrix.c $(COREMARK_DIR)/core_state.c $(COREMARK_DIR)/core_util.c $(COREMARK_DIR)/core_portme.c
   COREMARK_OBJ = $(patsubst $(COREMARK_DIR)/%.c,$(BUILD_DIR)/%.o,$(COREMARK_SRC))
   MAIN_OBJ       = $(COREMARK_OBJ)
 

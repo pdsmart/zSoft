@@ -53,6 +53,7 @@
   #include    <stdio.h>
   #include    <stdint.h>
   #include    <stdmisc.h>
+  #include    <string.h>
 #endif
 
 #if defined __SD_CARD__
@@ -62,6 +63,7 @@
 #include      <stdlib.h>
 #include      <stdbool.h>
 #include      <stddef.h>
+#include      "utils.h"
 
 #if defined __APP__
   #if defined __K64F__
@@ -97,11 +99,11 @@
 #define BACKSPACE          0x08
 #define CTRL_K             0x0b
 #define ENTER              0x0d
-#define CTRL_N             0x0e
 #define CTRL_P             0x10
-#define ESC                0x1b
 #define RIGHTBRACKET       0x5b
 #define TILDA              0x7e 
+#define CTRL_N             0x0e
+#define ESC                0x1b
 
 // Line buffer control variables.
 static uint8_t llen, lpos;
@@ -268,15 +270,7 @@ static bool next_char (enum keytype *type, uint8_t *val)
 
     // Process all available bytes from the serial port.
     do {
-     #if defined __K64F__
-	 int usb_serial_getchar(void);
-         keyIn = usb_serial_getchar();
-     #elif defined __ZPU__
-         keyIn = getserial_nonblocking();
-     #else
-         #error "Target CPU not defined, use __ZPU__ or __K64F__"
-     #endif
-
+        keyIn = getKey(0);
         if(keyIn != -1)
         {
             // Try to find a matching key from the special keys table:
@@ -417,7 +411,7 @@ void cmdPrintHistory(void)
                     buf[bytes]  = 0x0;
 
                     // Print it out.
-                    printf("%04lu  %s\n", lineCnt++, buf);
+                    printf("%06lu  %s\n", lineCnt++, buf);
                 }
             }
         } while(bytes != -1);
@@ -466,6 +460,7 @@ uint8_t cmdRecallHistory(uint8_t *line, uint8_t *llen, uint32_t lineNo)
         {
             strcpy((char *)line, buf);
             *llen = strlen((char *)line);
+            printf(">%s\n", buf);
             retCode = 0;
         }
     }

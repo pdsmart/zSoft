@@ -53,7 +53,6 @@
   #include <string.h>
   #include <unistd.h>
   #include <stdarg.h>
-  #include <usb_serial.h>
   #include "k64f_soc.h"
   #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
@@ -195,19 +194,19 @@ void syswait(uint32_t wait)
     while((sysmillis() - startTime) < wait);
 }
 
-int8_t getKey(uint32_t waitTime)
+int8_t getKeyChar(uint32_t waitTime)
 {
     int8_t   keyIn;
     uint32_t timeout = sysmillis();
 
     do {
-      #if defined __K64F__
-        keyIn = usb_serial_getchar();
-      #elif defined __ZPU__
-        keyIn = getserial_nonblocking();
+      #if defined __SHARPMZ__
+        // Get key from system, request ansi key sequence + non-blocking (=2).
+        keyIn = getKey(2);
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
-      #endif    
+        // Get key from system, request non-blocking (=0).
+        keyIn = getKey(0);
+      #endif        
     } while(keyIn == -1 && (sysmillis() - timeout) < waitTime);
 
     return(keyIn);
@@ -221,14 +220,14 @@ int editorReadKey(void)
     int8_t c;
 
     // Wait for a key to be pressed.
-    while((c = (char)getKey(500)) == -1);
+    while((c = (char)getKeyChar(500)) == -1);
 
     /* escape sequence */
     if((char)c == ESC)
     {
         /* If this is just an ESC, we'll timeout here. */
-        if((seq[0] = getKey(500)) == -1) return ESC;
-        if((seq[1] = getKey(500)) == -1) return ESC;
+        if((seq[0] = getKeyChar(500)) == -1) return ESC;
+        if((seq[1] = getKeyChar(500)) == -1) return ESC;
 
         /* ESC [ sequences. */
         if ((char)seq[0] == '[')
@@ -236,7 +235,7 @@ int editorReadKey(void)
             if ((char)seq[1] >= '0' && (char)seq[1] <= '9')
             {
                 /* Extended escape, read additional byte. */
-                if((seq[2] = getKey(500)) == -1) return ESC;
+                if((seq[2] = getKeyChar(500)) == -1) return ESC;
                 if ((char)seq[2] == '~')
                 {
                     switch((char)seq[1])
@@ -307,7 +306,7 @@ int getCursorPosition(uint32_t *rows, uint32_t *cols)
     //
     while (i < sizeof(buf)-1)
     {
-        if((c = getKey(2000)) == -1) break;
+        if((c = getKeyChar(2000)) == -1) break;
         if((i == 0 && (char)c != ESC) || (i == 1 && (char)c != '[')) return -1;
         if((char)c == ';')
             buf[i] = ' ';
@@ -667,7 +666,6 @@ int editorOpen(char *filename)
         }
     }
     f_close(&fp);
-printf("EXIT\n");
     return 0;
 }
 
@@ -1130,7 +1128,7 @@ uint32_t editorProcessKeypress(void)
                 E.cy = E.screenrows-1;
                 lastLine = editorRefreshScreen();
                 printf("\x1b[%03d;%03dH", (lastLine == -1 ? E.screenrows-1 : lastLine+1), 1);
-                fputs("\x1b[0J", stdout);
+                printf("\x1b[0J");
 
                 // Restore the cursor so it opens in the same place when edit is restarted.
                 E.cx = cxSave;
@@ -1155,6 +1153,7 @@ uint32_t editorProcessKeypress(void)
         case DEL_KEY:
             editorMoveCursor(ARROW_RIGHT);
             editorDelChar();
+	    break;
 
         case PAGE_UP:
         case PAGE_DOWN:

@@ -48,6 +48,9 @@
 #else
   #include <stdint.h>
   #include <stdio.h>
+  #if defined __SHARPMZ__
+    #include "sharpmz.h"
+  #endif
 #endif
 
 #include "zpu_soc.h"
@@ -89,6 +92,36 @@ DSTATUS Stat[SD_DEVICE_CNT] = { STA_NOINIT };    /* Disk status */
    Public Functions
 ---------------------------------------------------------------------------*/
 
+#if defined __SHARPMZ__
+// Volume to partiion map. This map specifies which Volume resides on which disk/partition.
+// NB. When using the ZPU as a host on the Sharp MZ computers, the K64F hosts the SD card so the first volume will be the second on the actual physical SD card.
+//
+PARTITION VolToPart[FF_VOLUMES] = {
+    {0, 2},     /* "0:" ==> 1st partition on physical drive 0 */
+    {0, 3},     /* "1:" ==> 2nd partition on physical drive 0 */
+    {0, 4},     /* "2:" ==> 3rd partition on physical drive 0 */
+    {1, 1},     /* "4:" ==> Physical drive 1, 1st partition */    
+#if FF_VOLUMES > 4
+    {1, 2},     /* "5:" ==> Physical drive 1, 2nd partition */    
+    {1, 3},     /* "6:" ==> Physical drive 1, 3rd partition */    
+    {1, 4},     /* "7:" ==> Physical drive 1, 4th partition */    
+    {2, 1},     /* "8:" ==> Physical drive 2, 1st partition */    
+#endif
+};
+#else
+PARTITION VolToPart[FF_VOLUMES] = {
+    {0, 1},     /* "0:" ==> 1st partition on physical drive 0 */
+    {0, 2},     /* "1:" ==> 2nd partition on physical drive 0 */
+    {0, 3},     /* "2:" ==> 3rd partition on physical drive 0 */
+    {0, 4},     /* "3:" ==> 3rd partition on physical drive 0 */
+#if FF_VOLUMES > 4
+    {1, 1},     /* "4:" ==> Physical drive 1, 1st partition */    
+    {1, 2},     /* "5:" ==> Physical drive 1, 2nd partition */    
+    {1, 3},     /* "6:" ==> Physical drive 1, 3rd partition */    
+    {1, 4},     /* "7:" ==> Physical drive 1, 4th partition */    
+#endif
+};
+#endif
 
 /*-----------------------------------------------------------------------*/
 /* Get Disk Status                                                       */
@@ -101,7 +134,6 @@ DSTATUS disk_status ( BYTE drv )          /* Drive number */
     return Stat[drv];
 }
 
-
 /*-----------------------------------------------------------------------*/
 /* Initialize Disk Drive                                                 */
 /*-----------------------------------------------------------------------*/
@@ -112,6 +144,10 @@ DSTATUS disk_initialize ( BYTE drv,             /* Physical drive nmuber */
     // Ignore any drives which havent been implemented.
     if (drv > SD_DEVICE_CNT) return RES_NOTRDY;
 
+  #if defined __SHARPMZ__
+    if(mzSDInit(drv) == 0)
+        Stat[drv] = 0;
+  #else
     // Set the card type.
     SD_CMD(drv) = (cardType == 0 ? SD_CMD_CARDTYPE_SD : SD_CMD_CARDTYPE_SDHC );
 
@@ -127,6 +163,7 @@ DSTATUS disk_initialize ( BYTE drv,             /* Physical drive nmuber */
     // If there is an error code, then the drive didnt initialise.
     if(!(SD_STATUS(drv) & SD_STATUS_ERROR) && TIMER_SECONDS_DOWN > 0)
         Stat[drv] = 0;
+  #endif
 
     return Stat[drv];
 }
@@ -154,10 +191,22 @@ DRESULT disk_read ( BYTE drv,            /* Physical drive nmuber (0) */
         // Setup a 5 second delay count, if this timer expires then reset and retry.
         TIMER_SECONDS_DOWN = 5;
 
+  #if defined __SHARPMZ__
+        // When running on the Sharp MZ host, we send an SD request to the I/O processor and await the results!
+        do {
+            status = mzSDRead(drv, sector, buff);
+        } while(status != 0 && TIMER_SECONDS_DOWN > 0);
+
+        if(status == 0)
+        {
+            sector = sector + SECTOR_SIZE;
+            idx++;
+        }
+  #else
         // Set the sector to retrieve.
         SD_ADDR(drv) = sector;
         SD_CMD(drv) = SD_CMD_READ;
-
+       
         // Receive all bytes until Busy goes inactive or timer timesout.
         do {
             status = SD_STATUS(drv);
@@ -187,6 +236,7 @@ DRESULT disk_read ( BYTE drv,            /* Physical drive nmuber (0) */
 
         if(retry == 0) break;
         if(status & SD_STATUS_ERROR) break;
+  #endif
     } while( idx < count );
 
     // Return error if the last read failed.
@@ -215,6 +265,18 @@ DRESULT disk_write ( BYTE drv,            /* Physical drive nmuber (0) */
         // Setup a 5 second delay count, if this timer expires then reset and retry.
         TIMER_SECONDS_DOWN = 5;
 
+  #if defined __SHARPMZ__
+        // When running on the Sharp MZ host, we send an SD request to the I/O processor and await the results!
+        do {
+            status = mzSDWrite(drv, sector, buff);
+        } while(status != 0 && TIMER_SECONDS_DOWN > 0);
+
+        if(status == 0)
+        {
+            sector = sector + SECTOR_SIZE;
+            idx++;
+        }
+  #else
         // Set the sector to retrieve.
         SD_ADDR(drv) = sector;
         SD_CMD(drv) = SD_CMD_WRITE;
@@ -249,6 +311,7 @@ DRESULT disk_write ( BYTE drv,            /* Physical drive nmuber (0) */
 
         if(retry == 0) break;
         if(status & SD_STATUS_ERROR) break;
+  #endif
     } while (idx < count);
 
     // Return error if the last write failed.

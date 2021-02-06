@@ -105,6 +105,7 @@
   // Miscellaneous components to be embedded in this program.
   #define BUILTIN_MISC_HELP           1
   #define BUILTIN_MISC_SETTIME        0
+  #define BUILTIN_MISC_TEST           1
 
 #else
 

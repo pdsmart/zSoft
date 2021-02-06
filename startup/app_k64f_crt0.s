@@ -188,7 +188,9 @@ BSS_END:    .word      __bss_section_end__
             # getc calls
             #
             .equ funcAddr,  funcAddr+funcNext;
-            defapifunc      usb_serial_getchar funcAddr
+            defapifunc      getScreenWidth funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      getKey funcAddr
             #
             # Util calls
             #
@@ -372,7 +374,7 @@ BSS_END:    .word      __bss_section_end__
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      clearZ80Reset             funcAddr
             .equ funcAddr,  funcAddr+funcNext;
-            defapifunc      loadTranZPUterDefaultROMS funcAddr
+            defapifunc      hardResetTranZPUter       funcAddr
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      convertSharpFilenameToAscii funcAddr
     .end

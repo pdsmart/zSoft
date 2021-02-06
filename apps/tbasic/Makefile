@@ -64,7 +64,7 @@ else
   CFLAGS       = -Wno-write-strings -Wno-char-subscripts
   CPPFLAGS     = #-D__HEAPADDR__=$(HEAPADDR) -D__HEAPSIZE__=$(HEAPSIZE)
   LDFLAGS      = -nostdlib
-  LIBS         = -lumansi-zpu -limath-zpu
+  LIBS         = -lumansi-zpu -limath2-zpu
 endif
 
 # Filter out the standard HEAP address and size, replacing with the ones required for this application.
@@ -76,6 +76,7 @@ NEWMAKEFLAGS   = $(FILTER2) HEAPADDR=$(HEADADDR) HEAPSIZE=$(HEAPSIZE)
 ifeq ($(__K64F__),1)
 include        $(APP_DIR)/Makefile.k64f
 else
+# Comment out this line if you need to build with limited RAM, insufficient for tbasic.
 #include        $(APP_DIR)/Makefile.zpu
 all:
 

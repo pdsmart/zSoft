@@ -91,7 +91,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
     puts("Testing RTC & Up/Down Timers\n");
     TIMER_MILLISECONDS_UP = 60000;
 puts("Timer Set\n");
-    while(getserial_nonblocking() == -1)
+    while(getKey(0) == -1)
     {
 puts("While loop\n");
         if(TIMER_MICROSECONDS_DOWN == 0)

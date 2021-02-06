@@ -29,6 +29,10 @@
   #include    <stdio.h>
   #include    "zpu_soc.h"
 
+  #include    <math.h>
+  #include    <stdlib.h>
+  #include    <../../libraries/include/stdmisc.h>	    
+
   #define acos    acosf
   #define floor   floorf
   #define sin     sinf
@@ -182,18 +186,18 @@ int execBasicScript(void)
             break;
         }
 
-       // if(nextline == -1)
-       //     break;
+      //if(nextline == -1)
+      //    break;
+
+      #if defined __SHARPMZ__
+        // Get key from system, request ansi key sequence + non-blocking (=2).
+        keyIn = getKey(2);
+      #else
+        // Get key from system, request non-blocking (=0).
+        keyIn = getKey(0);
+      #endif
 
         // Check to see if user is requesting an action.
-      #if defined __K64F__
-	int usb_serial_getchar(void);
-        keyIn = usb_serial_getchar();
-      #elif defined __ZPU__
-        keyIn = getserial_nonblocking();
-      #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
-      #endif
         if(nextline == -1 || keyIn == CTRL_C)
         {
             printf("\nExecution stopped, user request.\n");

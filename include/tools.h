@@ -99,6 +99,8 @@ extern "C" {
 #define CMD_MISC_INFO             133
 #define CMD_MISC_SETTIME          134
 #define CMD_MISC_TEST             135
+#define CMD_MISC_CLS              136              // Clear the console/screen of data.
+#define CMD_MISC_Z80              137              // Exit zOS and return control to host Z80 processor.
 #define CMD_APP_TBASIC            140              // TinyBasic
 #define CMD_APP_MBASIC            141              // Mini Basic
 #define CMD_APP_KILO              142              // Kilo Editor
@@ -132,6 +134,10 @@ extern "C" {
 #define CMD_GROUP_MISC_NAME         "MISC COMMANDS"
 #define CMD_GROUP_APP_NAME          "APPLICATIONS"
 #define CMD_GROUP_TZ_NAME           "TRANZPUTER"
+
+// Screen parameters.
+//
+#define MAX_SCREEN_WIDTH            160
  
 // File Execution modes.
 //
@@ -381,12 +387,22 @@ static t_cmdstruct cmdTable[] = {
     #if (defined(BUILTIN_MISC_SETTIME) && BUILTIN_MISC_SETTIME == 1)    || (defined(BUILTIN_MISC_HELP) == 1 && BUILTIN_MISC_HELP == 1)
     { "time",       BUILTIN_MISC_SETTIME,     CMD_MISC_SETTIME,     CMD_GROUP_MISC },
     #endif
-    { "test",       BUILTIN_DEFAULT,          CMD_MISC_TEST,        CMD_GROUP_MISC },
+    #if (defined(BUILTIN_MISC_TEST) && BUILTIN_MISC_TEST == 1)    || (defined(BUILTIN_MISC_HELP) == 1 && BUILTIN_MISC_HELP == 1)
+    { "test",       BUILTIN_MISC_TEST,        CMD_MISC_TEST,        CMD_GROUP_MISC },
+    #endif
+    #if (defined(BUILTIN_MISC_CLS) && BUILTIN_MISC_CLS == 1)    || (defined(BUILTIN_MISC_HELP) == 1 && BUILTIN_MISC_HELP == 1)
+    { "cls",        BUILTIN_DEFAULT,          CMD_MISC_CLS,         CMD_GROUP_MISC },
+    #endif
+    #if (defined(BUILTIN_MISC_Z80) && BUILTIN_MISC_Z80 == 1)    || (defined(BUILTIN_MISC_HELP) == 1 && BUILTIN_MISC_HELP == 1)
+    { "z80",        BUILTIN_DEFAULT,          CMD_MISC_Z80,         CMD_GROUP_MISC },
+    #endif
     // Applications - most are not built in so dont need to be in this table or just placed here commented out for reference.
     { "tbasic",     BUILTIN_DEFAULT,          CMD_APP_TBASIC,       CMD_GROUP_APP },
     { "mbasic",     BUILTIN_DEFAULT,          CMD_APP_MBASIC,       CMD_GROUP_APP },
     { "kilo",       BUILTIN_DEFAULT,          CMD_APP_KILO,         CMD_GROUP_APP },
     { "ed",         BUILTIN_DEFAULT,          CMD_APP_ED,           CMD_GROUP_APP },
+  #if defined __SHARPMZ__
+  #endif
   #if defined __TRANZPUTER__
     { "tzpu",       BUILTIN_DEFAULT,          CMD_TZ_TZPU,          CMD_GROUP_TZ },
     { "tzload",     BUILTIN_DEFAULT,          CMD_TZ_LOAD,          CMD_GROUP_TZ },
@@ -490,7 +506,15 @@ static t_helpstruct helpTable[] = {
     { CMD_MISC_HELP,        "[<cmd %>|<group %>]",                "Show this screen" },
     { CMD_MISC_INFO,        "",                                   "Config info" },
     { CMD_MISC_SETTIME,     "[<y> <m> <d> <h> <M> <s>]",          "Set/Show current time" },
-    { CMD_MISC_TEST,        "",                                   "Test Screen" },
+    { CMD_MISC_TEST,        "",                                   "Debugging aid." },
+  #if defined __SHARPMZ__
+   #if (defined(BUILTIN_MISC_CLS) && BUILTIN_MISC_CLS == 1)    || (defined(BUILTIN_MISC_HELP) == 1 && BUILTIN_MISC_HELP == 1)
+    { CMD_MISC_CLS,         "",                                   "Clear Screen" },
+   #endif
+   #if (defined(BUILTIN_MISC_Z80) && BUILTIN_MISC_Z80 == 1)    || (defined(BUILTIN_MISC_HELP) == 1 && BUILTIN_MISC_HELP == 1)
+    { CMD_MISC_Z80,         "",                                   "Return to host Z80 CPU" },
+   #endif
+  #endif
     // Miscellaneous commands.
     { CMD_APP_TBASIC,       "",                                   "Tiny Basic" },
     { CMD_APP_MBASIC,       "[<file]>",                           "Mini Basic" },
@@ -531,6 +555,8 @@ uint32_t milliseconds(void)
 
 
 // Prototypes
+int16_t       decodeCommand(char **);
+uint8_t       getScreenWidth(void);
 #if defined(__SD_CARD__)
 FRESULT       scan_files(char *);
 void          printFSCode(FRESULT);

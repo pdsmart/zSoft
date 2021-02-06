@@ -46,6 +46,9 @@
   #include <stdmisc.h>
   #include "uart.h"
   #include "zpu_soc.h"
+ #if defined __SHARPMZ__
+  #include "sharpmz.h"
+ #endif
 #endif
 
 #if defined(__SD_CARD__)
@@ -132,13 +135,7 @@ unsigned int get_dword(void)
 
     for(idx=0; idx < 4; idx++)
     {
-      #if defined __ZPU__
-        temp = (temp << 8) | (unsigned int)getserial();
-      #elif defined __K64F__
-        temp = (temp << 8) | (unsigned int)usb_serial_getchar();
-      #else
-        #error "No target processor defined, use __ZPU__ or __K64F__"
-      #endif
+        temp = (temp << 8) | (unsigned int)getKey(1);
     }
 
     return(temp);
@@ -247,6 +244,50 @@ void rtcGet(RTC *time)
   #endif
 
     printf("%d/%d/%d %d:%d:%d.%d%d\n",time->year, time->month, time->day, time->hour, time->min, time->sec, time->msec, time->usec);
+}
+
+// Method to get a key from the input device (serial port/keyboard) according to the host for which this code is compiled.
+// Input:  mode = 0 - No blocking, standard keyboard.
+//                1 - blocking, standard keyboard.
+//                2 - No blocking, ansi keyboard.       -- Sharp MZ build only.
+//                3 - blocking, ansi keyboard.          -- Sharp MZ build only.
+// Return: -1 = no key pressed.
+//        ASCII value when key pressed.
+//
+int8_t getKey(uint8_t mode)
+{
+    int8_t  keyIn;
+
+    do {
+    #if defined __K64F__
+        int usb_serial_getchar(void);
+        keyIn = usb_serial_getchar();
+    #elif defined __ZPU__
+      #if defined __SHARPMZ__
+
+    	keyIn = mzGetKey(mode);
+      #else
+        if(mode == 1 || mode == 3)
+        {
+            keyIn = getserial();
+        } else
+        {
+            keyIn = getserial_nonblocking();
+        }
+      #endif
+    #else
+      #error "Target CPU not defined, use __ZPU__ or __K64F__"
+    #endif
+    } while(keyIn == -1 && (mode == 1 || mode == 3));
+
+    return(keyIn);
+}
+
+// Method as above but non blocking.
+//
+int8_t getKeyNonBlocking(void)
+{
+    return(getKey(0));
 }
 
 #ifdef __cplusplus

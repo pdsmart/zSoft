@@ -39,6 +39,290 @@
     extern "C" {
 #endif
 
+// Base addresses and sizes within the FPGA/Video Controller.
+#define Z80_BUS_BASE_ADDR            0xD00000
+#define VIDEO_VRAM_BASE_ADDR         Z80_BUS_BASE_ADDR + 0x18D000        // Base address of the character video RAM using direct addressing.
+#define VIDEO_VRAM_SIZE              0x800                               // Size of the video RAM.
+#define VIDEO_ARAM_BASE_ADDR         Z80_BUS_BASE_ADDR + 0x18D800        // Base address of the character attribute RAM using direct addressing.
+#define VIDEO_ARAM_SIZE              0x800                               // Size of the attribute RAM.
+#define VIDEO_IO_BASE_ADDR           Z80_BUS_BASE_ADDR + 0x190000
+        
+// Memory addresses of I/O and Memory mapped I/O in the Video Controller which are mapped to direct memory accessed addresses.
+//
+#define VC_8BIT_BASE_ADDR            Z80_BUS_BASE_ADDR + 0x130000
+#define VC_32BIT_BASE_ADDR           Z80_BUS_BASE_ADDR + 0x140000
+// 8 Bit access addresses - used for writing, read can only be on a 32bit boundary with lower address lines set to 00. Writing can write upto 4 consecutive addresses.
+#define VCADDR_8BIT_PALSLCTOFF       VC_8BIT_BASE_ADDR + 0xD3            // Set the palette slot Off position to be adjusted.
+#define VCADDR_8BIT_PALSLCTON        VC_8BIT_BASE_ADDR + 0xD4            // Set the palette slot On position to be adjusted.
+#define VCADDR_8BIT_PALSETRED        VC_8BIT_BASE_ADDR + 0xD5            // Set the red palette value according to the PALETTE_PARAM_SEL address.
+#define VCADDR_8BIT_PALSETGREEN      VC_8BIT_BASE_ADDR + 0xD6            // Set the green palette value according to the PALETTE_PARAM_SEL address.
+#define VCADDR_8BIT_PALSETBLUE       VC_8BIT_BASE_ADDR + 0xD7            // Set the blue palette value according to the PALETTE_PARAM_SEL address.
+#define VCADDR_8BIT_SYSCTRL          VC_8BIT_BASE_ADDR + 0xF0            // System board control register. [2:0] - 000 MZ80A Mode, 2MHz CPU/Bus, 001 MZ80B Mode, 4MHz CPU/Bus, 010 MZ700 Mode, 3.54MHz CPU/Bus.
+#define VCADDR_8BIT_VMBORDER         VC_8BIT_BASE_ADDR + 0xF3            // Select VGA Border colour attributes. Bit 2 = Red, 1 = Green, 0 = Blue.
+#define VCADDR_8BIT_GRAMMODE         VC_8BIT_BASE_ADDR + 0xF4            // MZ80B Graphics mode.  Bit 0 = 0, Write to Graphics RAM I, Bit 0 = 1, Write to Graphics RAM II. Bit 1 = 1, blend Graphics RAM I output on display, Bit 2 = 1, blend Graphics RAM II output on display.
+#define VCADDR_8BIT_VMPALETTE        VC_8BIT_BASE_ADDR + 0xF5            // Select Palette:
+                                                                         //    0xF5 sets the palette. The Video Module supports 4 bit per colour output but there is only enough RAM for 1 bit per colour so the pallette is used to change the colours output.
+                                                                         //      Bits [7:0] defines the pallete number. This indexes a lookup table which contains the required 4bit output per 1bit input.
+                                                                         // GPU:
+#define VCADDR_8BIT_GPUPARAM         VC_8BIT_BASE_ADDR + 0xF6            //    0xF6 set parameters. Store parameters in a long word to be used by the graphics command processor.
+                                                                         //      The parameter word is 128 bit and each write to the parameter word shifts left by 8 bits and adds the new byte at bits 7:0.
+#define VCADDR_8BIT_GPUCMD           VC_8BIT_BASE_ADDR + 0xF7            //    0xF7 set the graphics processor unit commands.
+#define VCADDR_8BIT_GPUSTATUS        VC_8BIT_BASE_ADDR + 0xF7            //         [7;1] - FSM state, [0] - 1 = busy, 0 = idle
+                                                                         //      Bits [5:0] - 0 = Reset parameters.
+                                                                         //                   1 = Clear to val. Start Location (16 bit), End Location (16 bit), Red Filter, Green Filter, Blue Filter
+                                                                         // 
+#define VCADDR_8BIT_VMCTRL           VC_8BIT_BASE_ADDR + 0xF8            // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
+#define VCADDR_8BIT_VMGRMODE         VC_8BIT_BASE_ADDR + 0xF9            // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
+#define VCADDR_8BIT_VMREDMASK        VC_8BIT_BASE_ADDR + 0xFA            // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define VCADDR_8BIT_VMGREENMASK      VC_8BIT_BASE_ADDR + 0xFB            // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define VCADDR_8BIT_VMBLUEMASK       VC_8BIT_BASE_ADDR + 0xFC            // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define VCADDR_8BIT_VMPAGE           VC_8BIT_BASE_ADDR + 0xFD            // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
+#define VCADDR_8BIT_KEYPA            VC_8BIT_BASE_ADDR + 0xE000          // VideoModule 8255 Port A
+#define VCADDR_8BIT_KEYPB            VC_8BIT_BASE_ADDR + 0xE001          // VideoModule 8255 Port B
+#define VCADDR_8BIT_KEYPC            VC_8BIT_BASE_ADDR + 0xE002          // VideoModule 8255 Port C
+#define VCADDR_8BIT_KEYPF            VC_8BIT_BASE_ADDR + 0xE003          // VideoModule 8255 Mode Control
+#define VCADDR_8BIT_CSTR             VC_8BIT_BASE_ADDR + 0xE002          // VideoModule 8255 Port C
+#define VCADDR_8BIT_CSTPT            VC_8BIT_BASE_ADDR + 0xE003          // VideoModule 8255 Mode Control
+#define VCADDR_8BIT_CONT0            VC_8BIT_BASE_ADDR + 0xE004          // VideoModule 8253 Counter 0
+#define VCADDR_8BIT_CONT1            VC_8BIT_BASE_ADDR + 0xE005          // VideoModule 8253 Counter 1
+#define VCADDR_8BIT_CONT2            VC_8BIT_BASE_ADDR + 0xE006          // VideoModule 8253 Counter 1
+#define VCADDR_8BIT_CONTF            VC_8BIT_BASE_ADDR + 0xE007          // VideoModule 8253 Mode Control
+#define VCADDR_8BIT_SUNDG            VC_8BIT_BASE_ADDR + 0xE008          // Register for reading the tempo timer status (cursor flash). horizontal blank and switching sound on/off.
+#define VCADDR_8BIT_TEMP             VC_8BIT_BASE_ADDR + 0xE008          // As above, different name used in original source when writing.
+#define VCADDR_8BIT_MEMSW            VC_8BIT_BASE_ADDR + 0xE00C          // Memory swap, 0000->C000, C000->0000
+#define VCADDR_8BIT_MEMSWR           VC_8BIT_BASE_ADDR + 0xE010          // Reset memory swap.
+#define VCADDR_8BIT_INVDSP           VC_8BIT_BASE_ADDR + 0xE014          // Invert display.
+#define VCADDR_8BIT_NRMDSP           VC_8BIT_BASE_ADDR + 0xE015          // Return display to normal.
+#define VCADDR_8BIT_SCLDSP           VC_8BIT_BASE_ADDR + 0xE200          // Hardware scroll, a read to each location adds 8 to the start of the video access address therefore creating hardware scroll. 00 - reset to power up
+#define VCADDR_8BIT_SCLBASE          VC_8BIT_BASE_ADDR + 0xE2            // High byte scroll base.
+      
+// 32 Bit access addresses - used for reading and writing, read and write can only be 1 byte to 1 address.
+#define VCADDR_32BIT_PALSLCTOFF      VC_32BIT_BASE_ADDR + (4*0xD3)       // Set the palette slot Off position to be adjusted.
+#define VCADDR_32BIT_PALSLCTON       VC_32BIT_BASE_ADDR + (4*0xD4)       // Set the palette slot On position to be adjusted.
+#define VCADDR_32BIT_PALSETRED       VC_32BIT_BASE_ADDR + (4*0xD5)       // Set the red palette value according to the PALETTE_PARAM_SEL address.
+#define VCADDR_32BIT_PALSETGREEN     VC_32BIT_BASE_ADDR + (4*0xD6)       // Set the green palette value according to the PALETTE_PARAM_SEL address.
+#define VCADDR_32BIT_PALSETBLUE      VC_32BIT_BASE_ADDR + (4*0xD7)       // Set the blue palette value according to the PALETTE_PARAM_SEL address.
+#define VCADDR_32BIT_SYSCTRL         VC_32BIT_BASE_ADDR + (4*0xF0)       // System board control register. [2:0] - 000 MZ80A Mode, 2MHz CPU/Bus, 001 MZ80B Mode, 4MHz CPU/Bus, 010 MZ700 Mode, 3.54MHz CPU/Bus.
+#define VCADDR_32BIT_VMBORDER        VC_32BIT_BASE_ADDR + (4*0xF3)       // Select VGA Border colour attributes. Bit 2 = Red, 1 = Green, 0 = Blue.
+#define VCADDR_32BIT_GRAMMODE        VC_32BIT_BASE_ADDR + (4*0xF4)       // MZ80B Graphics mode.  Bit 0 = 0, Write to Graphics RAM I, Bit 0 = 1, Write to Graphics RAM II. Bit 1 = 1, blend Graphics RAM I output on display, Bit 2 = 1, blend Graphics RAM II output on display.
+#define VCADDR_32BIT_VMPALETTE       VC_32BIT_BASE_ADDR + (4*0xF5)       // Select Palette:
+                                                                         //    0xF5 sets the palette. The Video Module supports 4 bit per colour output but there is only enough RAM for 1 bit per colour so the pallette is used to change the colours output.
+                                                                         //      Bits [7:0] defines the pallete number. This indexes a lookup table which contains the required 4bit output per 1bit input.
+                                                                         // GPU:
+#define VCADDR_32BIT_GPUPARAM        VC_32BIT_BASE_ADDR + (4*0xF6)       //    0xF6 set parameters. Store parameters in a long word to be used by the graphics command processor.
+                                                                         //      The parameter word is 128 bit and each write to the parameter word shifts left by 8 bits and adds the new byte at bits 7:0.
+#define VCADDR_32BIT_GPUCMD          VC_32BIT_BASE_ADDR + (4*0xF7)       //    0xF7 set the graphics processor unit commands.
+#define VCADDR_32BIT_GPUSTATUS       VC_32BIT_BASE_ADDR + (4*0xF7)       //         [7;1] - FSM state, [0] - 1 = busy, 0 = idle
+                                                                         //      Bits [5:0] - 0 = Reset parameters.
+                                                                         //                   1 = Clear to val. Start Location (16 bit), End Location (16 bit), Red Filter, Green Filter, Blue Filter
+                                                                         // 
+#define VCADDR_32BIT_VMCTRL          VC_32BIT_BASE_ADDR + (4*0xF8)       // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
+                                                                         //                                [4] defines the colour mode, 0 = mono, 1 = colour - ignored on certain modes. [5] defines wether PCGRAM is enabled, 0 = disabled, 1 = enabled. [7:6] define the VGA mode.
+#define VCADDR_32BIT_VMGRMODE        VC_32BIT_BASE_ADDR + (4*0xF9)       // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
+#define VCADDR_32BIT_VMREDMASK       VC_32BIT_BASE_ADDR + (4*0xFA)       // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define VCADDR_32BIT_VMGREENMASK     VC_32BIT_BASE_ADDR + (4*0xFB)       // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define VCADDR_32BIT_VMBLUEMASK      VC_32BIT_BASE_ADDR + (4*0xFC)       // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define VCADDR_32BIT_VMPAGE          VC_32BIT_BASE_ADDR + (4*0xFD)       // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
+#define VCADDR_32BIT_KEYPA           VC_32BIT_BASE_ADDR + (4*0xE000)     // Video Module 8255 Port A
+#define VCADDR_32BIT_KEYPB           VC_32BIT_BASE_ADDR + (4*0xE001)     // Video Module 8255 Port B
+#define VCADDR_32BIT_KEYPC           VC_32BIT_BASE_ADDR + (4*0xE002)     // Video Module 8255 Port C
+#define VCADDR_32BIT_KEYPF           VC_32BIT_BASE_ADDR + (4*0xE003)     // Video Module 8255 Mode Control
+#define VCADDR_32BIT_CSTR            VC_32BIT_BASE_ADDR + (4*0xE002)     // Video Module 8255 Port C
+#define VCADDR_32BIT_CSTPT           VC_32BIT_BASE_ADDR + (4*0xE003)     // Video Module 8255 Mode Control
+#define VCADDR_32BIT_CONT0           VC_32BIT_BASE_ADDR + (4*0xE004)     // Video Module 8253 Counter 0
+#define VCADDR_32BIT_CONT1           VC_32BIT_BASE_ADDR + (4*0xE005)     // Video Module 8253 Counter 1
+#define VCADDR_32BIT_CONT2           VC_32BIT_BASE_ADDR + (4*0xE006)     // Video Module 8253 Counter 1
+#define VCADDR_32BIT_CONTF           VC_32BIT_BASE_ADDR + (4*0xE007)     // Video Module 8253 Mode Control
+#define VCADDR_32BIT_SUNDG           VC_32BIT_BASE_ADDR + (4*0xE008)     // Register for reading the tempo timer status (cursor flash). horizontal blank and switching sound on/off.
+#define VCADDR_32BIT_TEMP            VC_32BIT_BASE_ADDR + (4*0xE008)     // As above, different name used in original source when writing.
+#define VCADDR_32BIT_MEMSW           VC_32BIT_BASE_ADDR + (4*0xE00C)     // Memory swap, 0000->C000, C000->0000
+#define VCADDR_32BIT_MEMSWR          VC_32BIT_BASE_ADDR + (4*0xE010)     // Reset memory swap.
+#define VCADDR_32BIT_INVDSP          VC_32BIT_BASE_ADDR + (4*0xE014)     // Invert display.
+#define VCADDR_32BIT_NRMDSP          VC_32BIT_BASE_ADDR + (4*0xE015)     // Return display to normal.
+#define VCADDR_32BIT_SCLDSP          VC_32BIT_BASE_ADDR + (4*0xE200)     // Hardware scroll, a read to each location adds 8 to the start of the video access address therefore creating hardware scroll. 00 - reset to power up
+#define VCADDR_32BIT_SCLBASE         VC_32BIT_BASE_ADDR + (4*0xE2)       // High byte scroll base.     
+
+#define VC_MAX_ROWS                  25                                  // Maximum number of rows on display.
+#define VC_MAX_COLUMNS               80                                  // Maximum number of columns on display.
+#define VC_MAX_BUFFER_ROWS           50                                  // Maximum number of backing store rows for scrollback feature.
+#define VC_DISPLAY_BUFFER_SIZE       VC_MAX_COLUMNS * VC_MAX_BUFFER_ROWS // Size of the display buffer for scrollback.
+
+// Memory mapped I/O on the mainboard.
+//
+#define MB_8BIT_BASE_ADDR            Z80_BUS_BASE_ADDR + 0x080000
+#define MB_32BIT_BASE_ADDR           Z80_BUS_BASE_ADDR + 0x100000
+#define MB_32BIT_IO_ADDR             Z80_BUS_BASE_ADDR + 0x0C0000
+
+// 8 Bit access addresses - used for writing and reading on a 32bit boundary with lower address lines set to 00. Writing is 1 byte only.
+#define MBADDR_8BIT_KEYPA            MB_8BIT_BASE_ADDR + (4*0xE000)      // Mainboard 8255 Port A
+#define MBADDR_8BIT_KEYPB            MB_8BIT_BASE_ADDR + (4*0xE001)      // Mainboard 8255 Port B
+#define MBADDR_8BIT_KEYPC            MB_8BIT_BASE_ADDR + (4*0xE002)      // Mainboard 8255 Port C
+#define MBADDR_8BIT_KEYPF            MB_8BIT_BASE_ADDR + (4*0xE003)      // Mainboard 8255 Mode Control
+#define MBADDR_8BIT_CSTR             MB_8BIT_BASE_ADDR + (4*0xE002)      // Mainboard 8255 Port C
+#define MBADDR_8BIT_CSTPT            MB_8BIT_BASE_ADDR + (4*0xE003)      // Mainboard 8255 Mode Control
+#define MBADDR_8BIT_CONT0            MB_8BIT_BASE_ADDR + (4*0xE004)      // Mainboard 8253 Counter 0
+#define MBADDR_8BIT_CONT1            MB_8BIT_BASE_ADDR + (4*0xE005)      // Mainboard 8253 Counter 1
+#define MBADDR_8BIT_CONT2            MB_8BIT_BASE_ADDR + (4*0xE006)      // Mainboard 8253 Counter 1
+#define MBADDR_8BIT_CONTF            MB_8BIT_BASE_ADDR + (4*0xE007)      // Mainboard 8253 Mode Control
+#define MBADDR_8BIT_SUNDG            MB_8BIT_BASE_ADDR + (4*0xE008)      // Register for reading the tempo timer status (cursor flash). horizontal blank and switching sound on/off.
+#define MBADDR_8BIT_TEMP             MB_8BIT_BASE_ADDR + (4*0xE008)      // As above, different name used in original source when writing.
+#define MBADDR_8BIT_MEMSW            MB_8BIT_BASE_ADDR + (4*0xE00C)      // Memory swap, 0000->C000, C000->0000
+#define MBADDR_8BIT_MEMSWR           MB_8BIT_BASE_ADDR + (4*0xE010)      // Reset memory swap.
+#define MBADDR_8BIT_INVDSP           MB_8BIT_BASE_ADDR + (4*0xE014)      // Invert display.
+#define MBADDR_8BIT_NRMDSP           MB_8BIT_BASE_ADDR + (4*0xE015)      // Return display to normal.
+#define MBADDR_8BIT_SCLDSP           MB_8BIT_BASE_ADDR + (4*0xE200)      // Hardware scroll, a read to each location adds 8 to the start of the video access address therefore creating hardware scroll. 00 - reset to power up
+#define MBADDR_8BIT_SCLBASE          MB_8BIT_BASE_ADDR + (4*0xE2)        // High byte scroll base.     
+
+// 32 Bit access addresses - used for reading and writing, read and write can only be 1 byte to 1 address.
+#define MBADDR_32BIT_KEYPA           MB_32BIT_BASE_ADDR + (4*0xE000)     // Mainboard 8255 Port A
+#define MBADDR_32BIT_KEYPB           MB_32BIT_BASE_ADDR + (4*0xE001)     // Mainboard 8255 Port B
+#define MBADDR_32BIT_KEYPC           MB_32BIT_BASE_ADDR + (4*0xE002)     // Mainboard 8255 Port C
+#define MBADDR_32BIT_KEYPF           MB_32BIT_BASE_ADDR + (4*0xE003)     // Mainboard 8255 Mode Control
+#define MBADDR_32BIT_CSTR            MB_32BIT_BASE_ADDR + (4*0xE002)     // Mainboard 8255 Port C
+#define MBADDR_32BIT_CSTPT           MB_32BIT_BASE_ADDR + (4*0xE003)     // Mainboard 8255 Mode Control
+#define MBADDR_32BIT_CONT0           MB_32BIT_BASE_ADDR + (4*0xE004)     // Mainboard 8253 Counter 0
+#define MBADDR_32BIT_CONT1           MB_32BIT_BASE_ADDR + (4*0xE005)     // Mainboard 8253 Counter 1
+#define MBADDR_32BIT_CONT2           MB_32BIT_BASE_ADDR + (4*0xE006)     // Mainboard 8253 Counter 1
+#define MBADDR_32BIT_CONTF           MB_32BIT_BASE_ADDR + (4*0xE007)     // Mainboard 8253 Mode Control
+#define MBADDR_32BIT_SUNDG           MB_32BIT_BASE_ADDR + (4*0xE008)     // Register for reading the tempo timer status (cursor flash). horizontal blank and switching sound on/off.
+#define MBADDR_32BIT_TEMP            MB_32BIT_BASE_ADDR + (4*0xE008)     // As above, different name used in original source when writing.
+#define MBADDR_32BIT_MEMSW           MB_32BIT_BASE_ADDR + (4*0xE00C)     // Memory swap, 0000->C000, C000->0000
+#define MBADDR_32BIT_MEMSWR          MB_32BIT_BASE_ADDR + (4*0xE010)     // Reset memory swap.
+#define MBADDR_32BIT_INVDSP          MB_32BIT_BASE_ADDR + (4*0xE014)     // Invert display.
+#define MBADDR_32BIT_NRMDSP          MB_32BIT_BASE_ADDR + (4*0xE015)     // Return display to normal.
+#define MBADDR_32BIT_SCLDSP          MB_32BIT_BASE_ADDR + (4*0xE200)     // Hardware scroll, a read to each location adds 8 to the start of the video access address therefore creating hardware scroll. 00 - reset to power up
+#define MBADDR_32BIT_SCLBASE         MB_32BIT_BASE_ADDR + (4*0xE2)       // High byte scroll base.     
+
+// Z80 I/O addresses - mapped into the ZPU direct addressable memory space, 4 bytes = 1 byte in the Z80 I/O range.
+#define MBADDR_8BIT_IOW_CTRLLATCH    MB_32BIT_IO_ADDR + 0x60             // Control latch which specifies the Memory Model/mode.
+#define MBADDR_8BIT_IOW_SETXMHZ      MB_32BIT_IO_ADDR + 0x62             // Switch to alternate CPU frequency provided by K64F.
+#define MBADDR_8BIT_IOW_SET2MHZ      MB_32BIT_IO_ADDR + 0x64             // Switch to system CPU frequency.
+#define MBADDR_8BIT_IOW_CLKSELRD     MB_32BIT_IO_ADDR + 0x66             // Read the status of the clock select, ie. which clock is connected to the CPU.
+#define MBADDR_8BIT_IOW_SVCREQ       MB_32BIT_IO_ADDR + 0x68             // Service request from the Z80 to be provided by the K64F.
+#define MBADDR_8BIT_IOW_SYSREQ       MB_32BIT_IO_ADDR + 0x6A             // System request from the Z80 to be provided by the K64F.
+#define MBADDR_8BIT_IOW_CPUCFG       MB_32BIT_IO_ADDR + 0x6C             // Version 2.2 CPU configuration register.
+#define MBADDR_8BIT_IOW_CPUSTATUS    MB_32BIT_IO_ADDR + 0x6C             // Version 2.2 CPU runtime status register.
+#define MBADDR_8BIT_IOW_CPUINFO      MB_32BIT_IO_ADDR + 0x6D             // Version 2.2 CPU information register.
+#define MBADDR_8BIT_IOW_CPLDCFG      MB_32BIT_IO_ADDR + 0x6E             // Version 2.1 CPLD configuration register.
+#define MBADDR_8BIT_IOW_CPLDSTATUS   MB_32BIT_IO_ADDR + 0x6E             // Version 2.1 CPLD status register.
+#define MBADDR_8BIT_IOW_CPLDINFO     MB_32BIT_IO_ADDR + 0x6F             // Version 2.1 CPLD version information register.
+#define MBADDR_8BIT_IOW_SYSCTRL      MB_32BIT_IO_ADDR + 0xF0             // System board control register. [2:0] - 000 MZ80A Mode, 2MHz CPU/Bus, 001 MZ80B Mode, 4MHz CPU/Bus, 010 MZ700 Mode, 3.54MHz CPU/Bus.
+#define MBADDR_8BIT_IOW_GRAMMODE     MB_32BIT_IO_ADDR + 0xF4             // MZ80B Graphics mode.  Bit 0 = 0, Write to Graphics RAM I, Bit 0 = 1, Write to Graphics RAM II. Bit 1 = 1, blend Graphics RAM I output on display, Bit 2 = 1, blend Graphics RAM II output on display.
+#define MBADDR_8BIT_IOW_VMCTRL       MB_32BIT_IO_ADDR + 0xF8             // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
+#define MBADDR_8BIT_IOW_VMGRMODE     MB_32BIT_IO_ADDR + 0xF9             // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
+#define MBADDR_8BIT_IOW_VMREDMASK    MB_32BIT_IO_ADDR + 0xFA             // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define MBADDR_8BIT_IOW_VMGREENMASK  MB_32BIT_IO_ADDR + 0xFB             // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define MBADDR_8BIT_IOW_VMBLUEMASK   MB_32BIT_IO_ADDR + 0xFC             // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define MBADDR_8BIT_IOW_VMPAGE       MB_32BIT_IO_ADDR + 0xFD             // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
+
+#define MBADDR_32BIT_IOR_CTRLLATCH   MB_32BIT_IO_ADDR + (4*0x60)         // Control latch which specifies the Memory Model/mode.
+#define MBADDR_32BIT_IOR_SETXMHZ     MB_32BIT_IO_ADDR + (4*0x62)         // Switch to alternate CPU frequency provided by K64F.
+#define MBADDR_32BIT_IOR_SET2MHZ     MB_32BIT_IO_ADDR + (4*0x64)         // Switch to system CPU frequency.
+#define MBADDR_32BIT_IOR_CLKSELRD    MB_32BIT_IO_ADDR + (4*0x66)         // Read the status of the clock select, ie. which clock is connected to the CPU.
+#define MBADDR_32BIT_IOR_SVCREQ      MB_32BIT_IO_ADDR + (4*0x68)         // Service request from the Z80 to be provided by the K64F.
+#define MBADDR_32BIT_IOR_SYSREQ      MB_32BIT_IO_ADDR + (4*0x6A)         // System request from the Z80 to be provided by the K64F.
+#define MBADDR_32BIT_IOR_CPUCFG      MB_32BIT_IO_ADDR + (4*0x6C)         // Version 2.2 CPU configuration register.
+#define MBADDR_32BIT_IOR_CPUSTATUS   MB_32BIT_IO_ADDR + (4*0x6C)         // Version 2.2 CPU runtime status register.
+#define MBADDR_32BIT_IOR_CPUINFO     MB_32BIT_IO_ADDR + (4*0x6D)         // Version 2.2 CPU information register.
+#define MBADDR_32BIT_IOR_CPLDCFG     MB_32BIT_IO_ADDR + (4*0x6E)         // Version 2.1 CPLD configuration register.
+#define MBADDR_32BIT_IOR_CPLDSTATUS  MB_32BIT_IO_ADDR + (4*0x6E)         // Version 2.1 CPLD status register.
+#define MBADDR_32BIT_IOR_CPLDINFO    MB_32BIT_IO_ADDR + (4*0x6F)         // Version 2.1 CPLD version information register.
+#define MBADDR_32BIT_IOR_SYSCTRL     MB_32BIT_IO_ADDR + (4*0xF0)         // System board control register. [2:0] - 000 MZ80A Mode, 2MHz CPU/Bus, 001 MZ80B Mode, 4MHz CPU/Bus, 010 MZ700 Mode, 3.54MHz CPU/Bus.
+#define MBADDR_32BIT_IOR_GRAMMODE    MB_32BIT_IO_ADDR + (4*0xF4)         // MZ80B Graphics mode.  Bit 0 = 0, Write to Graphics RAM I, Bit 0 = 1, Write to Graphics RAM II. Bit 1 = 1, blend Graphics RAM I output on display, Bit 2 = 1, blend Graphics RAM II output on display.
+#define MBADDR_32BIT_IOR_VMCTRL      MB_32BIT_IO_ADDR + (4*0xF8)         // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
+#define MBADDR_32BIT_IOR_VMGRMODE    MB_32BIT_IO_ADDR + (4*0xF9)         // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
+#define MBADDR_32BIT_IOR_VMREDMASK   MB_32BIT_IO_ADDR + (4*0xFA)         // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define MBADDR_32BIT_IOR_VMGREENMASK MB_32BIT_IO_ADDR + (4*0xFB)         // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define MBADDR_32BIT_IOR_VMBLUEMASK  MB_32BIT_IO_ADDR + (4*0xFC)         // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define MBADDR_32BIT_IOR_VMPAGE      MB_32BIT_IO_ADDR + (4*0xFD)         // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
+
+
+
+
+        // Y+000000:Y+07FFFF = 512K Static RAM on the tranZPUter board. All reads are 32bit, all writes are 8, 16 or 32bit wide on word boundary.
+        // Y+080000:Y+0BFFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 1 byte at a time. The physical address is word aligned per byte, so 4 bytes on the ZPU address space = 1
+        //                     byte on the Z80 address space. ie. 0x00780 ZPU = 0x0078 Z80.
+        // Y+0C0000:Y+0FFFFF = 64K I/O space on the host mainboard or the underlying CPLD/FPGA. 64K address space is due to the Z80 ability to address 64K via the Accumulator being set in 15:8 and the port in 7:0.
+        //                     The ZPU, via a direct address will mimic this ability for hardware which requires it. ie. A write to 0x3F with 0x10 in the accumulator would yield an address of 0xF103f.
+        //                     All reads are 8 bit, writes are 8, 16 or 32bit wide on word boundary. The physical address is word aligned per byte, so 4 bytes on the ZPU address space = 1
+        //                     byte on the Z80 address space. ie. 0x00780 ZPU = 0x0078 Z80.
+        //
+        // Y+100000:Y+10FFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 4 bytes at a time, a 32 bit read will return 4 consecutive bytes,1start of read must be on a 32bit word boundary.
+        // Y+180000:Y+1FFFFF = 512 Video address space - the video processor memory will be directly mapped into this space as follows:
+        //                     0x180000 - 0x18FFFF = 64K Video / Attribute RAM
+        //                     0x190000 - 0x19FFFF = 64K Character Generator ROM/PCG RAM.
+        //                     0x1A0000 - 0x1BFFFF = 128K Red Framebuffer address space.
+        //                     0x1C0000 - 0x1DFFFF = 128K Blue Framebuffer address space.
+        //                     0x1E0000 - 0x1FFFFF = 128K Green Framebuffer address space.
+        //                     This invokes memory read/write operations but the Video Read/Write signal is directly set, MREQ is not set. This 
+        //                     allows direct writes to be made to the FPGA video logic, bypassing the CPLD memory manager.
+        //                     All reads are 32bit, writes are 8, 16 or 32bit wide on word boundary.
+        //
+        // 00000000 - Normal Sharp MZ behaviour
+        // 00001000 - Memory and I/O ports mapped into direct addressable memory location.
+        //
+        //            A15 - A8 A7 -  A0
+        //            I/O registers are mapped to the bottom 256 bytes mirroring the I/O address.
+        //            00000000 11010000 - 0xD0 - Set the parameter number to update.
+        //            00000000 11010001 - 0xD1 - Update the lower selected parameter byte.
+        //            00000000 11010010 - 0xD2 - Update the upper selected parameter byte.
+        //            00000000 11010011 - 0xD3 - set the palette slot Off position to be adjusted.
+        //            00000000 11010100 - 0xD4 - set the palette slot On position to be adjusted.
+        //            00000000 11010101 - 0xD5 - set the red palette value according to the PALETTE_PARAM_SEL address.
+        //            00000000 11010110 - 0xD6 - set the green palette value according to the PALETTE_PARAM_SEL address.
+        //            00000000 11010111 - 0xD7 - set the blue palette value according to the PALETTE_PARAM_SEL address.
+        //
+        //            00000000 11100000 - 0xE0 MZ80B PPI
+        //            00000000 11100001 - 0xE4 MZ80B PIT
+        //            00000000 11100010 - 0xE0 MZ80B PIO
+        //
+        //            00000000 11110000 - 
+        //            00000000 11110001 - 
+        //            00000000 11110010 - 
+        //            00000000 11110011 - 0xF3 set the VGA border colour.
+        //            00000000 11110100 - 0xF4 set the MZ80B video in/out mode.
+        //            00000000 11110101 - 0xF5 sets the palette.
+        //            00000000 11110110 - 0xF6 set parameters.
+        //            00000000 11110111 - 0xF7 set the graphics processor unit commands.
+        //            00000000 11111000 - 0xF6 set parameters.
+        //            00000000 11111001 - 0xF7 set the graphics processor unit commands.
+        //            00000000 11111010 - 0xF8 set the video mode. 
+        //            00000000 11111011 - 0xF9 set the graphics mode.
+        //            00000000 11111100 - 0xFA set the Red bit mask
+        //            00000000 11111101 - 0xFB set the Green bit mask
+        //            00000000 11111110 - 0xFC set the Blue bit mask
+        //            00000000 11111111 - 0xFD set the Video memory page in block C000:FFFF 
+        //
+        //            Memory registers are mapped to the E000 region as per base machines.
+        //            11100000 00010010 - Program Character Generator RAM. E010 - Write cycle (Read cycle = reset memory swap).
+        //            11100000 00010100 - Normal display select.
+        //            11100000 00010101 - Inverted display select.
+        //            11100010 00000000 - Scroll display register. E200 - E2FF
+        //                     11111111
+        //
+        // 00001001 - Video/Attribute RAM. 64K Window.
+        //            11010000 00000000 - Video RAM
+        //            11010111 11111111
+        //            11011000 00000000 - Attribute RAM
+        //            11011111 11111111
+        //
+        // 00001010 - Character Generator RAM
+        //            00000000 00000000 - CGROM
+        //            00001111 11111111 
+        //            00010000 00000000 - CGRAM
+        //            00011111 11111111
+        //
+        // 00001100 - Red framebuffer.
+        //            00000000 00000000 - Red pixel addressed framebuffer. Also MZ-80B GRAM I memory in lower 8K
+        //            00111111 11111111
+        // 00001101 - Blue framebuffer.
+        //            00000000 00000000 - Blue pixel addressed framebuffer. Also MZ-80B GRAM II memory in lower 8K
+        //            00111111 11111111
+        // 00001110 - Green framebuffer.
+        //            00000000 00000000 - Green pixel addressed framebuffer.
+        //            00111111 11111111
+        //
+
 // tranZPUter Memory Modes - select one of the 32 possible memory models using these constants.
 //
 #define TZMM_ORIG                    0x00                                // Original Sharp MZ80A mode, no tranZPUter features are selected except the I/O control registers (default: 0x60-063).
@@ -108,6 +392,64 @@
 #define CPUMODE_IS_SOFT_AVAIL        0x040                               // Marker to indicate if the underlying FPGA can support soft CPU's.
 #define CPUMODE_IS_SOFT_MASK         0x0C0                               // Mask to filter out the Soft CPU availability flags.
 
+// Video Module control bits.
+#define SYSMODE_MZ80A                0x00                                // System board mode MZ80A, 2MHz CPU/Bus.
+#define SYSMODE_MZ80B                0x01                                // System board mode MZ80B, 4MHz CPU/Bus.
+#define SYSMODE_MZ700                0x02                                // System board mode MZ700, 3.54MHz CPU/Bus.
+#define VMMODE_MASK                  0xF8                                // Mask to mask out video mode.
+#define VMMODE_MZ80K                 0x00                                // Video mode = MZ80K
+#define VMMODE_MZ80C                 0x01                                // Video mode = MZ80C
+#define VMMODE_MZ1200                0x02                                // Video mode = MZ1200
+#define VMMODE_MZ80A                 0x03                                // Video mode = MZ80A
+#define VMMODE_MZ700                 0x04                                // Video mode = MZ700
+#define VMMODE_MZ800                 0x05                                // Video mode = MZ800
+#define VMMODE_MZ80B                 0x06                                // Video mode = MZ80B
+#define VMMODE_MZ2000                0x07                                // Video mode = MZ2000
+#define VMMODE_80CHAR                0x08                                // Enable 80 character display.
+#define VMMODE_80CHAR_MASK           0xF7                                // Mask to filter out display width control bit.
+#define VMMODE_COLOUR                0x10                                // Enable colour display.
+#define VMMODE_COLOUR_MASK           0xEF                                // Mask to filter out colour control bit.
+#define VMMODE_PCGRAM                0x20                                // Enable PCG RAM.
+#define VMMODE_VGA_MASK              0x3F                                // Mask to filter out the VGA mode bits.
+#define VMMODE_VGA_OFF               0x00                                // Set VGA mode off, external monitor is driven by standard internal signals.
+#define VMMODE_VGA_640x480           0x40                                // Set external monitor to VGA 640x480 @ 60Hz mode.
+#define VMMODE_VGA_1024x768          0x80                                // Set external monitor to VGA 1024x768 @ 60Hz mode.
+#define VMMODE_VGA_800x600           0xC0                                // Set external monitor to VGA 800x600 @ 60Hz mode.
+
+// VGA mode border control constants.
+//
+#define VMBORDER_BLACK               0x00                                // VGA has a black border.
+#define VMBORDER_BLUE                0x01                                // VGA has a blue border.
+#define VMBORDER_RED                 0x02                                // VGA has a red border.
+#define VMBORDER_PURPLE              0x03                                // VGA has a purple border.
+#define VMBORDER_GREEN               0x04                                // VGA has a green border.
+#define VMBORDER_CYAN                0x05                                // VGA has a cyan border.
+#define VMBORDER_YELLOW              0x06                                // VGA has a yellow border.
+#define VMBORDER_WHITE               0x07                                // VGA has a white border.
+#define VMBORDER_MASK                0xF8                                // Mask to filter out current border setting.
+
+// Sharp MZ colour attributes.
+#define VMATTR_FG_BLACK              0x00                                // Foreground black character attribute.
+#define VMATTR_FG_BLUE               0x10                                // Foreground blue character attribute.
+#define VMATTR_FG_RED                0x20                                // Foreground red character attribute.
+#define VMATTR_FG_PURPLE             0x30                                // Foreground purple character attribute.
+#define VMATTR_FG_GREEN              0x40                                // Foreground green character attribute.
+#define VMATTR_FG_CYAN               0x50                                // Foreground cyan character attribute.
+#define VMATTR_FG_YELLOW             0x60                                // Foreground yellow character attribute.
+#define VMATTR_FG_WHITE              0x70                                // Foreground white character attribute.
+#define VMATTR_FG_MASKOUT            0x8F                                // Mask to filter out foreground attribute.
+#define VMATTR_FG_MASKIN             0x70                                // Mask to filter out foreground attribute.
+#define VMATTR_BG_BLACK              0x00                                // Background black character attribute.
+#define VMATTR_BG_BLUE               0x01                                // Background blue character attribute.
+#define VMATTR_BG_RED                0x02                                // Background red character attribute.
+#define VMATTR_BG_PURPLE             0x03                                // Background purple character attribute.
+#define VMATTR_BG_GREEN              0x04                                // Background green character attribute.
+#define VMATTR_BG_CYAN               0x05                                // Background cyan character attribute.
+#define VMATTR_BG_YELLOW             0x06                                // Background yellow character attribute.
+#define VMATTR_BG_WHITE              0x07                                // Background white character attribute.
+#define VMATTR_BG_MASKOUT            0xF8                                // Mask to filter out background attribute.
+#define VMATTR_BG_MASKIN             0x07                                // Mask to filter out background attribute.
+
 // Sharp MZ constants.
 //
 #define MZ_MROM_ADDR                 0x0000                              // Monitor ROM start address.
@@ -138,12 +480,15 @@
 #define TZSVC_CMD_STRUCT_ADDR_TZFS   0x0ED80                             // Address of the command structure within TZFS - exists in 64K Block 0.
 #define TZSVC_CMD_STRUCT_ADDR_CPM    0x4F560                             // Address of the command structure within CP/M - exists in 64K Block 4.
 #define TZSVC_CMD_STRUCT_ADDR_MZ700  0x6FD80                             // Address of the command structure within MZ700 compatible programs - exists in 64K Block 6.
+#define TZSVC_CMD_STRUCT_ADDR_ZOS    0x1FD80 // Z80_BUS_BASE_ADDR + 0x7FD80         // Address of the command structure for zOS use.
 #define TZSVC_CMD_STRUCT_SIZE        0x280                               // Size of the inter z80/K64 service command memory.
 #define TZSVC_CMD_SIZE               (sizeof(t_svcControl)-TZSVC_SECTOR_SIZE)
 #define TZVC_MAX_CMPCT_DIRENT_BLOCK  TZSVC_SECTOR_SIZE/TZSVC_CMPHDR_SIZE // Maximum number of directory entries per sector.
 #define TZSVC_MAX_DIR_ENTRIES        255                                 // Maximum number of files in one directory, any more than this will be ignored.
 #define TZSVC_CMPHDR_SIZE            32                                  // Compacted header size, contains everything except the comment field, padded out to 32bytes.
 #define MZF_FILLER_LEN               8                                   // Filler to pad a compacted header entry to a power of 2 length.
+#define TZSVC_RETRY_COUNT            5                                   // Number of times to retry a service request on failure.
+#define TZSVC_TIMEOUT                10000                               // Time period in milliseconds to wait for a service request to complete, expiry indicates failure.
 #define TZVC_MAX_DIRENT_BLOCK        TZSVC_SECTOR_SIZE/MZF_HEADER_SIZE   // Maximum number of directory entries per sector.
 #define TZSVC_CMD_READDIR            0x01                                // Service command to open a directory and return the first block of entries.
 #define TZSVC_CMD_NEXTDIR            0x02                                // Service command to return the next block of an open directory.
@@ -171,6 +516,9 @@
 #define TZSVC_CMD_CPU_SETZ80         0x50                                // Service command to switch to the external Z80 hard cpu.
 #define TZSVC_CMD_CPU_SETT80         0x51                                // Service command to switch to the internal T80 soft cpu.
 #define TZSVC_CMD_CPU_SETZPUEVO      0x52                                // Service command to switch to the internal ZPU Evolution cpu.
+#define TZSVC_CMD_SD_DISKINIT        0x60                                // Service command to initialise and provide raw access to the underlying SD card.
+#define TZSVC_CMD_SD_READSECTOR      0x61                                // Service command to provide raw read access to the underlying SD card.
+#define TZSVC_CMD_SD_WRITESECTOR     0x62                                // Service command to provide raw write access to the underlying SD card.
 #define TZSVC_CMD_EXIT               0x7F                                // Service command to terminate TZFS and restart the machine in original mode.
 #define TZSVC_DEFAULT_MZF_DIR        "MZF"                               // Default directory where MZF files are stored.
 #define TZSVC_DEFAULT_CAS_DIR        "CAS"                               // Default directory where BASIC CASsette files are stored.
@@ -206,6 +554,100 @@
 #define MZF_COMMENT                  0x18                                // Comment, used for details of the file or startup code.
 #define MZF_COMMENT_LEN              104                                 // Length of the comment field.
 
+
+//Common character definitions.
+#define SCROLL                       0x01                                // Set scroll direction UP.
+#define BELL                         0x07
+#define SPACE                        0x20
+#define TAB                          0x09                                // TAB ACROSS (8 SPACES FOR SD-BOARD)
+#define CR                           0x0D
+#define LF                           0x0A
+#define FF                           0x0C
+#define DELETE                       0x7F
+#define BACKS                        0x08
+#define SOH                          0x01                                // For XModem etc.
+#define EOT                          0x04
+#define ACK                          0x06
+#define NAK                          0x15
+#define NUL                          0x00
+//#define NULL                         0x00
+#define CTRL_A                       0x01
+#define CTRL_B                       0x02
+#define CTRL_C                       0x03
+#define CTRL_D                       0x04
+#define CTRL_E                       0x05
+#define CTRL_F                       0x06
+#define CTRL_G                       0x07
+#define CTRL_H                       0x08
+#define CTRL_I                       0x09
+#define CTRL_J                       0x0A
+#define CTRL_K                       0x0B
+#define CTRL_L                       0x0C
+#define CTRL_M                       0x0D
+#define CTRL_N                       0x0E
+#define CTRL_O                       0x0F
+#define CTRL_P                       0x10
+#define CTRL_Q                       0x11
+#define CTRL_R                       0x12
+#define CTRL_S                       0x13
+#define CTRL_T                       0x14
+#define CTRL_U                       0x15
+#define CTRL_V                       0x16
+#define CTRL_W                       0x17
+#define CTRL_X                       0x18
+#define CTRL_Y                       0x19
+#define CTRL_Z                       0x1A
+#define ESC                          0x1B
+#define CTRL_SLASH                   0x1C
+#define CTRL_LB                      0x1B
+#define CTRL_RB                      0x1D
+#define CTRL_CAPPA                   0x1E
+#define CTRL_UNDSCR                  0x1F
+#define CTRL_AT                      0x00
+#define FUNC1                        0x80
+#define FUNC2                        0x81
+#define FUNC3                        0x82
+#define FUNC4                        0x83
+#define FUNC5                        0x84
+#define FUNC6                        0x85
+#define FUNC7                        0x86
+#define FUNC8                        0x87
+#define FUNC9                        0x88
+#define FUNC10                       0x89
+#define PAGEUP                       0xE0
+#define PAGEDOWN                     0xE1
+#define CURHOMEKEY                   0xE2
+#define NOKEY                        0xF0
+#define CURSRIGHT                    0xF1
+#define CURSLEFT                     0xF2
+#define CURSUP                       0xF3
+#define CURSDOWN                     0xF4
+#define DBLZERO                      0xF5
+#define INSERT                       0xF6
+#define CLRKEY                       0xF7
+#define HOMEKEY                      0xF8
+#define ENDKEY                       0xF9
+#define ANSITGLKEY                   0xFA
+#define BREAKKEY                     0xFB
+#define GRAPHKEY                     0xFC
+#define ALPHAKEY                     0xFD
+#define DEBUGKEY                     0xFE                                // Special key to enable debug features such as the ANSI emulation.
+
+// Keyboard constants.
+#define KEYB_AUTOREPEAT_INITIAL_TIME 1000                                // Time in milliseconds before starting autorepeat.
+#define KEYB_AUTOREPEAT_TIME         250                                 // Time in milliseconds between auto repeating characters.
+#define KEYB_FLASH_TIME              500                                 // Time in milliseconds for the cursor flash change.
+#define CURSOR_THICK_BLOCK           0x43                                // Thick block cursor for lower case CAPS OFF
+#define CURSOR_BLOCK                 0xEF                                // Block cursor for SHIFT Lock.
+#define CURSOR_UNDERLINE             0x3E                                // Thick underscore for CAPS Lock.
+#define MAX_KEYB_BUFFER_SIZE         32                                  // Maximum size of the keyboard buffer.
+
+// Macros.
+//
+// Convert big endiam to little endian.
+#define convBigToLittleEndian(num)   ((num>>24)&0xff) | ((num<<8)&0xff0000) | ((num>>8)&0xff00) | ((num<<24)&0xff000000)
+
+
 // Possible machines the tranZPUter can be hosted on and can emulate.
 //
 enum MACHINE_TYPES {
@@ -224,6 +666,36 @@ enum MACHINE_TYPES {
 enum CPLD_FLAGS {
     VIDEO_FPGA                       = 0x08,                             // Bit to test for available functionality or enabling of the FPGA video hardware.
     CPLD_VERSION                     = 0xE0                              // CPLD version mask bits.
+};
+
+// Cursor flash mechanism control states.
+//
+enum CURSOR_STATES {
+    CURSOR_OFF                       = 0x00,                             // Turn the cursor off.
+    CURSOR_ON                        = 0x01,                             // Turn the cursor on.
+    CURSOR_RESTORE                   = 0x02,                             // Restore the saved cursor character.
+    CURSOR_FLASH                     = 0x03                              // If enabled, flash the cursor.
+};
+
+// Cursor positioning states.
+enum CURSOR_POSITION {
+    CURSOR_UP                        = 0x00,                             // Move the cursor up.
+    CURSOR_DOWN                      = 0x01,                             // Move the cursor down.
+    CURSOR_LEFT                      = 0x02,                             // Move the cursor left.
+    CURSOR_RIGHT                     = 0x03,                             // Move the cursor right.
+    CURSOR_COLUMN                    = 0x04,                             // Set cursor column to absolute value.
+    CURSOR_NEXT_LINE                 = 0x05,                             // Move the cursor to the beginning of the next line.
+    CURSOR_PREV_LINE                 = 0x06,                             // Move the cursor to the beginning of the previous line.
+};
+
+// Keyboard operating states according to buttons pressed.
+//
+enum KEYBOARD_MODES {
+    KEYB_LOWERCASE                   = 0x00,                             // Keyboard in lower case mode.
+    KEYB_CAPSLOCK                    = 0x01,                             // Keyboard in CAPS lock mode.
+    KEYB_SHIFTLOCK                   = 0x02,                             // Keyboard in SHIFT lock mode.
+    KEYB_CTRL                        = 0x03,                             // Keyboard in Control mode.
+    KEYB_GRAPHMODE                   = 0x04                              // Keyboard in Graphics mode.
 };
 
 // Structure to define a Sharp MZ80A MZF directory structure. This header appears at the beginning of every Sharp MZ80A tape (and more recently archived/emulator) images.
@@ -341,9 +813,15 @@ typedef struct __attribute__((__packed__)) {
     union {
         uint8_t                      dirSector;                          // Virtual directory sector number.
         uint8_t                      fileSector;                         // Sector within open file to read/write.
+        uint8_t                      vDriveNo;                           // Virtual or physical SD card drive number.
     };
-    uint16_t                         trackNo;                            // For virtual drives with track and sector this is the track number
-    uint16_t                         sectorNo;                           // For virtual drives with tracl and sector this is the sector number.
+    union {
+        struct {
+            uint16_t                 trackNo;                            // For virtual drives with track and sector this is the track number
+            uint16_t                 sectorNo;                           // For virtual drives with track and sector this is the sector number. NB For LBA access, this is 32bit and overwrites fileNo/fileType which arent used during raw SD access.
+        };
+        uint32_t                     sectorLBA;                          // For LBA access, this is 32bit and used during raw SD access.
+    };
     uint8_t                          fileNo;                             // File number of a file within the last directory listing to open/update.
     uint8_t                          fileType;                           // Type of file being processed.
     union {
@@ -376,22 +854,135 @@ typedef struct __attribute__((__packed__)) {
 // Mapping table from Sharp MZ80A Ascii to real Ascii.
 //
 typedef struct {
-    uint8_t    asciiCode;
+    uint8_t                          asciiCode;
 } t_asciiMap;
 
 // Mapping table from Ascii to Sharp MZ display code.
 //
 typedef struct {
-    uint8_t    dispCode;
+    uint8_t                          dispCode;
 } t_dispCodeMap;
+
+// Mapping table from keyboard scan codes to Sharp MZ-700 keys.
+//
+typedef struct {
+    uint8_t                          scanCode[80];
+} t_scanCodeMap;
+
+// Mapping table of a sharp keycode to an ANSI escape sequence string.
+//
+typedef struct {
+    uint8_t                          key;
+    const char*                      ansiKeySequence;
+} t_ansiKeyMap;
+
+// Structure to maintain the Sharp MZ display output parameters and data.
+//
+typedef struct {
+    uint8_t                          screenAttr;
+    uint16_t                         screenRow;
+
+    // Location on the physical screen to output data. displayCol is also used in the backing store.
+    uint8_t                          displayRow;
+    uint8_t                          displayCol;
+
+    // History and backing screen store. The physical display outputs a portion of this backing store.
+    uint8_t                          screenCharBuf[VC_DISPLAY_BUFFER_SIZE];
+    uint8_t                          screenAttrBuf[VC_DISPLAY_BUFFER_SIZE];
+
+    // Maxims, dynamic to allow for future changes.
+    uint8_t                          maxScreenRow;
+    uint8_t                          maxDisplayRow;
+    uint8_t                          maxScreenCol;
+
+    // Features.
+    uint8_t                          lineWrap;                           // Wrap line at screen edge (1) else stop printing at screen edge.
+    uint8_t                          useAnsiTerm;                        // Enable (1) Ansi Terminal Emulator, (0) disable.
+    uint8_t                          debug;                              // Enable debugging features.
+    uint8_t                          inDebug;                            // Prevent recursion when outputting debug information.
+} t_displayBuffer;
+
+// Structure for maintaining the Sharp MZ keyboard parameters and data. Used to retrieve and map a key along with associated
+// attributes such as cursor flashing.
+//
+typedef struct {
+    uint8_t                          scanbuf[2][10];
+    uint8_t                          keydown[10];
+    uint8_t                          keyup[10];
+    uint8_t                          keyhold[10];
+    uint32_t                         holdTimer;
+    uint8_t                          breakKey;                           // Break key pressed.
+    uint8_t                          ctrlKey;                            // Ctrl key pressed.
+    uint8_t                          shiftKey;                           // Shift key pressed.
+    uint8_t                          repeatKey;
+    uint8_t                          autorepeat;
+    enum KEYBOARD_MODES              mode;
+    uint8_t                          keyBuf[MAX_KEYB_BUFFER_SIZE];       // Keyboard buffer.
+    uint8_t                          keyBufPtr;                          // Pointer into the keyboard buffer for stored key,
+    uint8_t                          cursorOn;                           // Flag to indicate Cursor is switched on.
+    uint8_t                          displayCursor;                      // Cursor being displayed = 1
+    uint32_t                         flashTimer;                         // Timer to indicate next flash time for cursor.
+} t_keyboard;
+
+// Structure to maintain the Ansi Terminal Emulator state and parameters.
+//
+typedef struct {
+	enum {
+		ANSITERM_ESC,
+		ANSITERM_BRACKET,
+		ANSITERM_PARSE,
+	}                                state;                              // States and current state of the FSM parser.
+    uint8_t                          charcnt;                            // Number of characters read into the buffer.
+    uint8_t                          paramcnt;                           // Number of parameters parsed and stored.
+    uint8_t                          setScreenMode;                      // Screen mode command detected.
+    uint8_t                          setExtendedMode;                    // Extended mode command detected.
+    uint8_t                          charbuf[80];                        // Storage for the parameter characters as they are received.
+    uint16_t                         param[10];                          // Parsed paraemters.
+    uint8_t                          saveRow;                            // Store the current row when requested.
+    uint8_t                          saveCol;                            // Store the current column when requested.
+    uint8_t                          saveScreenRow;                      // Store the current screen buffer row when requested.
+} t_AnsiTerm;
 
 // Application execution constants.
 //
 
 // Prototypes.
 //
-int mzPrintChar(char, FILE *);
-int mzGetChar(FILE *);
+uint8_t                              mzInitMBHardware(void);
+uint8_t                              mzInit(void);
+uint8_t                              mzMoveCursor(enum CURSOR_POSITION, uint8_t);
+uint8_t                              mzSetCursor(uint8_t, uint8_t);    
+int                                  mzPutChar(char, FILE *);
+int                                  mzPutRaw(char);
+uint8_t                              mzSetAnsiAttribute(uint8_t);
+int                                  mzAnsiTerm(char);
+int                                  mzPrintChar(char, FILE *);
+uint8_t                              mzFlashCursor(enum CURSOR_STATES);
+uint8_t                              mzPushKey(char *);
+int                                  mzGetKey(uint8_t);
+int                                  mzGetChar(FILE *);
+void                                 mzClearScreen(uint8_t, uint8_t);
+void                                 mzClearLine(int, int, int, uint8_t);
+uint8_t                              mzGetScreenWidth(void);
+uint8_t                              mzSetScreenWidth(uint8_t);
+uint8_t                              mzSetMachineVideoMode(uint8_t);
+uint8_t                              mzSetVGAMode(uint8_t);
+uint8_t                              mzSetVGABorder(uint8_t);
+void                                 mzRefreshScreen(void);
+uint8_t                              mzScrollUp(uint8_t, uint8_t);
+uint8_t                              mzScrollDown(uint8_t);
+void                                 mzDebugOut(uint8_t, uint8_t);
+int                                  mzGetTest();
+void                                 mzSetZ80(void);
+int                                  mzServiceCall(uint8_t);
+int                                  mzSDGetStatus(uint32_t, uint8_t);
+int                                  mzSDServiceCall(uint8_t, uint8_t);
+uint8_t                              mzSDInit(uint8_t);
+uint8_t                              mzSDRead(uint8_t, uint32_t, uint32_t);
+uint8_t                              mzSDWrite(uint8_t, uint32_t, uint32_t);    
+void                                 testRoutine(void);
+
+
 
 // Getter/Setter methods!
 

@@ -97,7 +97,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
     puts("TCPU Test Program\n");
 
-    while(getserial_nonblocking() == -1)
+    while(getKey(0) == -1)
     {
         addr = TCPU_ADDR;
         data = TCPU_DATA;

@@ -14,8 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+
 #include       <coremark.h>
 #include       <stdarg.h>
+
+#if defined HAS_PRINTF && HAS_PRINTF == 0
 
 #if defined __K64F__
   #include     <stdio.h>
@@ -600,4 +603,4 @@ int ee_printf(const char *fmt, ...)
 
   return n;
 }
-
+#endif

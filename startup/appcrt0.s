@@ -13,6 +13,12 @@
 ; Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
 ;
 ; History:         July 2019   - Initial script written.
+;                  June 2020   - See below.
+;                  Jan 2021    - Updated in June due to the K64F version to use zSoft's own libraries.
+;                                This required stdout, stdin, stderr manipulating to use the open 
+;                                descriptors in zOS/ZPUTA. The changes had issues which at the time,
+;                                mainly concentrating on the K64F version were overlooked byt have now been
+;                                resolved.
 ;
 ;--------------------------------------------------------------------------------------------------------
 ; This source file is free software: you can redistribute it and#or modify
@@ -110,9 +116,9 @@ _callret:
         ; getc calls
         ;
         .equ funcAddr,  funcAddr+funcNext;
-        defapifunc      getserial funcAddr
+        defapifunc      getScreenWidth funcAddr
         .equ funcAddr,  funcAddr+funcNext;
-        defapifunc      getserial_nonblocking funcAddr
+        defapifunc      getKey funcAddr
         ;
         ; Util calls
         ;
@@ -261,27 +267,27 @@ _premain:
         im .appret          ; &.appret bssptr+4
         storesp 4           ; &.appret
 
-        im 9                ; Param6 = address of __iob structure for stdio functionality available in this application.
+        im 9                ; Param6 = address of pointer to the__iob structure for stdio functionality available in this application.
         pushspadd           ; Add 9 to the stack pointer placing result into TOS
         load                ; Fetch [TOS] and store to TOS, ie.get the stack parameter referenced by memory address [TOS] and store fetched data into TOS.
-        load                ; Get value of Pointer, parameter passed is the address of the pointer, so [ [TOS] ] above.
+        load                ; Get value of Pointer, parameter passed is the address of the pointer, so [ [TOS] ] above yields the value.
         im __iob            ; Setup the location of the pointer to __iob variable in the app into TOS - We now have TOS = address of __iob, NOS = parameter value retrieved from stack (TOS above).
         store               ; and place value into the pointer.
         ;
         im 9                ; Same but now for __iob[1], we take __iob value passed on stack and add 4 to retrieve the pointer for __iob[1]
         pushspadd           ; 
-        im 4                ; Add 4 to the address to retrieve __iob[1]
+        load                ; Fetch [TOS] and store to TOS, ie.get the stack parameter referenced by memory address [TOS] and store fetched data into TOS.
+        im 4                ; Add 4 to the pointer address to retrieve __iob[1]
         add
-        load                ; Fetch [TOS] which is [__iob[1]].
         load                ; Fetch pointer.
         im __iob+4          ; Setup location for __iob[1] in our namespace.
         store               ; and place value into the pointer.
         ;
         im 9                ; Same but now for __iob[2], we take __iob value passed on stack and add 4 to retrieve the pointer for __iob[2]
         pushspadd           ; 
-        im 8                ; Add 8 to the address to retrieve __iob[2]
+        load                ; Fetch [TOS] and store to TOS, ie.get the stack parameter referenced by memory address [TOS] and store fetched data into TOS.
+        im 8                ; Add 8 to the pointer address to retrieve __iob[2]
         add
-        load                ; Fetch [TOS] which is [__iob[2]].
         load                ; Fetch pointer.
         im __iob+8          ; Setup location for __iob[2] in our namespace.
         store               ; and place value into the pointer.

@@ -101,6 +101,7 @@ MAIN_RETURN_TYPE CoreMarkTest(void) {
 #if (MEM_METHOD==MEM_STACK)
 	ee_u8 stack_memblock[TOTAL_DATA_SIZE*MULTITHREAD];
 #endif
+
 	/* first call any initializations needed */
 	//portable_init(&(results[0].port), &argc, argv);
 	portable_init(&(results[0].port));
@@ -172,7 +173,15 @@ MAIN_RETURN_TYPE CoreMarkTest(void) {
 			num_algorithms++;
 	}
 	for (i=0 ; i<MULTITHREAD; i++) 
+	{
+                // Check for divisor bug, ZPU compilation or hardware misconfiguration issue.
+		if(results[i].size/num_algorithms < 10)
+		{
+		    ee_printf("Hardware/Software build Bug! Divide %d by %d result = :%d\n", results[i].size, num_algorithms, results[i].size/num_algorithms);
+                    return MAIN_RETURN_VAL;
+		}
 		results[i].size=results[i].size/num_algorithms;
+	}
 	/* Assign pointers */
 	for (i=0; i<NUM_ALGORITHMS; i++) {
 		ee_u32 ctx;

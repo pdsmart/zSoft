@@ -113,17 +113,13 @@ static short idCurrent = 0;
 
 short sysGetc(void)
 {
-    short keyIn;
-
-    #if defined __K64F__
-        keyIn = (short)usb_serial_getchar();
-    #elif defined __ZPU__
-        keyIn = (short)getserial_nonblocking();
-    #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
-    #endif
-
-    return keyIn;
+  #if defined __SHARPMZ__
+    // Get key from system, request ansi key sequence + non-blocking (=2).
+    return (short)getKey(2);
+  #else
+    // Get key from system, request non-blocking (=0).
+    return (short)getKey(0);
+  #endif
 }
 
 void sysPutc(char c)

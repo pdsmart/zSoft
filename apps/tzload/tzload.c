@@ -319,9 +319,9 @@ uint32_t app(uint32_t param1, uint32_t param2)
             printf("Mainboard only has 64K, please change the address and size.\n");
             return(19);
         }
-        if(fpga_flag == 1 && mzf_flag == 0 && (memAddr >= 0x80000 || memAddr + memSize > 0x80000))
+        if(fpga_flag == 1 && mzf_flag == 0 && (memAddr >= 0x1000000 || memAddr + memSize > 0x1000000))
         {
-            printf("FPGA only has a 512K window, please change the address or size.\n");
+            printf("FPGA only has a 16M window, please change the address or size.\n");
             return(20);
         }    
         if(mainboard_flag == 0 && fpga_flag == 0 && mzf_flag == 0 && (memAddr >= 0x80000 || memAddr + memSize > 0x80000))
