@@ -6,9 +6,10 @@
 // Description:     A TranZPUter helper program, responsible for loading images off the SD card into 
 //                  memory on the tranZPUter board or host mainboard./
 // Credits:         
-// Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
+// Copyright:       (c) 2019-2021 Philip Smart <philip.smart@net2net.org>
 //
 // History:         May 2020 - Initial write of the TranZPUter software.
+//                  Feb 2021 - Replaced getopt_long with optparse as it is buggy and crashes.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -41,7 +42,6 @@
   #include <usb_serial.h>
   #include <core_pins.h>
   #include <Arduino.h>
-  #include <getopt.h>
   #include "k64f_soc.h"
   #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
@@ -65,6 +65,12 @@
 #else
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
+	 
+// Getopt_long is buggy so we use optparse.
+#define OPTPARSE_IMPLEMENTATION
+#define OPTPARSE_API static
+#include <optparse.h>
+
 //
 #include <app.h>
 #include <tranzputer.h>
@@ -74,8 +80,8 @@
 #include <tools.c>
 
 // Version info.
-#define VERSION              "v1.1"
-#define VERSION_DATE         "10/12/2020"
+#define VERSION              "v1.2"
+#define VERSION_DATE         "21/02/2021"
 #define APP_NAME             "TZLOAD"
 
 // Simple help screen to remmber how this utility works!!
@@ -125,7 +131,6 @@ uint32_t app(uint32_t param1, uint32_t param2)
     int        verbose_flag      = 0;
     int        video_flag        = 0;
     int        opt; 
-    int        option_index      = 0; 
     int        uploadFNLen       = 0;
     int        downloadFNLen     = 0;
     int        uploadCnt         = 0;
@@ -156,26 +161,28 @@ uint32_t app(uint32_t param1, uint32_t param2)
     argv[argc] = 0;
 
     // Define parameters to be processed.
-    static struct option long_options[] =
+    struct optparse options;
+    static struct optparse_long long_options[] =
     {
-        {"help",          no_argument,       0,   'h'},
-        {"download",      required_argument, 0,   'd'},
-        {"upload",        required_argument, 0,   'u'},
-        {"uploadset",     required_argument, 0,   'U'},
-        {"addr",          required_argument, 0,   'a'},
-        {"size",          required_argument, 0,   'l'},
-        {"fpga",          no_argument,       0,   'f'},
-        {"mainboard",     no_argument,       0,   'm'},
-        {"mzf",           no_argument,       0,   'z'},
-        {"swap",          no_argument,       0,   's'},
-        {"verbose",       no_argument,       0,   'v'},
-        {"video",         no_argument,       0,   'V'},
-        {0,               0,                 0,    0}
+        {"help",          'h',  OPTPARSE_NONE},
+        {"download",      'd',  OPTPARSE_REQUIRED},
+        {"upload",        'u',  OPTPARSE_REQUIRED},
+        {"uploadset",     'U',  OPTPARSE_REQUIRED},
+        {"addr",          'a',  OPTPARSE_REQUIRED},
+        {"size",          'l',  OPTPARSE_REQUIRED},
+        {"fpga",          'f',  OPTPARSE_NONE},
+        {"mainboard",     'm',  OPTPARSE_NONE},
+        {"mzf",           'z',  OPTPARSE_NONE},
+        {"swap",          's',  OPTPARSE_NONE},
+        {"verbose",       'v',  OPTPARSE_NONE},
+        {"video",         'V',  OPTPARSE_NONE},
+        {0}
     };
 
     // Parse the command line options.
     //
-    while((opt = getopt_long(argc, argv, ":ha:l:fmvU:Vzsd:u:", long_options, &option_index)) != -1)  
+    optparse_init(&options, argv);
+    while((opt = optparse_long(&options, long_options, NULL)) != -1)  
     {  
         switch(opt)  
         {  
@@ -196,18 +203,18 @@ uint32_t app(uint32_t param1, uint32_t param2)
                 break;
 
             case 'a':
-                if(xatoi(&argv[optind-1], &val) == 0)
+                if(xatoi(&options.optarg, &val) == 0)
                 {
-                    printf("Illegal numeric:%s\n", argv[optind-1]);
+                    printf("Illegal numeric:%s\n", options.optarg);
                     return(6);
                 }
                 memAddr = (uint32_t)val;
                 break;
 
             case 'l':
-                if(xatoi(&argv[optind-1], &val) == 0)
+                if(xatoi(&options.optarg, &val) == 0)
                 {
-                    printf("Illegal numeric:%s\n", argv[optind-1]);
+                    printf("Illegal numeric:%s\n", options.optarg);
                     return(7);
                 }
                 memSize = (uint32_t)val;
@@ -215,20 +222,20 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
             case 'd':
                 // Data is read from the tranZPUter and stored in the given file.
-                strcpy(downloadFile, argv[optind-1]);
+                strcpy(downloadFile, options.optarg);
                 downloadFNLen = strlen(downloadFile);
                 break;
 
             case 'u':
                 // Data is uploaded from the given file into the tranZPUter.
-                strcpy(uploadFile, argv[optind-1]);
+                strcpy(uploadFile, options.optarg);
                 uploadFNLen = strlen(uploadFile);
                 break;
 
             case 'U':
                 // Extract an array of <file>:<addr>,... sets for upload.
                 //
-                ptr = strtok((char *)argv[optind-1], ",");
+                ptr = strtok((char *)options.optarg, ",");
                 while (ptr && uploadCnt < 20-1)
                 {
                     uploadArr[uploadCnt++] = ptr;
@@ -253,12 +260,9 @@ uint32_t app(uint32_t param1, uint32_t param2)
                 mzf_flag = 1;
                 break;
 
-            case ':':  
-                printf("Option %s needs a value\n", argv[optind-1]);  
-                break;  
-            case '?':  
-                printf("Unknown option: %s, ignoring!\n", argv[optind-1]); 
-                break;  
+            case '?':
+                printf("%s: %s\n", argv[0], options.errmsg);
+                return(1);
         }  
     } 
 

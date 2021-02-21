@@ -39,19 +39,142 @@
     extern "C" {
 #endif
 
+// Video display constants.
+#define VC_MAX_ROWS                  25                                  // Maximum number of rows on display.
+#define VC_MAX_COLUMNS               80                                  // Maximum number of columns on display.
+#define VC_MAX_BUFFER_ROWS           50                                  // Maximum number of backing store rows for scrollback feature.
+#define VC_DISPLAY_BUFFER_SIZE       VC_MAX_COLUMNS * VC_MAX_BUFFER_ROWS // Size of the display buffer for scrollback.
+
+// Target ZPU memory map.
+// ----------------------
+//
+// Y+080000:Y+0FFFFF = 512K Video address space - the video processor memory will be directly mapped into this space as follows:
+//                     0x180000 - 0x18FFFF = 64K Video / Attribute RAM
+//                     0x190000 - 0x19FFFF = 64K Character Generator ROM/PCG RAM.
+//                     0x1A0000 - 0x1BFFFF = 128K Red Framebuffer address space.
+//                     0x1C0000 - 0x1DFFFF = 128K Blue Framebuffer address space.
+//                     0x1E0000 - 0x1FFFFF = 128K Green Framebuffer address space.
+//                     This invokes memory read/write operations but the Video Read/Write signal is directly set, MREQ is not set. This 
+//                     allows direct writes to be made to the FPGA video logic, bypassing the CPLD memory manager.
+//                     All reads are 32bit, writes are 8, 16 or 32bit wide on word boundary.
+//
+// Z80 Bus Interface.
+// ------------------
+//
+// 24bit address, 8 bit data.  The Z80 Memory and I/O are mapped into linear ZPU address space. The ZPU makes standard memory transactions and this state machine holds the ZPU whilst it performs the Z80 transaction.
+//
+// Depending on the accessed address will determine the type of transaction. In order to provide byte level access on a 32bit read CPU, a bank of addresses, word aligned per byte is assigned in addition to
+// an address to read 32bit word aligned value.
+//
+// Y+100000:Y+17FFFF = 512K Static RAM on the tranZPUter board. All reads are 32bit, all writes are 8, 16 or 32bit wide on word boundary.
+// Y+180000:Y+1BFFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 1 byte at a time. The physical address is word aligned per byte, so 4 bytes on the ZPU address space = 1
+//                     byte on the Z80 address space. ie. 0x00780 ZPU = 0x0078 Z80.
+// Y+1C0000:Y+1FFFFF = 64K I/O space on the host mainboard or the underlying CPLD/FPGA. 64K address space is due to the Z80 ability to address 64K via the Accumulator being set in 15:8 and the port in 7:0.
+//                     The ZPU, via a direct address will mimic this ability for hardware which requires it. ie. A write to 0x3F with 0x10 in the accumulator would yield an address of 0x103f.
+//                     All reads are 8 bit, writes are 8, 16 or 32bit wide on word boundary. The physical address is word aligned per byte, so 4 bytes on the ZPU address space = 1
+//                     byte on the Z80 address space. ie. 0x00780 ZPU = 0x0078 Z80.
+//
+// Y+200000:Y+20FFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 4 bytes at a time, a 32 bit read will return 4 consecutive bytes,1start of read must be on a 32bit word boundary.
+// Y+280000:Y+2FFFFF = 512K unassigned.
+//
+// Y = 2Mbyte sector in ZPU address space the Z80 bus interface is located. This is normally below the ZPU I/O sector and set to 0xExxxxx
+//
+//
+// 0x000000   00000000 - Normal Sharp MZ behaviour, Video Controller controlled by Z80 bus transactions.
+// Y+100000:Y+17FFFF = 512K Static RAM on the tranZPUter board. All reads are 32bit, all writes are 8, 16 or 32bit wide on word boundary.
+// Y+180000:Y+1BFFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 1 byte at a time. The physical address is word aligned per byte, so 4 bytes on the ZPU address space = 1
+//                     byte on the Z80 address space. ie. 0x00780 ZPU = 0x0078 Z80.
+// Y+1C0000:Y+1FFFFF = 64K I/O space on the host mainboard or the underlying CPLD/FPGA. 64K address space is due to the Z80 ability to address 64K via the Accumulator being set in 15:8 and the port in 7:0.
+//                     The ZPU, via a direct address will mimic this ability for hardware which requires it. ie. A write to 0x3F with 0x10 in the accumulator would yield an address of 0xF103f.
+//                     All reads are 8 bit, writes are 8, 16 or 32bit wide on word boundary. The physical address is word aligned per byte, so 4 bytes on the ZPU address space = 1
+//                     byte on the Z80 address space. ie. 0x00780 ZPU = 0x0078 Z80.
+// Y+200000:Y+20FFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 4 bytes at a time, a 32 bit read will return 4 consecutive bytes,1start of read must be on a 32bit word boundary.
+//
+// Where Y is the base address, 0xC00000 in this implementation.
+// -----------------------------------------------------------------------------------------------------------------------
+//
+// Video direct addressing. 
+// ------------------------
+//
+//   Address    A23 -A16
+// Y+0x080000   00001000 - Memory and I/O ports mapped into direct addressable memory location.
+//   
+//                         A15 - A8 A7 -  A0
+//                         I/O registers are mapped to the bottom 256 bytes mirroring the I/O address.
+// Y+0x0800D0              00000000 11010000 - 0xD0 - Set the parameter number to update.
+//                         00000000 11010001 - 0xD1 - Update the lower selected parameter byte.
+//                         00000000 11010010 - 0xD2 - Update the upper selected parameter byte.
+//                         00000000 11010011 - 0xD3 - set the palette slot Off position to be adjusted.
+//                         00000000 11010100 - 0xD4 - set the palette slot On position to be adjusted.
+//                         00000000 11010101 - 0xD5 - set the red palette value according to the PALETTE_PARAM_SEL address.
+//                         00000000 11010110 - 0xD6 - set the green palette value according to the PALETTE_PARAM_SEL address.
+// Y+0x0800D7              00000000 11010111 - 0xD7 - set the blue palette value according to the PALETTE_PARAM_SEL address.
+//   
+// Y+0x0800E0              00000000 11100000 - 0xE0 MZ80B PPI
+//                         00000000 11100100 - 0xE4 MZ80B PIT
+// Y+0x0800E8              00000000 11101000 - 0xE8 MZ80B PIO
+//   
+//                         00000000 11110000 - 
+//                         00000000 11110001 - 
+//                         00000000 11110010 - 
+// Y+0x0800F3              00000000 11110011 - 0xF3 set the VGA border colour.
+//                         00000000 11110100 - 0xF4 set the MZ80B video in/out mode.
+//                         00000000 11110101 - 0xF5 sets the palette.
+//                         00000000 11110110 - 0xF6 set parameters.
+//                         00000000 11110111 - 0xF7 set the graphics processor unit commands.
+//                         00000000 11111000 - 0xF6 set parameters.
+//                         00000000 11111001 - 0xF7 set the graphics processor unit commands.
+//                         00000000 11111010 - 0xF8 set the video mode. 
+//                         00000000 11111011 - 0xF9 set the graphics mode.
+//                         00000000 11111100 - 0xFA set the Red bit mask
+//                         00000000 11111101 - 0xFB set the Green bit mask
+//                         00000000 11111110 - 0xFC set the Blue bit mask
+// Y+0x0800FD              00000000 11111111 - 0xFD set the Video memory page in block C000:FFFF 
+//   
+//                         Memory registers are mapped to the E000 region as per base machines.
+// Y+0x08E010              11100000 00010010 - Program Character Generator RAM. E010 - Write cycle (Read cycle = reset memory swap).
+//                         11100000 00010100 - Normal display select.
+//                         11100000 00010101 - Inverted display select.
+//                         11100010 00000000 - Scroll display register. E200 - E2FF
+// Y+0x08E2FF              11111111
+//   
+// Y+0x090000   00001001 - Video/Attribute RAM. 64K Window.
+// Y+0x09D000              11010000 00000000 - Video RAM
+// Y+0x09D7FF              11010111 11111111
+// Y+0x09D800              11011000 00000000 - Attribute RAM
+// Y+0x09DFFF              11011111 11111111
+//   
+// Y+0x0A0000   00001010 - Character Generator RAM 64K Window.
+// Y+0x0A0000              00000000 00000000 - CGROM
+// Y+0x0A0FFF              00001111 11111111 
+// Y+0x0A1000              00010000 00000000 - CGRAM
+// Y+0x0A1FFF              00011111 11111111
+//   
+// Y+0x0C0000   00001100 - 128K Red framebuffer.
+//                         00000000 00000000 - Red pixel addressed framebuffer. Also MZ-80B GRAM I memory in lower 8K
+// Y+0x0C3FFF              00111111 11111111
+// Y+0x0D0000   00001101 - 128K Blue framebuffer.
+//                         00000000 00000000 - Blue pixel addressed framebuffer. Also MZ-80B GRAM II memory in lower 8K
+// Y+0x0D3FFF              00111111 11111111
+// Y+0x0E0000   00001110 - 128K Green framebuffer.
+//                         00000000 00000000 - Green pixel addressed framebuffer.
+// Y+0x0E3FFF              00111111 11111111
+// 
+
 // Base addresses and sizes within the FPGA/Video Controller.
+#define VIDEO_BASE_ADDR              0xC80000
 #define Z80_BUS_BASE_ADDR            0xD00000
-#define VIDEO_VRAM_BASE_ADDR         Z80_BUS_BASE_ADDR + 0x18D000        // Base address of the character video RAM using direct addressing.
+#define VIDEO_VRAM_BASE_ADDR         VIDEO_BASE_ADDR + 0x01D000          // Base address of the character video RAM using direct addressing.
 #define VIDEO_VRAM_SIZE              0x800                               // Size of the video RAM.
-#define VIDEO_ARAM_BASE_ADDR         Z80_BUS_BASE_ADDR + 0x18D800        // Base address of the character attribute RAM using direct addressing.
+#define VIDEO_ARAM_BASE_ADDR         VIDEO_BASE_ADDR + 0x01D800          // Base address of the character attribute RAM using direct addressing.
 #define VIDEO_ARAM_SIZE              0x800                               // Size of the attribute RAM.
-#define VIDEO_IO_BASE_ADDR           Z80_BUS_BASE_ADDR + 0x190000
+#define VIDEO_IO_BASE_ADDR           VIDEO_BASE_ADDR + 0x000000
         
 // Memory addresses of I/O and Memory mapped I/O in the Video Controller which are mapped to direct memory accessed addresses.
 //
-#define VC_8BIT_BASE_ADDR            Z80_BUS_BASE_ADDR + 0x130000
-#define VC_32BIT_BASE_ADDR           Z80_BUS_BASE_ADDR + 0x140000
-// 8 Bit access addresses - used for writing, read can only be on a 32bit boundary with lower address lines set to 00. Writing can write upto 4 consecutive addresses.
+#define VC_8BIT_BASE_ADDR            VIDEO_BASE_ADDR + 0x000000
+#define VC_32BIT_BASE_ADDR           VIDEO_BASE_ADDR + 0x000000
+// 8 Bit access addresses - used for writing, read can only be on a 32bit boundary with lower address lines set to 00. Writing can write upto 4 consecutive addresses if desired.
 #define VCADDR_8BIT_PALSLCTOFF       VC_8BIT_BASE_ADDR + 0xD3            // Set the palette slot Off position to be adjusted.
 #define VCADDR_8BIT_PALSLCTON        VC_8BIT_BASE_ADDR + 0xD4            // Set the palette slot On position to be adjusted.
 #define VCADDR_8BIT_PALSETRED        VC_8BIT_BASE_ADDR + 0xD5            // Set the red palette value according to the PALETTE_PARAM_SEL address.
@@ -96,7 +219,7 @@
 #define VCADDR_8BIT_SCLDSP           VC_8BIT_BASE_ADDR + 0xE200          // Hardware scroll, a read to each location adds 8 to the start of the video access address therefore creating hardware scroll. 00 - reset to power up
 #define VCADDR_8BIT_SCLBASE          VC_8BIT_BASE_ADDR + 0xE2            // High byte scroll base.
       
-// 32 Bit access addresses - used for reading and writing, read and write can only be 1 byte to 1 address.
+// 32 Bit access addresses for 8bit registers - used for reading, address is shifted right by 2 and the resulting byte read into bits 7:0, 31:8 are zero.
 #define VCADDR_32BIT_PALSLCTOFF      VC_32BIT_BASE_ADDR + (4*0xD3)       // Set the palette slot Off position to be adjusted.
 #define VCADDR_32BIT_PALSLCTON       VC_32BIT_BASE_ADDR + (4*0xD4)       // Set the palette slot On position to be adjusted.
 #define VCADDR_32BIT_PALSETRED       VC_32BIT_BASE_ADDR + (4*0xD5)       // Set the red palette value according to the PALETTE_PARAM_SEL address.
@@ -142,12 +265,7 @@
 #define VCADDR_32BIT_SCLDSP          VC_32BIT_BASE_ADDR + (4*0xE200)     // Hardware scroll, a read to each location adds 8 to the start of the video access address therefore creating hardware scroll. 00 - reset to power up
 #define VCADDR_32BIT_SCLBASE         VC_32BIT_BASE_ADDR + (4*0xE2)       // High byte scroll base.     
 
-#define VC_MAX_ROWS                  25                                  // Maximum number of rows on display.
-#define VC_MAX_COLUMNS               80                                  // Maximum number of columns on display.
-#define VC_MAX_BUFFER_ROWS           50                                  // Maximum number of backing store rows for scrollback feature.
-#define VC_DISPLAY_BUFFER_SIZE       VC_MAX_COLUMNS * VC_MAX_BUFFER_ROWS // Size of the display buffer for scrollback.
-
-// Memory mapped I/O on the mainboard.
+// Memory mapped I/O on the mainboard. These addresses are processed by the Z80BUS FSM which converts a 32bit ZPU cycle into several 8bi Z80 cycles.
 //
 #define MB_8BIT_BASE_ADDR            Z80_BUS_BASE_ADDR + 0x080000
 #define MB_32BIT_BASE_ADDR           Z80_BUS_BASE_ADDR + 0x100000
@@ -238,90 +356,6 @@
 
 
 
-
-        // Y+000000:Y+07FFFF = 512K Static RAM on the tranZPUter board. All reads are 32bit, all writes are 8, 16 or 32bit wide on word boundary.
-        // Y+080000:Y+0BFFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 1 byte at a time. The physical address is word aligned per byte, so 4 bytes on the ZPU address space = 1
-        //                     byte on the Z80 address space. ie. 0x00780 ZPU = 0x0078 Z80.
-        // Y+0C0000:Y+0FFFFF = 64K I/O space on the host mainboard or the underlying CPLD/FPGA. 64K address space is due to the Z80 ability to address 64K via the Accumulator being set in 15:8 and the port in 7:0.
-        //                     The ZPU, via a direct address will mimic this ability for hardware which requires it. ie. A write to 0x3F with 0x10 in the accumulator would yield an address of 0xF103f.
-        //                     All reads are 8 bit, writes are 8, 16 or 32bit wide on word boundary. The physical address is word aligned per byte, so 4 bytes on the ZPU address space = 1
-        //                     byte on the Z80 address space. ie. 0x00780 ZPU = 0x0078 Z80.
-        //
-        // Y+100000:Y+10FFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 4 bytes at a time, a 32 bit read will return 4 consecutive bytes,1start of read must be on a 32bit word boundary.
-        // Y+180000:Y+1FFFFF = 512 Video address space - the video processor memory will be directly mapped into this space as follows:
-        //                     0x180000 - 0x18FFFF = 64K Video / Attribute RAM
-        //                     0x190000 - 0x19FFFF = 64K Character Generator ROM/PCG RAM.
-        //                     0x1A0000 - 0x1BFFFF = 128K Red Framebuffer address space.
-        //                     0x1C0000 - 0x1DFFFF = 128K Blue Framebuffer address space.
-        //                     0x1E0000 - 0x1FFFFF = 128K Green Framebuffer address space.
-        //                     This invokes memory read/write operations but the Video Read/Write signal is directly set, MREQ is not set. This 
-        //                     allows direct writes to be made to the FPGA video logic, bypassing the CPLD memory manager.
-        //                     All reads are 32bit, writes are 8, 16 or 32bit wide on word boundary.
-        //
-        // 00000000 - Normal Sharp MZ behaviour
-        // 00001000 - Memory and I/O ports mapped into direct addressable memory location.
-        //
-        //            A15 - A8 A7 -  A0
-        //            I/O registers are mapped to the bottom 256 bytes mirroring the I/O address.
-        //            00000000 11010000 - 0xD0 - Set the parameter number to update.
-        //            00000000 11010001 - 0xD1 - Update the lower selected parameter byte.
-        //            00000000 11010010 - 0xD2 - Update the upper selected parameter byte.
-        //            00000000 11010011 - 0xD3 - set the palette slot Off position to be adjusted.
-        //            00000000 11010100 - 0xD4 - set the palette slot On position to be adjusted.
-        //            00000000 11010101 - 0xD5 - set the red palette value according to the PALETTE_PARAM_SEL address.
-        //            00000000 11010110 - 0xD6 - set the green palette value according to the PALETTE_PARAM_SEL address.
-        //            00000000 11010111 - 0xD7 - set the blue palette value according to the PALETTE_PARAM_SEL address.
-        //
-        //            00000000 11100000 - 0xE0 MZ80B PPI
-        //            00000000 11100001 - 0xE4 MZ80B PIT
-        //            00000000 11100010 - 0xE0 MZ80B PIO
-        //
-        //            00000000 11110000 - 
-        //            00000000 11110001 - 
-        //            00000000 11110010 - 
-        //            00000000 11110011 - 0xF3 set the VGA border colour.
-        //            00000000 11110100 - 0xF4 set the MZ80B video in/out mode.
-        //            00000000 11110101 - 0xF5 sets the palette.
-        //            00000000 11110110 - 0xF6 set parameters.
-        //            00000000 11110111 - 0xF7 set the graphics processor unit commands.
-        //            00000000 11111000 - 0xF6 set parameters.
-        //            00000000 11111001 - 0xF7 set the graphics processor unit commands.
-        //            00000000 11111010 - 0xF8 set the video mode. 
-        //            00000000 11111011 - 0xF9 set the graphics mode.
-        //            00000000 11111100 - 0xFA set the Red bit mask
-        //            00000000 11111101 - 0xFB set the Green bit mask
-        //            00000000 11111110 - 0xFC set the Blue bit mask
-        //            00000000 11111111 - 0xFD set the Video memory page in block C000:FFFF 
-        //
-        //            Memory registers are mapped to the E000 region as per base machines.
-        //            11100000 00010010 - Program Character Generator RAM. E010 - Write cycle (Read cycle = reset memory swap).
-        //            11100000 00010100 - Normal display select.
-        //            11100000 00010101 - Inverted display select.
-        //            11100010 00000000 - Scroll display register. E200 - E2FF
-        //                     11111111
-        //
-        // 00001001 - Video/Attribute RAM. 64K Window.
-        //            11010000 00000000 - Video RAM
-        //            11010111 11111111
-        //            11011000 00000000 - Attribute RAM
-        //            11011111 11111111
-        //
-        // 00001010 - Character Generator RAM
-        //            00000000 00000000 - CGROM
-        //            00001111 11111111 
-        //            00010000 00000000 - CGRAM
-        //            00011111 11111111
-        //
-        // 00001100 - Red framebuffer.
-        //            00000000 00000000 - Red pixel addressed framebuffer. Also MZ-80B GRAM I memory in lower 8K
-        //            00111111 11111111
-        // 00001101 - Blue framebuffer.
-        //            00000000 00000000 - Blue pixel addressed framebuffer. Also MZ-80B GRAM II memory in lower 8K
-        //            00111111 11111111
-        // 00001110 - Green framebuffer.
-        //            00000000 00000000 - Green pixel addressed framebuffer.
-        //            00111111 11111111
-        //
 
 // tranZPUter Memory Modes - select one of the 32 possible memory models using these constants.
 //
@@ -647,7 +681,6 @@
 // Convert big endiam to little endian.
 #define convBigToLittleEndian(num)   ((num>>24)&0xff) | ((num<<8)&0xff0000) | ((num>>8)&0xff00) | ((num<<24)&0xff000000)
 
-
 // Possible machines the tranZPUter can be hosted on and can emulate.
 //
 enum MACHINE_TYPES {
@@ -740,7 +773,6 @@ typedef struct __attribute__((__packed__)) {
         uint8_t                      *sdFileName[TZSVC_MAX_DIR_ENTRIES]; // No mapping for SD filenames, just the file name.
     };
 } t_dirMap;
-
 
 // Structure to maintain all MZ700 hardware control information in order to emulate the machine.
 //
@@ -981,8 +1013,6 @@ uint8_t                              mzSDInit(uint8_t);
 uint8_t                              mzSDRead(uint8_t, uint32_t, uint32_t);
 uint8_t                              mzSDWrite(uint8_t, uint32_t, uint32_t);    
 void                                 testRoutine(void);
-
-
 
 // Getter/Setter methods!
 

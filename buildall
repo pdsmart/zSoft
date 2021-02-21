@@ -12,9 +12,11 @@ ZPU_E115_APPSIZE=0x8000
 ZPU_E115_HEAPSIZE=0x4000
 ZPU_E115_STACKSIZE=0x3D80
 
+ROOT_DIR=/dvlp/Projects/dev/github/
+
 (
 # Ensure the zOS target directories exist.
-cd /dvlp/Projects/dev/github/zSoft
+cd ${ROOT_DIR}/zSoft
 mkdir -p SD/SharpMZ
 mkdir -p SD/Dev
 mkdir -p SD/K64F
@@ -49,30 +51,30 @@ if [ $? != 0 ]; then
 	exit 1
 fi
 cp -r build/SD/* SD/K64F/
-rsync -avh * psmart@192.168.15.205:/dvlp/Projects/dev/github/zSoft/
+rsync -avh * psmart@192.168.15.205:${ROOT_DIR}/zSoft/
 if [ $? != 0 ]; then
 	echo "Error syncing K64F Distribution..."
 	exit 1
 fi
 # Simple mechanism to prevent remote build and programming of the K64F.
-diff /dvlp/Projects/dev/github/zSoft/zOS/main.bin /dvlp/Projects/dev/github/zSoft/zOS/main.bak
+diff ${ROOT_DIR}/zSoft/zOS/main.bin ${ROOT_DIR}/zSoft/zOS/main.bak
 if [ $? -ne 0 ]; then
-    echo "GO" >  /dvlp/Projects/dev/github/zSoft/.dobuild
-    rsync -avh .dobuild psmart@192.168.15.205:/dvlp/Projects/dev/github/zSoft/
+    echo "GO" >  ${ROOT_DIR}/zSoft/.dobuild
+    rsync -avh .dobuild psmart@192.168.15.205:${ROOT_DIR}/zSoft/
     if [ $? != 0 ]; then
         echo "Error syncing K64F Distribution..."
         exit 1
     fi
 fi
-cp /dvlp/Projects/dev/github/zSoft/zOS/main.bin /dvlp/Projects/dev/github/zSoft/zOS/main.bak
+cp ${ROOT_DIR}/zSoft/zOS/main.bin ${ROOT_DIR}/zSoft/zOS/main.bak
 )
 if [ $? != 0 ]; then
 	exit 1
 fi
 
 # Ensure the TZFS target directories exist
-k64fsddir=/dvlp/Projects/dev/github/zSoft/SD/K64F
-tzfsdir=/dvlp/Projects/dev/github/tranZPUter/software
+k64fsddir=${ROOT_DIR}/zSoft/SD/K64F
+tzfsdir=${ROOT_DIR}/tranZPUter/software
 mkdir -p $k64fsddir/TZFS/
 mkdir -p $k64fsddir/MZF/
 mkdir -p $k64fsddir/CPM/

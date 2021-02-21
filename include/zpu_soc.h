@@ -354,9 +354,9 @@ typedef volatile unsigned int* register_t;
 #define SOCCFG_BASE                    IO_ADDR_PERIPHERALS + 0xF00
 // Registers
 #define SOCCFG_ZPU_ID                  0x00                                                   // ID of the instantiated ZPU
-#define SOCCFG_SYSFREQ                 0x04                                                   // System Clock Frequency in MHz x 10 (ie. 100KHÅº)
-#define SOCCFG_MEMFREQ                 0x08                                                   // Sysbus SDRAM Clock Frequency in MHz x 10 (ie. 100KHÅº)
-#define SOCCFG_WBMEMFREQ               0x0c                                                   // Wishbone SDRAM Clock Frequency in MHz x 10 (ie. 100KHÅº)
+#define SOCCFG_SYSFREQ                 0x04                                                   // System Clock Frequency in MHz x 10 (ie. 100MHz = 1000)
+#define SOCCFG_MEMFREQ                 0x08                                                   // Sysbus SDRAM Clock Frequency in MHz x 10 (ie. 100MHz = 1000)
+#define SOCCFG_WBMEMFREQ               0x0c                                                   // Wishbone SDRAM Clock Frequency in MHz x 10 (ie. 100MHz = 1000)
 #define SOCCFG_DEVIMPL                 0x10                                                   // Bit map of devices implemented in SOC.
 #define SOCCFG_BRAMADDR                0x14                                                   // Address of Block RAM.
 #define SOCCFG_BRAMSIZE                0x18                                                   // Size of Block RAM.

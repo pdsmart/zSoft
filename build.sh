@@ -625,11 +625,16 @@ elif [ "${OS}" = "ZOS" ]; then
     if [ $? != 0 ]; then
         Fatal "Aborting, failed to build zOS!"
     fi
-    cp ${BUILDPATH}/zOS/${OSBUILDSTR}.bin ${BUILDPATH}/build/SD/${OS_SD_TARGET}
 
     # Also create a copy of the OS for use by the tranZPUter SW-700 project.
     mkdir -p ${BUILDPATH}/build/SD/ZOS
-    cp ${BUILDPATH}/zOS/${OSBUILDSTR}.bin ${BUILDPATH}/build/SD/ZOS/ZOS.ROM
+    if [ "${CPUTYPE}" = "__ZPU__" ]; then
+        cp ${BUILDPATH}/zOS/${OSBUILDSTR}.bin ${BUILDPATH}/build/SD/${OS_SD_TARGET}
+        cp ${BUILDPATH}/zOS/${OSBUILDSTR}.bin ${BUILDPATH}/build/SD/ZOS/ZOS.ROM
+    else
+        cp ${BUILDPATH}/zOS/main.bin ${BUILDPATH}/build/SD/${OS_SD_TARGET}
+        cp ${BUILDPATH}/zOS/main.bin ${BUILDPATH}/build/SD/ZOS/ZOS.K64F.ROM
+    fi
 fi
 
 # Build the apps and install into the build tree.

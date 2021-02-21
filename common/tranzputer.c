@@ -44,7 +44,7 @@
 //                  v1.4 Dec 2020  - With the advent of the tranZPUter SW-700 v1.3, major changes needed to
 //                                   to be made. Some of the overhanging code from v1.0 of the original
 //                                   tranZPUter SW had to be stripped out and direct 24bit addressing, as
-//                                   opposed to memory mode configuration was implemented. This added race
+//                                   opposed to memory mode configuration, was implemented. This added race
 //                                   states as it was now much quicker so further tweaks using direct
 //                                   register writes had to be made.
 //                                   This version see's the advent of soft CPU's in hardware and the 
@@ -2070,8 +2070,6 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
     // Locals.
     FRESULT  result = 0;
 
-printf("I have config:%02x\n", cpuConfig);
-
     // Set CPU and hold soft CPU clock if configured.
     writeZ80IO(IO_TZ_CPUCFG, cpuConfig & CPUMODE_IS_SOFT_MASK, TRANZPUTER);
 
@@ -2145,7 +2143,6 @@ printf("I have config:%02x\n", cpuConfig);
             // If autoboot flag set, force a restart to the ROM which will call User ROM startup code.
             if(osControl.tzAutoBoot)
             {
-printf("making reset\n");
                 // Set the memory model to BOOT so we can bootstrap TZFS.
                 resetZ80(TZMM_BOOT);
             }
@@ -3646,7 +3643,7 @@ void processServiceRequest(void)
     uint8_t    status          = 0;
     uint32_t   actualFreq;
     uint32_t   copySize        = TZSVC_CMD_STRUCT_SIZE;
-printf("Service request\n");
+  
     // A request requires multiple transactions on the Z80 bus, so to avoid multiple request/ack cycles, we gain access then hold it until the end of the request.
     //
     if(reqZ80Bus(DEFAULT_BUSREQ_TIMEOUT) == 0)
@@ -3666,7 +3663,6 @@ printf("Service request\n");
             copyFromZ80((uint8_t *)&svcControl.sector, z80Control.svcControlAddr+TZSVC_CMD_SIZE, TZSVC_SECTOR_SIZE, z80Control.svcControlAddr > 0x80000 ? FPGA : TRANZPUTER);
         }
 
-printf("Cmd=%02x\n", svcControl.cmd);
         // Check this is a valid request.
         if(svcControl.result == TZSVC_STATUS_REQUEST)
         {
@@ -3849,7 +3845,7 @@ printf("Cmd=%02x\n", svcControl.cmd);
                 // Switch the hardware to select the hard Z80 CPU. This involves the switch then a reset procedure.
                 //
                 case TZSVC_CMD_CPU_SETZ80:
-printf("Switch to Z80\n");
+                    //printf("Switch to Z80\n");
                     // Switch to hard Z80.
                     writeZ80IO(IO_TZ_CPUCFG, CPUMODE_SET_Z80, TRANZPUTER);
 
@@ -3863,7 +3859,7 @@ printf("Switch to Z80\n");
                 // Switch the hardware to select the soft T80 CPU. This involves the switch.
                 //
                 case TZSVC_CMD_CPU_SETT80:
-printf("Switch to T80\n");
+                    //printf("Switch to T80\n");
                     // Switch to soft T80 cpu.
                     writeZ80IO(IO_TZ_CPUCFG, CPUMODE_SET_T80, TRANZPUTER);
                   
@@ -3874,7 +3870,7 @@ printf("Switch to T80\n");
                 // Switch the hardware to select the soft ZPU Evolution CPU. This involves the switch.
                 //
                 case TZSVC_CMD_CPU_SETZPUEVO:
-printf("Switch to EVO\n");
+                    //printf("Switch to EVO\n");
                     // Switch to soft T80 cpu.
                     writeZ80IO(IO_TZ_CPUCFG, CPUMODE_SET_ZPU_EVO, TRANZPUTER);
                   
@@ -3886,7 +3882,6 @@ printf("Switch to EVO\n");
                 // physical initialisation.
                 case TZSVC_CMD_SD_DISKINIT:
                     // No logic needed as the K64F initialises the underlying drive and the host accesses, via a mapping table, the 2-> partitions.
-printf("Disk init\n");
                     break;
 
                 // Raw read access to the SD card.
@@ -3949,7 +3944,6 @@ printf("Disk init\n");
     {
         printf("Failed to request access to the Z80 Bus, cannot service request.\n");
     }
-printf("Exit request\n");
     return;
 }
 

@@ -101,6 +101,7 @@ FATFS_DIR      = $(CURDIR)/../../common/FatFS
 DHRY_DIR       = $(CURDIR)/../../common/Dhrystone
 COREMARK_DIR   = $(CURDIR)/../../common/CoreMark
 UMM_DIR        = $(CURDIR)/../../common/umm
+TEENSY_DIR     = $(CURDIR)/../../teensy3
 INCLUDE_DIR    = $(CURDIR)/../../include
 LIB_DIR        = $(CURDIR)/../../libraries/lib
 LIB_INCLUDE_DIR= $(CURDIR)/../../libraries/include
@@ -110,7 +111,11 @@ APP_INCLUDE_DIR= $(CURDIR)/../include
 BUILD_DIR      = $(abspath $(CURDIR)/build)
 
 # Startup code.
-CRT0_ASM_SRC   = $(STARTUP_DIR)/app_k64f_crt0.s
+ifeq (__TZFLUPD__,$(findstring __TZFLUPD__,$(CFLAGS)))
+  CRT0_ASM_SRC = $(STARTUP_DIR)/app_k64f_hwctl_crt0.s 
+else
+  CRT0_ASM_SRC = $(STARTUP_DIR)/app_k64f_crt0.s
+endif
 
 # Memory management code. Bring in the UMM library if stdlib isnt being used.
 #ifeq (-nostdlib,$(findstring -nostdlib,$(LDFLAGS)))
@@ -124,14 +129,20 @@ TEENSY3_C_SRC  = #$(wildcard $(COREPATH)/*.c)
 TEENSY3_CPP_SRC= #$(wildcard $(COREPATH)/*.cpp)
 
 # Common modules needed for this app.
-COMMON_SRC     = #../common/sysutils.c #../common/sbrk.c
+ifeq (__TZFLUPD__,$(findstring __TZFLUPD__,$(CFLAGS)))
+COMMON_C_SRC   = $(FATFS_DIR)/ff.c $(FATFS_DIR)/ffunicode.c $(TEENSY_DIR)/nonstd.c
+COMMON_CPP_SRC = $(FATFS_DIR)/sdmmc_k64f.cpp $(TEENSY_DIR)/NXP_SDHC.cpp 
+else
+COMMON_C_SRC     = #../common/sysutils.c #../common/sbrk.c
+COMMON_CPP_SRC   =
+endif
 
 # Application being built.
 MAIN_PRJ_APP   = $(APP_NAME)
 MAIN_SRC       = $(APP_NAME).c
 
 # Define the sources and what they compile from->to.
-SOURCES        := $(CRT0_ASM_SRC:.s=.o) $(COMMON_SRC:.c=.o) $(UMM_C_SRC:.c=.o) $(CORE_SRC:.c=.o) $(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o) $(TEENSY3_C_SRC:.c=.o) $(TEENSY3_CPP_SRC:.cpp=.o) $(DHRY_SRC:.c=.o) $(COREMARK_SRC:.c=.o) $(APP_C_SRC:.c=.o) $(APP_CPP_SRC:.cpp=.o) $(MAIN_SRC:.c=.o)
+SOURCES        := $(CRT0_ASM_SRC:.s=.o) $(COMMON_C_SRC:.c=.o) $(COMMON_CPP_SRC:.cpp=.o) $(UMM_C_SRC:.c=.o) $(CORE_SRC:.c=.o) $(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o) $(TEENSY3_C_SRC:.c=.o) $(TEENSY3_CPP_SRC:.cpp=.o) $(DHRY_SRC:.c=.o) $(COREMARK_SRC:.c=.o) $(APP_C_SRC:.c=.o) $(APP_CPP_SRC:.cpp=.o) $(MAIN_SRC:.c=.o)
 OBJS           := $(foreach src,$(SOURCES), $(BUILD_DIR)/$(src))
 
 # CPPFLAGS = compiler options for C and C++

@@ -6,12 +6,13 @@
 // Description:     The TranZPUter control program, responsible for booting up and configuring the
 //                  underlying host, providing SD card services and interactive menus.
 // Credits:         
-// Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
+// Copyright:       (c) 2019-2021 Philip Smart <philip.smart@net2net.org>
 //
 // History:         May 2020  - Initial write of the TranZPUter software.
 //                  July 2020 - Another test, a bug with the VHDL on the v2.1 tranZPUter board, so 
 //                              needed to output a constant memory mode. The bug turned out to be
 //                              a delayed tri-stating of the bus.
+//                  Feb 2021 - Replaced getopt_long with optparse as it is buggy and crashes.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -30,7 +31,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define TZPU_VERSION "1.0"
+#define TZPU_VERSION "1.2"
 
 #ifdef __cplusplus
     extern "C" {
@@ -69,6 +70,12 @@
 #else
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
+	  
+// Getopt_long is buggy so we use optparse.
+#define OPTPARSE_IMPLEMENTATION
+#define OPTPARSE_API static
+#include <optparse.h>
+
 //
 #include <app.h>
 #include <tranzputer.h>
@@ -78,8 +85,8 @@
 #include <tools.c>
 
 // Version info.
-#define VERSION              "v1.1"
-#define VERSION_DATE         "10/12/2020"
+#define VERSION              "v1.2"
+#define VERSION_DATE         "21/02/2021"
 #define APP_NAME             "TZPU"
 
 void testBus(void)
@@ -176,7 +183,58 @@ uint32_t app(uint32_t param1, uint32_t param2)
     //
   //  char      *ptr = (char *)param1;
   //  char      *pathName;    
-    uint32_t  retCode = 1;
+    int             argc              = 0;
+    int             help_flag         = 0;
+    int             verbose_flag      = 0;
+    int             opt; 
+    char           *argv[20];
+    char           *ptr               = strtok((char *)param1, " ");
+    uint32_t        retCode           = 1;
+
+    // If the invoking command is given, add it to argv at the start.
+    //
+    if(param2 != 0)
+    {
+        argv[argc++] = (char *)param2;
+    }
+
+    // Now convert the parameter line into argc/argv suitable for getopt to use.
+    while (ptr && argc < 20-1)
+    {
+        argv[argc++] = ptr;
+        ptr = strtok(0, " ");
+    }
+    argv[argc] = 0;    
+
+    // Define parameters to be processed.
+    struct optparse options;
+    static struct optparse_long long_options[] =
+    {
+        {"help",          'h',               OPTPARSE_NONE},
+        {"verbose",       'v',               OPTPARSE_NONE},	    
+	{0}
+    };
+
+    // Parse the command line options.
+    //
+    optparse_init(&options, argv);
+    while((opt = optparse_long(&options, long_options, NULL)) != -1)  
+    {  
+        switch(opt)  
+        {  
+            case 'h':
+                help_flag = 1;
+                break;
+
+            case 'v':
+                verbose_flag = 1;
+                break;
+
+            case '?':
+                printf("%s: %s\n", argv[0], options.errmsg);
+                return(1);
+        }  
+    } 
     
     // Get name of file to load.
     //

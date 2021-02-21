@@ -35,50 +35,52 @@
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #########################################################################################################
 
-ifeq ($(__K64F__),1)
-  TOOLSPATH        = $(CURDIR)/../../tools
-  COMPILERPATH     = $(TOOLSPATH)/arm/bin
-  BASE	           = $(abspath $(COMPILERPATH))/arm-none-eabi
-else
-  TOOLSPATH        = /opt/zpu
-  COMPILERPATH     = $(TOOLSPATH)/bin
-  BASE	           = zpu-elf
-endif
-CC                 = $(BASE)-gcc
-CXX                = $(BASE)-g++
-LD                 = $(BASE)-gcc
-AS                 = $(BASE)-as
-CP                 = $(BASE)-objcopy
-DUMP               = $(BASE)-objdump
-OBJCOPY            = $(BASE)-objcopy
-SIZE               = $(BASE)-size
+APP_NAME       = tzflupd
+APP_DIR        = $(CURDIR)/..
+APP_COMMON_DIR = $(CURDIR)/../common
+COMMON_DIR     = $(CURDIR)/../../common
+BASEDIR        = ../../..
+TEENSYDIR      = ../../teensy3/
 
-FS_SUBDIRS        := falloc fattr fcat fcd fclose fconcat fcp fdel fdir fdrive fdump finspect flabel fmkdir
-FS_SUBDIRS        += fmkfs fopen fread frename fsave fseek fshowdir fstat ftime ftrunc fwrite fxtract
-DISK_SUBDIRS      := ddump dstat
-BUFFER_SUBDIRS    := bdump bedit bread bwrite bfill blen
-MEM_SUBDIRS       := mclear mcopy mdiff mdump meb meh mew mperf msrch mtest
-HW_SUBDIRS        := hr ht tcpu
-TST_SUBDIRS       := dhry coremark
-MISC_SUBDIRS      := help time
-APP_SUBDIRS       := tbasic mbasic kilo ed
+# Override values given by parent make for this application as its memory usage differs from the standard app.
 ifeq ($(__K64F__),1)
-  ifeq ($(__TRANZPUTER__),1)
-    TZPU_SUBDIRS  := tzpu tzload tzdump tzclear tzclk tzreset tzio tzflupd
-  endif
+  #override HEAPADDR  = 0x2002f000
+  #override HEAPSIZE  = 0x00000000
+  #override STACKADDR = 0x2002f000
+  #override STACKSIZE = 0x00000000
+
+  # Modules making up tzflupd.
+  APP_C_SRC    = $(APP_COMMON_DIR)/fsl_flash.c
+# APP_C_SRC    = $(COMMON_DIR)/tranzputer.c
+  CFLAGS       = -D CPU_MK64FX512VLL12 -D __TZFLUPD__ -mthumb -fno-builtin -ffunction-sections -fdata-sections -D__MK64FX512__ -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 #--save-temps
+
+  CPPFLAGS     = 
+  LDFLAGS      = 
+  LIBS         = 
 else
-  TZPU_SUBDIRS    :=
+
+  # Modules making up tzflupd.
+  APP_C_SRC    = #$(APP_COMMON_DIR)/sysutils.c $(APP_COMMON_DIR)/ctypelocal.c
+  CFLAGS       = 
+  CPPFLAGS     = 
+  LDFLAGS      = -nostdlib
+  LIBS         = -lumansi-zpu -limath-zpu
 endif
 
-SUBDIRS           := $(FS_SUBDIRS) $(DISK_SUBDIRS) $(BUFFER_SUBDIRS) $(MEM_SUBDIRS) $(HW_SUBDIRS) $(TST_SUBDIRS) $(MISC_SUBDIRS) $(APP_SUBDIRS) $(TZPU_SUBDIRS)
-BASEDIR            = ../..
-TARGETS           := all clean install
+# Filter out the standard HEAP address and size, replacing with the ones required for this application.
+# Useful for sub-makes
+FILTER1        = $(filter-out $(filter HEAPADDR=%,$(MAKEFLAGS)), $(MAKEFLAGS))
+FILTER2        = $(filter-out $(filter HEAPSIZE=%,$(FILTER1)),   $(FILTER1))
+NEWMAKEFLAGS   = $(FILTER2) HEAPADDR=$(HEADADDR) HEAPSIZE=$(HEAPSIZE)
 
-# Our target.
-$(TARGETS): $(SUBDIRS)
-#
-$(SUBDIRS):
-	$(MAKE) -C $@ $(MAKECMDGOALS) $(MAKEFLAGS)
+ifeq ($(__K64F__),1)
+include        $(APP_DIR)/Makefile.k64f
+else
+
+# There currently is no code for the ZPU, all development being done on the K64F for this app.
+all:
+
+clean:
 
 install:
-.PHONY: $(TARGETS) $(SUBDIRS)
+endif

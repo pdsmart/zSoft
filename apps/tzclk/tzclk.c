@@ -8,9 +8,10 @@
 //                  frequency but when the secondary clock is eaabled, it is used when using tranZPUter
 //                  onboard hardware such as the static RAM.
 // Credits:         
-// Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
+// Copyright:       (c) 2019-2021 Philip Smart <philip.smart@net2net.org>
 //
 // History:         May 2020 - Initial write of the TranZPUter software.
+//                  Feb 2021 - Replaced getopt_long with optparse as it is buggy and crashes.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -43,7 +44,6 @@
   #include <usb_serial.h>
   #include <core_pins.h>
   #include <Arduino.h>
-  #include <getopt.h>
   #include "k64f_soc.h"
   #include <../../libraries/include/stdmisc.h>
 #elif defined(__ZPU__)
@@ -67,6 +67,12 @@
 #else
   #error OS not defined, use __ZPUTA__ or __ZOS__      
 #endif
+	  
+// Getopt_long is buggy so we use optparse.
+#define OPTPARSE_IMPLEMENTATION
+#define OPTPARSE_API static
+#include <optparse.h>
+
 //
 #include <app.h>
 #include <tranzputer.h>
@@ -76,8 +82,8 @@
 #include <tools.c>
 
 // Version info.
-#define VERSION              "v1.0"
-#define VERSION_DATE         "08/06/2020"
+#define VERSION              "v1.1"
+#define VERSION_DATE         "21/02/2021"
 #define APP_NAME             "TZCLK"
 
 // Simple help screen to remmber how this utility works!!
@@ -115,7 +121,6 @@ uint32_t app(uint32_t param1, uint32_t param2)
     int        disable_flag      = 0;
     int        verbose_flag      = 0;
     int        opt; 
-    int        option_index      = 0; 
     long       val               = 0;
     char      *argv[20];
     char      *ptr               = strtok((char *)param1, " ");
@@ -138,19 +143,21 @@ uint32_t app(uint32_t param1, uint32_t param2)
     argv[argc] = 0;
 
     // Define parameters to be processed.
-    static struct option long_options[] =
+    struct optparse options;
+    static struct optparse_long long_options[] =
     {
-        {"help",          no_argument,       0,   'h'},
-        {"freq",          required_argument, 0,   'f'},
-        {"enable",        no_argument,       0,   'e'},
-        {"disable",       no_argument,       0,   'd'},
-        {"verbose",       no_argument,       0,   'v'},
-        {0,               0,                 0,    0}
+        {"help",          'h',  OPTPARSE_NONE},
+        {"freq",          'f',  OPTPARSE_REQUIRED},
+        {"enable",        'e',  OPTPARSE_NONE},
+        {"disable",       'd',  OPTPARSE_NONE},
+        {"verbose",       'v',  OPTPARSE_NONE},
+        {0}
     };
 
     // Parse the command line options.
     //
-    while((opt = getopt_long(argc, argv, ":hs:e:s:mv", long_options, &option_index)) != -1)  
+    optparse_init(&options, argv);
+    while((opt = optparse_long(&options, long_options, NULL)) != -1)  
     {  
         switch(opt)  
         {  
@@ -167,9 +174,9 @@ uint32_t app(uint32_t param1, uint32_t param2)
                 break;
 
             case 'f':
-                if(xatoi(&argv[optind-1], &val) == 0)
+                if(xatoi(&options.optarg, &val) == 0)
                 {
-                    printf("Illegal numeric:%s\n", argv[optind-1]);
+                    printf("Illegal numeric:%s\n", options.optarg);
                     return(5);
                 }
                 cpuFreq = (uint32_t)val;
@@ -179,12 +186,9 @@ uint32_t app(uint32_t param1, uint32_t param2)
                 verbose_flag = 1;
                 break;
 
-            case ':':  
-                printf("Option %s needs a value\n", argv[optind-1]);  
-                break;  
-            case '?':  
-                printf("Unknown option: %s, ignoring!\n", argv[optind-1]); 
-                break;  
+            case '?':
+                printf("%s: %s\n", argv[0], options.errmsg);
+                return(1);
         }  
     } 
 

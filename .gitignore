@@ -74,3 +74,14 @@ zputa/*.ii
 zputa/*.s
 zOS/main.save
 /tzio/
+.dobuild
+SD/
+frdm/
+frdmk64f_usb_msd_host_bootloader_mcux.zip
+frdmk64f_usb_msd_host_bootloader_mcux/
+getopt_long.c
+libraries/include/optparse.h
+minicom.cap
+startup/app_zos_zpu.tmpl2
+zOS/main.bak
+

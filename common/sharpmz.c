@@ -1945,9 +1945,7 @@ uint8_t mzSweepKeys(void)
 
         // Read the scan lines.
         keyboard.scanbuf[0][strobe-0xF0] = (uint8_t)(*(volatile uint32_t *)(MBADDR_8BIT_KEYPB));
-  //      printf("%02x ", (uint8_t)*(uint32_t *)(MBADDR_8BIT_KEYPB));
     }
-   // printf("\n");
 
     // Now look for active keys.
     for(uint8_t strobeIdx=0; strobeIdx < 10; strobeIdx++)
@@ -2191,11 +2189,9 @@ int mzServiceCall(uint8_t cmd)
         // Error occurred?
         if((status=mzSDGetStatus(TZSVC_TIMEOUT, TZSVC_STATUS_REQUEST)) != -1)
         {
-            if((status=mzSDGetStatus(TZSVC_TIMEOUT, TZSVC_STATUS_PROCESSING)) == -1)
-            {
-                retries--;
-            }
+            status=mzSDGetStatus(TZSVC_TIMEOUT, TZSVC_STATUS_PROCESSING);
         }
+        retries--;
     } while(retries > 0 && (uint8_t)status != TZSVC_STATUS_OK);
 
     return(retries == 0 ? -1 : status);
@@ -2208,7 +2204,7 @@ int mzSDServiceCall(uint8_t drive, uint8_t cmd)
 {
     // Locals.
     int     status;
-
+  
     // Setup control structure to request a disk sector from the I/O processor.
     svcControl->fileSector = drive;
 
