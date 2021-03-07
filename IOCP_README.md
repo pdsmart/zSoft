@@ -1,4 +1,3 @@
-<br>
 ### Using IOCP
 
 The I/O Control Program (IOCP) is basically a bootloader, it can operate standalone or as the first stage in booting an application. Depending on the configuration it can provide a low level monitor via the serail
@@ -70,21 +69,22 @@ really should be coded in Python or Java, but it works for now in building this 
 
 For ease of reading, the following shortnames refer to the corresponding path in this chapter.
 
-|  Short Name      |                                                                            |
-|------------------|----------------------------------------------------------------------------|
-| \[\<ABS PATH>\]  | The path where this repository was extracted on your system.               |
-| \<apps\>         | \[\<ABS PATH>\]/zsoft/apps                                                 |
-| \<common\>       | \[\<ABS PATH>\]/zsoft/common                                               |
-| \<libraries\>    | \[\<ABS PATH>\]/zsoft/libraries                                            |
-| \<teensy3\>      | \[\<ABS PATH>\]/zsoft/teensy3                                              |
-| \<include\>      | \[\<ABS PATH>\]/zsoft/include                                              |
-| \<startup\>      | \[\<ABS PATH>\]/zsoft/startup                                              |
-| \<iocp\>         | \[\<ABS PATH>\]/zsoft/iocp                                                 |
-| \<zOS\>          | \[\<ABS PATH>\]/zsoft/zOS                                                  |
-| \<zputa\>        | \[\<ABS PATH>\]/zsoft/zputa                                                |
-| \<rtl\>          | \[\<ABS PATH>\]/zsoft/rtl                                                  |
-| \<docs\>         | \[\<ABS PATH>\]/zsoft/docs                                                 |
-| \<tools\>        | \[\<ABS PATH>\]/zsoft/tools                                                |
+|  Short Name      | Path                                                                       | Description                                                                                       |
+|------------------|----------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
+| \[\<ABS PATH>\]  | The path where this repository was extracted on your system.               |                                                                                                   |
+| \<apps\>         | \[\<ABS PATH>\]/zsoft/apps                                                 | Application directory. All zOS/ZPUTA applications are located here along with their makefiles.                                                   |
+| \<build\>        | \[\<ABS PATH>\]/zsoft/build                                                | A target output directory for the compiled software, ie. \<z-build\>/SD contains all files to be written to an SD card.                          |
+| \<common\>       | \[\<ABS PATH>\]/zsoft/common                                               | Common C/C++ methods which are not assembled into a library.                                                                                     |
+| \<libraries\>    | \[\<ABS PATH>\]/zsoft/libraries                                            | C/C++ libraries, usually part of a C/C++ installation but for embedded work, especially on the ZPU need to be created seperately.                |                                                                                                  |
+| \<teensy3\>      | \[\<ABS PATH>\]/zsoft/teensy3                                              | The K64F based Teensy 3.5 software, some of which is used in the K64F version of zOS. Very rich libraries and can be easily added into a K64F programs. |                                                                                                  |
+| \<include\>      | \[\<ABS PATH>\]/zsoft/include                                              | Common include header files.                                                                                                                     |                                                                                                  |
+| \<startup\>      | \[\<ABS PATH>\]/zsoft/startup                                              | Embedded processor startup files, generally in Assembler. Templates and macros are used to create the correct targets memory model startup code. |                                                                                                  |
+| \<iocp\>         | \[\<ABS PATH>\]/zsoft/iocp                                                 | The IO Control Program, my initial bootloader for bootstrapping an application on the ZPU.                                                       |                                                                                                  |
+| \<zOS\>          | \[\<ABS PATH>\]/zsoft/zOS                                                  | The zOS source code, parameterised for the different target CPU's.                                                                               |                                                                                                  |
+| \<zputa\>        | \[\<ABS PATH>\]/zsoft/zputa                                                | The ZPUTA source code, parameterised for the different target CPU's.                                                                             |                                                                                                  |
+| \<rtl\>          | \[\<ABS PATH>\]/zsoft/rtl                                                  | Register Transfer Level files. These are generated memory definition and initialisation files required when building for a ZPU target project.   |                                                                                                  |
+| \<docs\>         | \[\<ABS PATH>\]/zsoft/docs                                                 | Any relevant documentation for the software.                                                                                                     |                                                                                                  |
+| \<tools\>        | \[\<ABS PATH>\]/zsoft/tools                                                | Tools to aid in the compilation and creation of target files.                                                                                    |     
 
 
 ## Tools
@@ -128,15 +128,15 @@ The software is organised into the following tree/folders:
 IOCP is built using the 'build.sh' script. This script encapsulates the Makefile system with it's plethora of flags and options. The synopsis of the script is below:
 ```bash
 NAME
-    build.sh -  Shell script to build a ZPU program or OS.
+    build.sh -  Shell script to build a ZPU/K64F program or OS.
 
 SYNOPSIS
-    build.sh [-CIOoMBAsdxh]
+    build.sh [-CIOoMBAsTZdxh]
 
 DESCRIPTION
 
 OPTIONS
-    -C <CPU>      = Small, Medium, Flex, Evo, K64F - defaults to Evo.
+    -C <CPU>      = Small, Medium, Flex, Evo, EvoMin, K64F - defaults to Evo.
     -I <iocp ver> = 0 - Full, 1 - Medium, 2 - Minimum, 3 - Tiny (bootstrap only)
     -O <os>       = zputa, zos
     -o <os ver>   = 0 - Standalone, 1 - As app with IOCP Bootloader,
@@ -150,6 +150,8 @@ OPTIONS
     -s <size>     = Required size of application stack
     -a <size>     = Maximum size of an app, defaults to (BRAM SIZE - App Start Address - Stack Size) 
                     if the App Start is located within BRAM otherwise defaults to 0x10000.
+    -T            = TranZPUter specific build, adds initialisation and setup code.
+    -Z            = Sharp MZ series ZPU build, zOS runs as an OS host on Sharp MZ hardware.
     -d            = Debug mode.
     -x            = Shell trace mode.
     -h            = This help screen.
@@ -179,6 +181,8 @@ Sensible defaults are configured into the script, the overriding flags are descr
 | -S \<size\>      | Required size of stack. Normally the \<os\> manages the stack which is also used by an application. If the application is considered dangerous then it should be allocated a local stack. |
 | -s \<size\>      | Required size of application stack. Normally this should not be required as the application shares the \<os\> stack. If the application is dangerous then set this value to allocate a local stack. |
 | -a \<size\>      | Maximum size of an application.<br>*defaults to (BRAM SIZE - App Start Address - Stack Size) for the ZPU if the App Start is located within BRAM otherwise defaults to 0x10000, or 0x20030000 - Stack Size - Heap Size - 0x4000 for the K64F. If the App Start is located within BRAM otherwise defaults to 0x10000.*                                                              |
+| -T               | TranZPUter specific build, adds initialisation and setup code. Build as an embedded OS for the tranZPUter board. |
+| -Z               | Sharp MZ series ZPU build, zOS runs as an OS host on Sharp MZ hardware. Build as a host OS for the Sharp MZ series computer running a ZPU/NIOSII as the host processor. |
 | -d               | Debug mode. Enable more verbose output on state and decisions made by the script. |
 | -x               | Shell trace mode. A very low level, line by line trace of shell execution. Only used during debugging. |
 | -h               | This help screen.                                                                                                                   |

@@ -4,7 +4,7 @@
 #     build.sh -  Shell script to build a ZPU/K64F program or OS.
 #
 # SYNOPSIS
-#     build.sh [-CIOoMBAsdxh]
+#     build.sh [-CIOoMBAsTZdxh]
 #
 # DESCRIPTION
 #

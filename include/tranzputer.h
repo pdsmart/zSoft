@@ -177,6 +177,8 @@
 // Sharp MZ constants.
 //
 #define MZ_MROM_ADDR                 0x0000                              // Monitor ROM start address.
+#define MZ_800_IPL_ADDR              0xE000                              // Address of the 9Z_504M IPL BIOS.
+#define MZ_800_IOCS_ADDR             0xF400                              // Address of the MZ-800 common IOCS bios.
 #define MZ_MROM_STACK_ADDR           0x1000                              // Monitor ROM start stack address.
 #define MZ_MROM_STACK_SIZE           0x0200                              // Monitor ROM stack size.
 #define MZ_UROM_ADDR                 0xE800                              // User ROM start address.
@@ -199,12 +201,17 @@
 #define MZ_80A_CPU_FREQ              2000000                             // CPU Speed of the Sharp MZ-80A
 #define MZ_700_CPU_FREQ              3580000                             // CPU Speed of the Sharp MZ-700
 #define MZ_80B_CPU_FREQ              4000000                             // CPU Speed of the Sharp MZ-80B
+#define MZ_800_CPU_FREQ              3580000                             // CPU Speed of the Sharp MZ-800
 #define MZ_ROM_SA1510_40C            "0:\\TZFS\\SA1510.ROM"              // Original 40 character Monitor ROM.
 #define MZ_ROM_SA1510_80C            "0:\\TZFS\\SA1510-8.ROM"            // Original Monitor ROM patched for 80 character screen mode.
 #define MZ_ROM_1Z_013A_40C           "0:\\TZFS\\1Z-013A.ROM"             // Original 40 character Monitor ROM for the Sharp MZ700.
 #define MZ_ROM_1Z_013A_80C           "0:\\TZFS\\1Z-013A-8.ROM"           // Original Monitor ROM patched for the Sharp MZ700 patched for 80 column mode.
 #define MZ_ROM_1Z_013A_KM_40C        "0:\\TZFS\\1Z-013A-KM.ROM"          // Original 40 character Monitor ROM for the Sharp MZ700 with keyboard remapped for the MZ80A.
 #define MZ_ROM_1Z_013A_KM_80C        "0:\\TZFS\\1Z-013A-KM-8.ROM"        // Original Monitor ROM patched for the Sharp MZ700 with keyboard remapped for the MZ80A and patched for 80 column mode.
+#define MZ_ROM_9Z_504M_COMBINED      "0:\\TZFS\\MZ800_IPL.rom"           // Original MZ-800 BIOS which comprises the 1Z_013B BIOS, 9Z_504M IPL, CGROM and IOCS.
+#define MZ_ROM_9Z_504M               "0:\\TZFS\\MZ800_9Z_504M.rom"       // Modified MZ-800 9Z_504M IPL to contain a select TZFS option.
+#define MZ_ROM_1Z_013B               "0:\\TZFS\\MZ800_1Z_013B.rom"       // Original MZ-800 1Z_013B MZ-700 compatible BIOS.
+#define MZ_ROM_800_IOCS              "0:\\TZFS\\MZ800_IOCS.rom"          // Original MZ-800 common IOCS bios.
 #define MZ_ROM_MZ80B_IPL             "0:\\TZFS\\MZ80B_IPL.ROM"           // Original IPL ROM for the Sharp MZ-80B.
 #define MZ_ROM_TZFS                  "0:\\TZFS\\TZFS.ROM"                // tranZPUter Filing System ROM.
 #define MZ_ROM_ZPU_ZOS               "0:\\ZOS\\ZOS.ROM"                  // zOS for the ZPU running on the tranZPUter SW-700 board.
@@ -246,6 +253,7 @@
 #define TZSVC_CMD_LOAD700BIOS40      0x22                                // Service command requesting that the MZ700 1Z-013A 40 column BIOS is loaded.
 #define TZSVC_CMD_LOAD700BIOS80      0x23                                // Service command requesting that the MZ700 1Z-013A 80 column patched BIOS is loaded.
 #define TZSVC_CMD_LOAD80BIPL         0x24                                // Service command requesting the MZ-80B IPL is loaded.
+#define TZSVC_CMD_LOAD800BIOS        0x25                                // Service command requesting that the MZ800 9Z-504M BIOS is loaded.
 #define TZSVC_CMD_LOADBDOS           0x30                                // Service command to reload CPM BDOS+CCP.
 #define TZSVC_CMD_ADDSDDRIVE         0x31                                // Service command to attach a CPM disk to a drive number.
 #define TZSVC_CMD_READSDDRIVE        0x32                                // Service command to read an attached SD file as a CPM disk drive.
@@ -763,6 +771,7 @@ uint8_t                               reqTranZPUterBus(uint32_t, enum TARGETS);
 void                                  setupSignalsForZ80Access(enum BUS_DIRECTION);
 void                                  releaseZ80(void);
 void                                  refreshZ80(void);
+void                                  refreshZ80AllRows(void);
 void                                  setCtrlLatch(uint8_t);
 uint32_t                              setZ80CPUFrequency(float, uint8_t);
 uint8_t                               copyFromZ80(uint8_t *, uint32_t, uint32_t, enum TARGETS);
@@ -790,6 +799,7 @@ uint8_t                               isZ80MemorySwapped(void);
 uint8_t                               getZ80IO(uint8_t *);
 void                                  clearZ80Reset(void);
 void                                  convertSharpFilenameToAscii(char *, char *, uint8_t);
+void                                  convertToFAT32FileNameFormat(char *);
 
 // tranZPUter OS i/f methods.
 uint8_t                               setZ80SvcStatus(uint8_t);

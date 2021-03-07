@@ -271,9 +271,6 @@ static void setupIRQ(void)
             // Setup the IRQ for Z80_RESET.
             installIRQ(Z80_RESET, IRQ_MASK_FALLING);
           
-            // Setup the IRQ for Z80_RESET.
-            installIRQ(Z80_RESET, IRQ_MASK_FALLING);
-        
             // Remove previous interrupts not needed in this mode.
             removeIRQ(Z80_IORQ);
 
@@ -281,6 +278,29 @@ static void setupIRQ(void)
             NVIC_SET_PRIORITY(IRQ_PORTD, 0);
             NVIC_SET_PRIORITY(IRQ_PORTE, 16);
             break;
+          
+        // The MZ800 we setup for RESET and SVCREQ handling, everything else ignored.
+        case MZ800:
+            // Install the dummy method to be called when PortE triggers.
+            _VectorsRam[IRQ_PORTE + 16] = irqPortE;
+
+            // Install the method to be called when PortD triggers.
+            _VectorsRam[IRQ_PORTD + 16] = irqPortD;
+         
+            // Setup the IRQ for CTL_SVCREQ.
+            installIRQ(CTL_SVCREQ, IRQ_MASK_LOW);
+          
+            // Setup the IRQ for Z80_RESET.
+            installIRQ(Z80_RESET, IRQ_MASK_FALLING);
+          
+            // Remove previous interrupts not needed in this mode.
+            removeIRQ(Z80_IORQ);
+
+            // Set relevant priorities to meet latency.
+            NVIC_SET_PRIORITY(IRQ_PORTD, 0);
+            NVIC_SET_PRIORITY(IRQ_PORTE, 16);
+            break;
+
 
         // For the MZ80B we need to enable IORQ to process the OUT statements the Z80 generates for memory mode selection and I/O. 
         case MZ80B:
@@ -367,6 +387,15 @@ static void restoreIRQ(void)
             // Setup the IRQ for Z80_IORQ.
             //installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
            
+            // Setup the IRQ for CTL_SVCREQ.
+            installIRQ(CTL_SVCREQ, IRQ_MASK_LOW);
+
+            // Setup the IRQ for Z80_RESET.
+            installIRQ(Z80_RESET, IRQ_MASK_FALLING);
+            break;
+           
+        // The MZ800 just needs to enable IORQ to process the OUT statements the Z80 generates for memory mode selection. 
+        case MZ800:
             // Setup the IRQ for CTL_SVCREQ.
             installIRQ(CTL_SVCREQ, IRQ_MASK_LOW);
 
@@ -1756,7 +1785,7 @@ FRESULT saveZ80Memory(const char *dst, uint32_t addr, uint32_t size, t_svcDirEnt
     // Sanity check on filenames.
     if(dst == NULL || size == 0)
         return(FR_INVALID_PARAMETER);
-    
+
     // Try and create the destination file.
     fr0 = f_open(&File, dst, FA_CREATE_ALWAYS | FA_WRITE);
 
@@ -2012,6 +2041,23 @@ void convertSharpFilenameToAscii(char *dst, char *src, uint8_t size)
     return;
 }
 
+// Helper method to convert a Sharp ASCII filename to one acceptable for use in the FAT32 filesystem.
+//
+void convertToFAT32FileNameFormat(char *dst)
+{
+    // Go through the given filename and change any characters which FAT32 doesnt support. This is necessary as the Sharp filenaming convention allows
+    // for almost any character!
+    //
+    for(int idx=0; idx < strlen(dst); idx++)
+    {
+        if(dst[idx] == '/')
+        {
+            dst[idx] = '-';
+        }
+    }
+    return;
+}
+
 //////////////////////////////////////////////////////////////
 // tranZPUter i/f methods for zOS - handling and control    //
 //                                                          //
@@ -2091,11 +2137,24 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
                     break;
 
                 case MZ800:
-                    //result = loadBIOS(MZ_ROM_1Z_013A_40C, MZ700, MZ_MROM_ADDR);
+                    // The MZ-800 uses a composite ROM containing the modified BIOS of the MZ-700 (1Z_013B), the IPL of the MZ-800 (9Z_504M), the CGROM for video text output
+                    // and the IOCS, a BASIC common code area,
+                    //
+                    // First we load the MZ-700 compatible BIOS.
+                    printf("Loading 1Z_013B\n");
+                    result = loadBIOS(MZ_ROM_1Z_013B,     MZ800, MZ_MROM_ADDR);
+
+                    // Next we load the modified 9Z-504M - modified to add an option to start TZFS.
+                    printf("Loading 9Z_504M\n");
+                    result = loadBIOS(MZ_ROM_9Z_504M,     MZ800, MZ_800_IPL_ADDR);
+                   
+                    // Finally we load the common IOCS.
+                    printf("Loading IOCS\n");
+                    result = loadBIOS(MZ_ROM_800_IOCS,    MZ800, MZ_800_IOCS_ADDR);
                     break;
 
                 case MZ80B:
-                    result = loadBIOS(MZ_ROM_MZ80B_IPL, MZ700, MZ_MROM_ADDR);
+                    result = loadBIOS(MZ_ROM_MZ80B_IPL,   MZ700, MZ_MROM_ADDR);
                     break;
 
                 case MZ80A:
@@ -2103,21 +2162,25 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
                     result = loadBIOS(MZ_ROM_SA1510_40C, MZ80A, MZ_MROM_ADDR);
                     break;
             }
-            if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0,      MZ_UROM_ADDR,            0x1800, 0, TRANZPUTER, 1) != FR_OK))
+            // The MZ-800 architecure occupies the TZFS memory area, so we dont load TZFS at this point. If the user selects TZFS then a request to load will be made.
+            if(z80Control.hostType != MZ800)
             {
-                printf("Error: Failed to load bank 1 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
-            }
-            if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x1800, MZ_BANKRAM_ADDR+0x10000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
-            {
-                printf("Error: Failed to load page 2 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
-            }
-            if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x2800, MZ_BANKRAM_ADDR+0x20000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
-            {
-                printf("Error: Failed to load page 3 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
-            }
-            if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x3800, MZ_BANKRAM_ADDR+0x30000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
-            {
-                printf("Error: Failed to load page 4 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
+                if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0,      MZ_UROM_ADDR,            0x1800, 0, TRANZPUTER, 1) != FR_OK))
+                {
+                    printf("Error: Failed to load bank 1 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
+                }
+                if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x1800, MZ_BANKRAM_ADDR+0x10000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
+                {
+                    printf("Error: Failed to load page 2 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
+                }
+                if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x2800, MZ_BANKRAM_ADDR+0x20000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
+                {
+                    printf("Error: Failed to load page 3 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
+                }
+                if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x3800, MZ_BANKRAM_ADDR+0x30000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
+                {
+                    printf("Error: Failed to load page 4 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
+                }
             }
             break;
 
@@ -2143,8 +2206,15 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
             // If autoboot flag set, force a restart to the ROM which will call User ROM startup code.
             if(osControl.tzAutoBoot)
             {
-                // Set the memory model to BOOT so we can bootstrap TZFS.
-                resetZ80(TZMM_BOOT);
+                if(z80Control.hostType != MZ800)
+                {
+                    // Set the memory model to BOOT so we can bootstrap TZFS.
+                    resetZ80(TZMM_BOOT);
+                } else
+                {
+                    // The MZ-800 wants to run the original software so reset leaving the memory mode as original.
+                    resetZ80(TZMM_ORIG);
+                }
             }
         }
         // For the T80 we just issue a soft reset.
@@ -3297,7 +3367,7 @@ uint8_t svcSaveFile(enum FILE_TYPE type)
     // Setup the defaults
     //
     svcSetDefaults(type);
-
+   
     // MZF are handled with their own methods as it involves looking into the file to determine the name and details.
     //
     if(type == MZF)
@@ -3313,6 +3383,9 @@ uint8_t svcSaveFile(enum FILE_TYPE type)
         //
         sprintf(fqfn, "0:\\%s\\%s.%s", svcControl.directory, asciiFileName, TZSVC_DEFAULT_MZF_EXT);
 
+        // Convert any non-FAT32 characters prior to save.
+        convertToFAT32FileNameFormat(fqfn);
+
         // Call the main method to save memory passing in the correct MZF details and header.
         result = saveZ80Memory(fqfn, (mzfHeader.loadAddr < MZ_CMT_DEFAULT_LOAD_ADDR-3 ? MZ_CMT_DEFAULT_LOAD_ADDR : mzfHeader.loadAddr), mzfHeader.fileSize, &mzfHeader, TRANZPUTER);
     } else
@@ -3322,6 +3395,9 @@ uint8_t svcSaveFile(enum FILE_TYPE type)
     {
         // Build the full filename from what has been provided.
         sprintf(fqfn, "0:\\%s\\%s.%s", svcControl.directory, svcControl.filename, type == CAS ? TZSVC_DEFAULT_CAS_EXT : TZSVC_DEFAULT_BAS_EXT);
+
+        // Convert any non-FAT32 characters prior to save.
+        convertToFAT32FileNameFormat(fqfn);
       
         // Call the main method to save memory passing in the correct details from the service record.
         result = saveZ80Memory(fqfn, svcControl.saveAddr, svcControl.saveSize, NULL, TRANZPUTER);
@@ -3783,6 +3859,18 @@ void processServiceRequest(void)
                         setZ80CPUFrequency(MZ_700_CPU_FREQ, 1);
                     }
                     break;
+                  
+                // Load the MZ800 9Z-504M bios into memory for compatibility switch.
+                case TZSVC_CMD_LOAD800BIOS:
+                    loadBIOS(MZ_ROM_9Z_504M,  MZ800, MZ_MROM_ADDR);
+
+                    // Set the frequency of the CPU if we are emulating the hardware.
+                    if(z80Control.hostType != MZ800)
+                    {
+                        // Change frequency to match Sharp MZ-800
+                        setZ80CPUFrequency(MZ_800_CPU_FREQ, 1);
+                    }
+                    break;
                    
                 // Load the MZ-80B IPL ROM into memory for compatibility switch.
                 case TZSVC_CMD_LOAD80BIPL:
@@ -3966,7 +4054,7 @@ uint8_t testTZFSAutoBoot(void)
 }
 
 // Method to identify the type of host the tranZPUter SW is running on. Originally it was only the MZ80A but the scope has expanded
-// to the MZ-700 and MZ-80B and potentially a plethora of other machines in the future.
+// to the MZ-700,  MZ-80B, MZ-800 and potentially a plethora of other machines in the future.
 //
 void setHost(void)
 {
