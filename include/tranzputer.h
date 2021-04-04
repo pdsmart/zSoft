@@ -42,6 +42,7 @@
 #define HOST_MON_TEST_VECTOR         0x4                                 // Address in the host monitor to test to identify host type.
 #define DEFAULT_BUSREQ_TIMEOUT       5000                                // Timeout for a Z80 Bus request operation in milliseconds.
 #define DEFAULT_RESET_PULSE_WIDTH    500000                              // Pulse width of a reset signal in K64F clock ticks.
+#define TZFS_AUTOBOOT_FLAG           "0:\\TZFSBOOT.FLG"                  // Filename used as a flag, if this file exists in the SD root directory then TZFS is booted automatically.
 
 // tranZPUter Memory Modes - select one of the 32 possible memory models using these constants.
 //
@@ -54,11 +55,14 @@
 #define TZMM_CPM                     0x06                                // CPM main memory configuration, all memory on the tranZPUter board, 64K block 4 selected. Special case for F3C0:F3FF & F7C0:F7FF (floppy disk paging vectors) which resides on the mainboard.
 #define TZMM_CPM2                    0x07                                // CPM main memory configuration, F000-FFFF are on the tranZPUter board in block 4, 0040-CFFF and E800-EFFF are in block 5, mainboard for D000-DFFF (video), E000-E800 (Memory control) selected.
                                                                          // Special case for 0000:003F (interrupt vectors) which resides in block 4, F3C0:F3FF & F7C0:F7FF (floppy disk paging vectors) which resides on the mainboard.
+#define TZMM_COMPAT                  0x08                                // Original mode but with main DRAM in Bank 0 to allow bootstrapping of programs from other machines such as the MZ700.
+#define TZMM_HOSTACCESS              0x09                                // Mode to allow code running in Bank 0, address E800:FFFF to access host memory. Monitor ROM 0000-0FFF and Main DRAM 0x1000-0xD000, video and memory mapped I/O are on the host machine, User/Floppy ROM E800-FFFF are in tranZPUter memory. 
 #define TZMM_MZ700_0                 0x0a                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 6, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is on the mainboard.
 #define TZMM_MZ700_1                 0x0b                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 0, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is on the tranZPUter in block 6.
 #define TZMM_MZ700_2                 0x0c                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 6, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is on the tranZPUter in block 6.
 #define TZMM_MZ700_3                 0x0d                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 0, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is inaccessible.
 #define TZMM_MZ700_4                 0x0e                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 6, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is inaccessible.
+#define TZMM_MZ800                   0x0f                                // MZ800 Mode - Host is an MZ-800 and mode provides for MZ-700/MZ-800 decoding per original machine.
 #define TZMM_FPGA                    0x15                                // Open up access for the K64F to the FPGA resources such as memory. All other access to RAM or mainboard is blocked.
 #define TZMM_TZPUM                   0x16                                // Everything is on mainboard, no access to tranZPUter memory.
 #define TZMM_TZPU                    0x17                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory. K64F drives A18-A16 allowing full access to RAM.
@@ -70,7 +74,6 @@
 #define TZMM_TZPU5                   0x1D                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 5 is selected.
 #define TZMM_TZPU6                   0x1E                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 6 is selected.
 #define TZMM_TZPU7                   0x1F                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 7 is selected.
-#define TZMM_ENIOWAIT                0x20                                // Enable wait state generator for Sharp system IO operations in region 0xE0-0xFF.
 
 // IO addresses on the tranZPUter or mainboard.
 //
@@ -86,6 +89,14 @@
 #define IO_TZ_CPLDCFG                0x6E                                // Version 2.1 CPLD configuration register.
 #define IO_TZ_CPLDSTATUS             0x6E                                // Version 2.1 CPLD status register.
 #define IO_TZ_CPLDINFO               0x6F                                // Version 2.1 CPLD version information register.
+#define IO_TZ_MMIO0                  0xE0                                // MZ-700/MZ-800 Memory management selection ports.
+#define IO_TZ_MMIO1                  0xE1                                // ""
+#define IO_TZ_MMIO2                  0xE2                                // ""
+#define IO_TZ_MMIO3                  0xE3                                // ""
+#define IO_TZ_MMIO4                  0xE4                                // ""
+#define IO_TZ_MMIO5                  0xE5                                // ""
+#define IO_TZ_MMIO6                  0xE6                                // ""
+#define IO_TZ_MMIO7                  0xE7                                // MZ-700/MZ-800 Memory management selection ports.
 #define IO_TZ_SYSCTRL                0xF0                                // System board control register. [2:0] - 000 MZ80A Mode, 2MHz CPU/Bus, 001 MZ80B Mode, 4MHz CPU/Bus, 010 MZ700 Mode, 3.54MHz CPU/Bus.
 #define IO_TZ_GRAMMODE               0xF4                                // MZ80B Graphics mode.  Bit 0 = 0, Write to Graphics RAM I, Bit 0 = 1, Write to Graphics RAM II. Bit 1 = 1, blend Graphics RAM I output on display, Bit 2 = 1, blend Graphics RAM II output on display.
 #define IO_TZ_VMCTRL                 0xF8                                // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
@@ -94,6 +105,17 @@
 #define IO_TZ_VMGREENMASK            0xFB                                // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
 #define IO_TZ_VMBLUEMASK             0xFC                                // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
 #define IO_TZ_VMPAGE                 0xFD                                // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
+
+// Addresses on the tranZPUter board.
+//
+#define SRAM_BANK0_ADDR              0x00000                             // Address of the 1st 64K RAM bank in the SRAM chip.
+#define SRAM_BANK1_ADDR              0x10000                             // ""
+#define SRAM_BANK2_ADDR              0x20000                             // ""
+#define SRAM_BANK3_ADDR              0x30000                             // ""
+#define SRAM_BANK4_ADDR              0x40000                             // ""
+#define SRAM_BANK5_ADDR              0x50000                             // ""
+#define SRAM_BANK6_ADDR              0x60000                             // ""
+#define SRAM_BANK7_ADDR              0x70000                             // Address of the 8th 64K RAM bank in the SRAM chip.
 
 // IO register constants.
 //
@@ -116,19 +138,31 @@
 #define CPUMODE_IS_SOFT_AVAIL        0x040                               // Marker to indicate if the underlying FPGA can support soft CPU's.
 #define CPUMODE_IS_SOFT_MASK         0x03F                               // Mask to filter out the Soft CPU availability flags.
 
+// CPLD Configuration constants.
+#define MODE_MZ80K                   0x00                                // Hardware mode = MZ80K
+#define MODE_MZ80C                   0x01                                // Hardware mode = MZ80C
+#define MODE_MZ1200                  0x02                                // Hardware mode = MZ1200
+#define MODE_MZ80A                   0x03                                // Hardware mode = MZ80A
+#define MODE_MZ700                   0x04                                // Hardware mode = MZ700
+#define MODE_MZ800                   0x05                                // Hardware mode = MZ800
+#define MODE_MZ80B                   0x06                                // Hardware mode = MZ80B
+#define MODE_MZ2000                  0x07                                // Hardware mode = MZ2000
+#define MODE_VIDEO_MODULE_DISABLED   0x08                                // Hardware enable (bit 3 = 0) or disable of the Video Module.
+#define MODE_PRESERVE_CONFIG         0x80                                // Preserve hardware configuration on RESET.
+
 // Video Module control bits.
 #define SYSMODE_MZ80A                0x00                                // System board mode MZ80A, 2MHz CPU/Bus.
 #define SYSMODE_MZ80B                0x01                                // System board mode MZ80B, 4MHz CPU/Bus.
 #define SYSMODE_MZ700                0x02                                // System board mode MZ700, 3.54MHz CPU/Bus.
 #define VMMODE_MASK                  0xF8                                // Mask to mask out video mode.
-#define VMMODE_MZ80K                 0x00                                // Video mode = MZ80K
-#define VMMODE_MZ80C                 0x01                                // Video mode = MZ80C
-#define VMMODE_MZ1200                0x02                                // Video mode = MZ1200
-#define VMMODE_MZ80A                 0x03                                // Video mode = MZ80A
-#define VMMODE_MZ700                 0x04                                // Video mode = MZ700
-#define VMMODE_MZ800                 0x05                                // Video mode = MZ800
-#define VMMODE_MZ80B                 0x06                                // Video mode = MZ80B
-#define VMMODE_MZ2000                0x07                                // Video mode = MZ2000
+#define VMMODE_MZ80K                 MODE_MZ80K                          // Video mode = MZ80K
+#define VMMODE_MZ80C                 MODE_MZ80C                          // Video mode = MZ80C
+#define VMMODE_MZ1200                MODE_MZ1200                         // Video mode = MZ1200
+#define VMMODE_MZ80A                 MODE_MZ80A                          // Video mode = MZ80A
+#define VMMODE_MZ700                 MODE_MZ700                          // Video mode = MZ700
+#define VMMODE_MZ800                 MODE_MZ800                          // Video mode = MZ800
+#define VMMODE_MZ80B                 MODE_MZ80B                          // Video mode = MZ80B
+#define VMMODE_MZ2000                MODE_MZ2000                         // Video mode = MZ2000
 #define VMMODE_80CHAR                0x08                                // Enable 80 character display.
 #define VMMODE_80CHAR_MASK           0xF7                                // Mask to filter out display width control bit.
 #define VMMODE_COLOUR                0x10                                // Enable colour display.
@@ -176,17 +210,19 @@
 
 // Sharp MZ constants.
 //
-#define MZ_MROM_ADDR                 0x0000                              // Monitor ROM start address.
-#define MZ_800_IPL_ADDR              0xE000                              // Address of the 9Z_504M IPL BIOS.
-#define MZ_800_IOCS_ADDR             0xF400                              // Address of the MZ-800 common IOCS bios.
-#define MZ_MROM_STACK_ADDR           0x1000                              // Monitor ROM start stack address.
-#define MZ_MROM_STACK_SIZE           0x0200                              // Monitor ROM stack size.
-#define MZ_UROM_ADDR                 0xE800                              // User ROM start address.
-#define MZ_BANKRAM_ADDR              0xF000                              // Floppy API address which is used in TZFS as the paged RAM for additional functionality.
-#define MZ_ZOS_ADDR                  0x100000                            // zOS boot location for the ZPU in FPGA BRAM memory.
-#define MZ_CMT_ADDR                  0x10F0                              // Address of the CMT (tape) header record.
-#define MZ_CMT_DEFAULT_LOAD_ADDR     0x1200                              // The default load address for a CMT, anything below this is normally illegal.
-#define MZ_VID_RAM_ADDR              0xD000                              // Start of Video RAM
+#define MZ_MROM_ADDR                 0x00000                             // Monitor ROM start address.
+#define MZ_800_MROM_ADDR             0x70000                             // MZ-800 Monitor ROM address.
+#define MZ_800_CGROM_ADDR            0x71000                             // MZ-800 CGROM address during reset when it is loaded into the PCG.
+#define MZ_800_IPL_ADDR              0x7E000                             // Address of the 9Z_504M IPL BIOS.
+#define MZ_800_IOCS_ADDR             0x7F400                             // Address of the MZ-800 common IOCS bios.
+#define MZ_MROM_STACK_ADDR           0x01000                             // Monitor ROM start stack address.
+#define MZ_MROM_STACK_SIZE           0x000EF                             // Monitor ROM stack size.
+#define MZ_UROM_ADDR                 0x0E800                             // User ROM start address.
+#define MZ_BANKRAM_ADDR              0x0F000                             // Floppy API address which is used in TZFS as the paged RAM for additional functionality.
+#define MZ_ZOS_ADDR                  0x0100000                           // zOS boot location for the ZPU in FPGA BRAM memory.
+#define MZ_CMT_ADDR                  0x010F0                             // Address of the CMT (tape) header record.
+#define MZ_CMT_DEFAULT_LOAD_ADDR     0x01200                             // The default load address for a CMT, anything below this is normally illegal.
+#define MZ_VID_RAM_ADDR              0x0D000                             // Start of Video RAM
 #define MZ_VID_RAM_SIZE              2048                                // Size of Video RAM.
 #define MZ_VID_DFLT_BYTE             0x00                                // Default character (SPACE) for video RAM.
 #define MZ_ATTR_RAM_ADDR             0xD800                              // On machines with the upgrade, the start of the Attribute RAM.
@@ -211,6 +247,7 @@
 #define MZ_ROM_9Z_504M_COMBINED      "0:\\TZFS\\MZ800_IPL.rom"           // Original MZ-800 BIOS which comprises the 1Z_013B BIOS, 9Z_504M IPL, CGROM and IOCS.
 #define MZ_ROM_9Z_504M               "0:\\TZFS\\MZ800_9Z_504M.rom"       // Modified MZ-800 9Z_504M IPL to contain a select TZFS option.
 #define MZ_ROM_1Z_013B               "0:\\TZFS\\MZ800_1Z_013B.rom"       // Original MZ-800 1Z_013B MZ-700 compatible BIOS.
+#define MZ_ROM_800_CGROM             "0:\\TZFS\\MZ800_CGROM.ORI"         // Original MZ-800 Character Generator ROM.
 #define MZ_ROM_800_IOCS              "0:\\TZFS\\MZ800_IOCS.rom"          // Original MZ-800 common IOCS bios.
 #define MZ_ROM_MZ80B_IPL             "0:\\TZFS\\MZ80B_IPL.ROM"           // Original IPL ROM for the Sharp MZ-80B.
 #define MZ_ROM_TZFS                  "0:\\TZFS\\TZFS.ROM"                // tranZPUter Filing System ROM.
@@ -415,22 +452,28 @@
 //#define readCtrlLatch()              ( ((GPIOB_PDIR & 0x00000200) >> 5) | (GPIOB_PDIR & 0x0000000f) )
 #define readCtrlLatchDirect()        ( inZ80IO(IO_TZ_CTRLLATCH) )
 #define readCtrlLatch()              ( readZ80IO(IO_TZ_CTRLLATCH, TRANZPUTER) )
-#define writeCtrlLatch(a)            { setZ80Direction(WRITE); outZ80IO(IO_TZ_CTRLLATCH, a); } 
+#define writeCtrlLatch(a)            { printf("WL:%02x\n", a); setZ80Direction(WRITE); outZ80IO(IO_TZ_CTRLLATCH, a); } 
 //#define setZ80Direction(a)           { for(uint8_t idx=Z80_D0; idx <= Z80_D7; idx++) { if(a == WRITE) { pinOutput(idx); } else { pinInput(idx); } }; z80Control.busDir = a; }
 #define setZ80Direction(a)           {{ if(a == WRITE) { setZ80DataAsOutput(); } else { setZ80DataAsInput(); } }; z80Control.busDir = a; }
 #define reqZ80BusChange(a)           { if(a == MAINBOARD_ACCESS && z80Control.ctrlMode == TRANZPUTER_ACCESS) \
                                        {\
                                            pinHigh(CTL_MBSEL);\
                                            z80Control.ctrlMode = MAINBOARD_ACCESS;\
-                                           z80Control.curCtrlLatch = TZMM_ORIG | TZMM_ENIOWAIT;\
-                                           writeCtrlLatch(z80Control.curCtrlLatch);\
+                                           z80Control.curCtrlLatch = TZMM_ORIG;\
+                                           setZ80Direction(WRITE); \
+                                           writeCtrlLatch(z80Control.curCtrlLatch); \
                                        } else if(a == TRANZPUTER_ACCESS && z80Control.ctrlMode == MAINBOARD_ACCESS)\
                                        {\
                                            pinLow(CTL_MBSEL);\
                                            z80Control.ctrlMode = TRANZPUTER_ACCESS;\
-                                           z80Control.curCtrlLatch = TZMM_TZPU | TZMM_ENIOWAIT;\
+                                           z80Control.curCtrlLatch = TZMM_TZPU;\
+                                           setZ80Direction(WRITE); \
                                            writeCtrlLatch(z80Control.curCtrlLatch);\
-                                       } }
+                                       } else\
+                                       {\
+                                           setZ80Direction(WRITE); \
+                                       }\
+                                     }
 // Lower level macro without pin mapping as this is called in the ResetHandler to halt the Z80 whilst the K64F starts up and is able to load up tranZPUter software.
 #define holdZ80()                    { \
                                          *portModeRegister(CTL_BUSRQ_PIN) = 1; \
@@ -535,14 +578,14 @@ enum VIDEO_FRAMES {
 // Possible machines the tranZPUter can be hosted on and can emulate.
 //
 enum MACHINE_TYPES {
-    MZ80K                            = 0x00,                             // Machine = MZ-80K.
-    MZ80C                            = 0x01,                             // Machine = MZ-80C.
-    MZ1200                           = 0x02,                             // Machine = MZ-1200.
-    MZ80A                            = 0x03,                             // Machine = MZ-80A.
-    MZ700                            = 0x04,                             // Machine = MZ-700.
-    MZ800                            = 0x05,                             // Machine = MZ-800.
-    MZ80B                            = 0x06,                             // Machine = MZ-80B.
-    MZ2000                           = 0x07                              // Machine = MZ-2000.
+    MZ80K                            = MODE_MZ80K,                       // Machine = MZ-80K.
+    MZ80C                            = MODE_MZ80C,                       // Machine = MZ-80C.
+    MZ1200                           = MODE_MZ1200,                      // Machine = MZ-1200.
+    MZ80A                            = MODE_MZ80A,                       // Machine = MZ-80A.
+    MZ700                            = MODE_MZ700,                       // Machine = MZ-700.
+    MZ800                            = MODE_MZ800,                       // Machine = MZ-800.
+    MZ80B                            = MODE_MZ80B,                       // Machine = MZ-80B.
+    MZ2000                           = MODE_MZ2000                       // Machine = MZ-2000.
 };
 
 // Get and Set flags within the CPLD config and status registers.
@@ -704,6 +747,11 @@ typedef struct __attribute__((__packed__)) {
             uint16_t                 sectorNo;                           // For virtual drives with track and sector this is the sector number. NB For LBA access, this is 32bit and overwrites fileNo/fileType which arent used during raw SD access.
         };
         uint32_t                     sectorLBA;                          // For LBA access, this is 32bit and used during raw SD access.
+        struct {
+            uint8_t                  memTarget;                          // Target memory for operation, 0 = tranZPUter, 1 = mainboard.
+            uint8_t                  spare1;                             // Unused variable.
+            uint16_t                 spare2;                             // Unused variable.
+        };
     };
     uint8_t                          fileNo;                             // File number of a file within the last directory listing to open/update.
     uint8_t                          fileType;                           // Type of file being processed.
@@ -829,7 +877,7 @@ void                                  setupTranZPUter(void);
 void                                  testRoutine(void);
 
 #if defined __APP__
-int                                   memoryDumpZ80(uint32_t, uint32_t, uint32_t, uint8_t, enum TARGETS);
+int                                   memoryDumpZ80(uint32_t, uint32_t, uint32_t, uint8_t, uint8_t, enum TARGETS);
 #endif
 
 // Debug methods.

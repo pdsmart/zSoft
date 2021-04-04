@@ -52,6 +52,11 @@
 //                                   Future boards will incorporate more memory/FPGA BRAM so the addressing
 //                                   of external memory has been increased to 24bit (16Mbyte) and as
 //                                   outlined above, now direct addressing.
+//                  v1.5 Mar 2021  - Updates to merge the MZ-800 into the list of machines detected and 
+//                                   handled by this module.
+//                                   Found and fixed a major bug introduced in v1.4. The Z80 direction 
+//                                   wasnt being set on occasion so an expected write wouldnt occur
+//                                   which led to some interesting behaviour!
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -98,6 +103,7 @@ extern "C" {
 #endif
 
 #include "ff.h"            /* Declarations of FatFs API */
+#include "diskio.h"
 #include "utils.h"
 #include <tranzputer.h>
 
@@ -587,6 +593,16 @@ void resetZ80(uint8_t memoryMode)
     //
     uint32_t startTime = *ms;
 
+    // On the MZ-800, set the memory mode and disable default host logic by setting the mode to MZ800.
+    //
+    if(memoryMode == TZMM_MZ800)
+    {
+        // The first output is a dummy write which removes the original host configuration set when the CPLD cold starts. This is necessary to keep the machine original if
+        // the K64F isnt present or autoboot is disabled. The second output ensures the memory management is set to the default state for an MZ-800.
+        writeZ80IO(IO_TZ_CPLDCFG, MODE_MZ800 | MODE_VIDEO_MODULE_DISABLED | MODE_PRESERVE_CONFIG, TRANZPUTER);
+        writeZ80IO(IO_TZ_MMIO4, 0, MAINBOARD);
+    }
+
     // Simply change the Z80_RESET pin to an output, assert low, reset high and reset to input to create the hardware reset event. On the original hardware the
     // reset pulse width is 90uS, the ms timer is only accurate to 100uS so we apply a 100uS pulse.
     //
@@ -599,7 +615,7 @@ void resetZ80(uint8_t memoryMode)
 
     // Set the memory mode to the one provided.
     //
-    if(memoryMode != TZMM_ORIG)
+    if(memoryMode != TZMM_MZ800)
     {
         setCtrlLatch(memoryMode);
     }
@@ -816,7 +832,7 @@ uint8_t writeZ80Memory(uint32_t addr, uint8_t data, enum TARGETS target)
 {
     // Locals.
     uint32_t          startTime = *ms;
-  
+
     // Video RAM has a blanking circuit which causes the Z80 to enter a WAIT state. The K64F can only read the WAIT state and sometimes will miss it
     // so wait for the start of a blanking period and write.
     //
@@ -1159,14 +1175,38 @@ void refreshZ80AllRows(void)
 //
 void setCtrlLatch(uint8_t latchVal)
 {
-    // Gain control of the bus then set the latch value.
+    // If the Z80 is in RUN mode, request the bus.
+    // This mechanism allows for the Z80 BUS to remain under the tranZPUter control for multiple transactions.
     //
-    if(reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, TRANZPUTER) == 0)
+    if(z80Control.ctrlMode == Z80_RUN)
+    {
+        // Gain control of the bus then set the latch value.
+        //
+        reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, TRANZPUTER);
+    } else
+    {
+        // See if the bus needs changing.
+        //
+        reqZ80BusChange(TRANZPUTER_ACCESS);
+    }
+
+    // If we have bus control, complete the task,
+    //
+    if( z80Control.ctrlMode != Z80_RUN )
     {
         // Setup the pins to perform a write operation.
         //
+        setZ80Direction(WRITE);
         writeCtrlLatch(latchVal);
-        releaseZ80();
+       
+        // Release the bus if it is not being held for further transations.
+        //
+        if(z80Control.holdZ80 == 0 && z80Control.ctrlMode != Z80_RUN)
+        {
+            // Release bus, we dont interfere with the control latch as I/O isnt affected by memory management.
+            //
+            releaseZ80();
+        }
      }
      return;  
 }
@@ -1195,15 +1235,38 @@ uint32_t setZ80CPUFrequency(float frequency, uint8_t action)
     //
     if(action > 0)
     {
+        // If the Z80 is in RUN mode, request the bus.
+        // This mechanism allows for the Z80 BUS to remain under the tranZPUter control for multiple transactions.
+        //
+        if(z80Control.ctrlMode == Z80_RUN)
+        {
+            // Gain control of the bus then set the latch value.
+            //
+            reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, TRANZPUTER);
+        } else
+        {
+            // See if the bus needs changing.
+            //
+            reqZ80BusChange(TRANZPUTER_ACCESS);
+        }
+
         // Gain control of the bus to change the CPU frequency latch.
         //
-        if(reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, TRANZPUTER) == 0)
+        if( z80Control.ctrlMode != Z80_RUN )
         {
             // Setup the pins to perform a write operation.
             //
             setZ80Direction(WRITE);
             outZ80IO((action == 1 || action == 3 ? IO_TZ_SETXMHZ : IO_TZ_SET2MHZ), 0);
-            releaseZ80();
+
+            // Release the bus if it is not being held for further transations.
+            //
+            if(z80Control.holdZ80 == 0 && z80Control.ctrlMode != Z80_RUN)
+            {
+                // Release bus, we dont interfere with the control latch as I/O isnt affected by memory management.
+                //
+                releaseZ80();
+            }
          }
     }
 
@@ -1217,7 +1280,30 @@ uint8_t writeZ80IO(uint32_t addr, uint8_t data, enum TARGETS target)
 {
     // Locals.
  
-    if( (target != MAINBOARD && reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target) == 0) || (target == MAINBOARD && reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT) == 0) )
+    // If the Z80 is in RUN mode, request the bus.
+    // This mechanism allows for the Z80 BUS to remain under the tranZPUter control for multiple transactions.
+    //
+    if(z80Control.ctrlMode == Z80_RUN)
+    {
+        // Request the board according to the target flag, target = MAINBOARD then the mainboard is controlled otherwise the tranZPUter board.
+        if(target == TRANZPUTER || target == FPGA)
+        {
+            reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target);
+        } else
+        {
+            reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT);
+        }
+    } else
+    {
+        // See if the bus needs changing.
+        //
+        enum CTRL_MODE newMode = (target == MAINBOARD) ? MAINBOARD_ACCESS : TRANZPUTER_ACCESS;
+        reqZ80BusChange(newMode);
+    }
+
+    // If we have bus control, complete the task,
+    //
+    if( z80Control.ctrlMode != Z80_RUN )
     {
         // Setup the pins to perform a write operation.
         //
@@ -1225,8 +1311,13 @@ uint8_t writeZ80IO(uint32_t addr, uint8_t data, enum TARGETS target)
 
         // Output actual byte,
         outZ80IO(addr, data);
+    }
 
-        // Release Z80 to complete.
+    // Release the bus if it is not being held for further transations.
+    //
+    if(z80Control.holdZ80 == 0 && z80Control.ctrlMode != Z80_RUN)
+    {
+        // Release bus, we dont interfere with the control latch as I/O isnt affected by memory management.
         //
         releaseZ80();
     }
@@ -1240,7 +1331,24 @@ uint8_t readZ80IO(uint32_t addr, enum TARGETS target)
     // Locals.
     uint8_t result = 0;;
 
-    if( (target != MAINBOARD && reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target) == 0) || (target == MAINBOARD && reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT) == 0) )
+    // If the Z80 is in RUN mode, request the bus.
+    // This mechanism allows for the Z80 BUS to remain under the tranZPUter control for multiple transactions.
+    //
+    if(z80Control.ctrlMode == Z80_RUN)
+    {
+        // Request the board according to the target flag, target = MAINBOARD then the mainboard is controlled otherwise the tranZPUter board.
+        if(target == TRANZPUTER || target == FPGA)
+        {
+            result = reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target);
+        } else
+        {
+            result = reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT);
+        }
+    }
+
+    // If we have bus control, complete the task,
+    //
+    if( z80Control.ctrlMode != Z80_RUN )
     {
         // Setup the pins to perform a read operation.
         //
@@ -1248,8 +1356,13 @@ uint8_t readZ80IO(uint32_t addr, enum TARGETS target)
 
         // Read actual byte,
         result = inZ80IO(addr);
+    }
 
-        // Release Z80 to complete.
+    // Release the bus if it is not being held for further transations.
+    //
+    if(z80Control.holdZ80 == 0 && z80Control.ctrlMode != Z80_RUN)
+    {
+        // Release bus, we dont interfere with the control latch as I/O isnt affected by memory management.
         //
         releaseZ80();
     }
@@ -1268,16 +1381,49 @@ uint8_t copyFromZ80(uint8_t *dst, uint32_t src, uint32_t size, enum TARGETS targ
     if((target == MAINBOARD && (src+size) > 0x10000) || (target == TRANZPUTER && (src+size) > 0x80000) || (target == FPGA && (src+size) > 0x1000000) )
         return(1);
 
-    // Request the correct bus.
+    // If the Z80 is in RUN mode, request the bus.
+    // This mechanism allows for the Z80 BUS to remain under the tranZPUter control for multiple transactions.
     //
-    if( (target != MAINBOARD && reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target) == 0) || (target == MAINBOARD && reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT) == 0) )
+    if(z80Control.ctrlMode == Z80_RUN)
+    {
+        // Request the board according to the target flag, target = MAINBOARD then the mainboard is controlled otherwise the tranZPUter board.
+        if(target == TRANZPUTER || target == FPGA)
+        {
+            result = reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target);
+        } else
+        {
+            result = reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT);
+        }
+
+        // If successful, setup the control pins for upload mode.
+        //
+        if(z80Control.ctrlMode != Z80_RUN)
+        {
+            // Setup the pins to perform a write operation.
+            //
+            setZ80Direction(WRITE);
+           
+            // Setup the control latch to the required starting configuration.
+            writeCtrlLatch(z80Control.curCtrlLatch);
+        }
+    } else
+    {
+        // See if the bus needs changing.
+        //
+        enum CTRL_MODE newMode = (target == MAINBOARD) ? MAINBOARD_ACCESS : TRANZPUTER_ACCESS;
+        reqZ80BusChange(newMode);
+    }
+
+    // If we have bus control, complete the task,
+    //
+    if( z80Control.ctrlMode != Z80_RUN )
     {
         // Setup the pins to perform a read operation (after setting the latch to starting value).
         //
         writeCtrlLatch(z80Control.curCtrlLatch);
         setZ80Direction(READ);
 
-        for(uint32_t idx=0; idx < size && result == 0; idx++)
+        for(uint32_t idx=0; idx < size; idx++)
         {
             // Perform a refresh on the main memory every 2ms.
             //
@@ -1292,9 +1438,15 @@ uint8_t copyFromZ80(uint8_t *dst, uint32_t src, uint32_t size, enum TARGETS targ
             src++;
             dst++;
         }
-       
+    }
+  
+    // Release the bus if it is not being held for further transations.
+    //
+    if(z80Control.holdZ80 == 0 && z80Control.ctrlMode != Z80_RUN)
+    {
         // Restore the control latch to its original configuration.
         //
+        setZ80Direction(WRITE);
         writeCtrlLatch(z80Control.runCtrlLatch);
         releaseZ80();
     }
@@ -1314,15 +1466,48 @@ uint8_t copyToZ80(uint32_t dst, uint8_t *src, uint32_t size, enum TARGETS target
     if((target == MAINBOARD && (dst+size) > 0x10000) || (target == TRANZPUTER && (dst+size) > 0x80000) || (target == FPGA && (dst+size) > 0x1000000) )
         return(1);
 
-    // Request the correct bus.
+    // If the Z80 is in RUN mode, request the bus.
+    // This mechanism allows for the Z80 BUS to remain under the tranZPUter control for multiple transactions.
     //
-    if( (target != MAINBOARD && reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target) == 0) || (target == MAINBOARD && reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT) == 0) )
+    if(z80Control.ctrlMode == Z80_RUN)
+    {
+        // Request the board according to the target flag, target = MAINBOARD then the mainboard is controlled otherwise the tranZPUter board.
+        if(target == TRANZPUTER || target == FPGA)
+        {
+            result = reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target);
+        } else
+        {
+            result = reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT);
+        }
+
+        // If successful, setup the control pins for upload mode.
+        //
+        if(z80Control.ctrlMode != Z80_RUN)
+        {
+            // Setup the pins to perform a write operation.
+            //
+            setZ80Direction(WRITE);
+           
+            // Setup the control latch to the required starting configuration.
+            writeCtrlLatch(z80Control.curCtrlLatch);
+        }
+    } else
+    {
+        // See if the bus needs changing.
+        //
+        enum CTRL_MODE newMode = (target == MAINBOARD) ? MAINBOARD_ACCESS : TRANZPUTER_ACCESS;
+        reqZ80BusChange(newMode);
+    }
+
+    // If we have bus control, complete the task,
+    //
+    if( z80Control.ctrlMode != Z80_RUN )
     {
         // Setup the pins to perform a write operation.
         //
         writeCtrlLatch(z80Control.curCtrlLatch);
 
-        for(uint32_t idx=0; idx < size && result == 0; idx++)
+        for(uint32_t idx=0; idx < size; idx++)
         {
             // Perform a refresh on the main memory every 2ms.
             //
@@ -1337,7 +1522,12 @@ uint8_t copyToZ80(uint32_t dst, uint8_t *src, uint32_t size, enum TARGETS target
             src++;
             dst++;
         }
-       
+    }
+ 
+    // Release the bus if it is not being held for further transations.
+    //
+    if(z80Control.holdZ80 == 0 && z80Control.ctrlMode != Z80_RUN)
+    {
         // Restore the control latch to its original configuration.
         //
         writeCtrlLatch(z80Control.runCtrlLatch);
@@ -1359,9 +1549,42 @@ void fillZ80Memory(uint32_t addr, uint32_t size, uint8_t data, enum TARGETS targ
     if((target == MAINBOARD && (addr+size) > 0x10000) || (target == TRANZPUTER && (addr+size) > 0x80000) || (target == FPGA && (addr+size) > 0x1000000) )
         return;
 
-    // Request the correct bus.
+    // If the Z80 is in RUN mode, request the bus.
+    // This mechanism allows for the Z80 BUS to remain under the tranZPUter control for multiple transactions.
     //
-    if( (target != MAINBOARD && reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target) == 0) || (target == MAINBOARD && reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT) == 0) )
+    if(z80Control.ctrlMode == Z80_RUN)
+    {
+        // Request the board according to the target flag, target = MAINBOARD then the mainboard is controlled otherwise the tranZPUter board.
+        if(target == TRANZPUTER || target == FPGA)
+        {
+            reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target);
+        } else
+        {
+            reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT);
+        }
+
+        // If successful, setup the control pins for upload mode.
+        //
+        if(z80Control.ctrlMode != Z80_RUN)
+        {
+            // Setup the pins to perform a write operation.
+            //
+            setZ80Direction(WRITE);
+           
+            // Setup the control latch to the required starting configuration.
+            writeCtrlLatch(z80Control.curCtrlLatch);
+        }
+    } else
+    {
+        // See if the bus needs changing.
+        //
+        enum CTRL_MODE newMode = (target == MAINBOARD) ? MAINBOARD_ACCESS : TRANZPUTER_ACCESS;
+        reqZ80BusChange(newMode);
+    }
+
+    // If we have bus control, complete the task,
+    //
+    if( z80Control.ctrlMode != Z80_RUN )
     {
         // Setup the pins to perform a write operation (after setting the latch to starting value).
         //
@@ -1378,7 +1601,12 @@ void fillZ80Memory(uint32_t addr, uint32_t size, uint8_t data, enum TARGETS targ
             }
             writeZ80Memory((uint32_t)idx, data, target);
         }
-
+    }
+  
+    // Release the bus if it is not being held for further transations.
+    //
+    if(z80Control.holdZ80 == 0 && z80Control.ctrlMode != Z80_RUN)
+    {
         // Restore the control latch to its original configuration.
         //
         writeCtrlLatch(z80Control.runCtrlLatch);
@@ -1394,7 +1622,26 @@ void captureVideoFrame(enum VIDEO_FRAMES frame, uint8_t noAttributeFrame)
 {
     // Locals.
 
-    if(reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT) == 0)
+    // If the Z80 is in RUN mode, request the bus.
+    // This mechanism allows for the Z80 BUS to remain under the tranZPUter control for multiple transactions.
+    //
+    if(z80Control.ctrlMode == Z80_RUN)
+    {
+        // Gain mainboard control.
+        reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT);
+
+        // Ensure bus is set to write.
+        setZ80Direction(WRITE);
+    } else
+    {
+        // See if the bus needs changing.
+        //
+        reqZ80BusChange(MAINBOARD_ACCESS);
+    }
+
+    // If we have bus control, complete the task,
+    //
+    if( z80Control.ctrlMode != Z80_RUN )
     {
         // Setup the pins to perform a read operation (after setting the latch to starting value).
         //
@@ -1425,10 +1672,19 @@ void captureVideoFrame(enum VIDEO_FRAMES frame, uint8_t noAttributeFrame)
             refreshZ80AllRows();
         }
 
-        // Restore the control latch to its original configuration.
+        // Release the bus if it is not being held for further transations.
         //
-        writeCtrlLatch(z80Control.runCtrlLatch);
-        releaseZ80();
+        if(z80Control.holdZ80 == 0 && z80Control.ctrlMode != Z80_RUN)
+        {
+            // Restore the control latch to its original configuration.
+            //
+            setZ80Direction(WRITE);
+            writeCtrlLatch(z80Control.runCtrlLatch);
+
+            // Release bus, we dont interfere with the control latch as I/O isnt affected by memory management.
+            //
+            releaseZ80();
+        }
     }
     return;
 }
@@ -1439,10 +1695,27 @@ void refreshVideoFrame(enum VIDEO_FRAMES frame, uint8_t scrolHome, uint8_t noAtt
 {
     // Locals.
 
-    if(reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT) == 0)
+    // If the Z80 is in RUN mode, request the bus.
+    // This mechanism allows for the Z80 BUS to remain under the tranZPUter control for multiple transactions.
+    //
+    if(z80Control.ctrlMode == Z80_RUN)
+    {
+        // Gain mainboard control.
+        reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT);
+    } else
+    {
+        // See if the bus needs changing.
+        //
+        reqZ80BusChange(MAINBOARD_ACCESS);
+    }
+
+    // If we have bus control, complete the task,
+    //
+    if( z80Control.ctrlMode != Z80_RUN )
     {
         // Setup the pins to perform a write operation.
         //
+        setZ80Direction(WRITE);
         writeCtrlLatch(z80Control.curCtrlLatch);
 
         // No need for refresh as we take less than 2ms time, just write the video frame.
@@ -1476,10 +1749,19 @@ void refreshVideoFrame(enum VIDEO_FRAMES frame, uint8_t scrolHome, uint8_t noAtt
             readZ80Memory((uint32_t)MZ_SCROL_BASE);
         }
 
-        // Restore the control latch to its original configuration.
+        // Release the bus if it is not being held for further transations.
         //
-        writeCtrlLatch(z80Control.runCtrlLatch);
-        releaseZ80();
+        if(z80Control.holdZ80 == 0 && z80Control.ctrlMode != Z80_RUN)
+        {
+            // Restore the control latch to its original configuration.
+            //
+            setZ80Direction(WRITE);
+            writeCtrlLatch(z80Control.runCtrlLatch);
+
+            // Release bus, we dont interfere with the control latch as I/O isnt affected by memory management.
+            //
+            releaseZ80();
+        }
     }
     return;
 }
@@ -1628,7 +1910,6 @@ FRESULT loadZ80Memory(const char *src, uint32_t fileOffset, uint32_t addr, uint3
             {
                 reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT);
             }
-
             // If successful, setup the control pins for upload mode.
             //
             if(z80Control.ctrlMode != Z80_RUN)
@@ -1652,6 +1933,19 @@ FRESULT loadZ80Memory(const char *src, uint32_t fileOffset, uint32_t addr, uint3
         //
         if(z80Control.ctrlMode != Z80_RUN)
         {
+            // If the host hardware is an MZ-700/MZ-800 and we are loading into main memory, issue memory management commands to page in all the DRAM.
+            //
+            if(target == MAINBOARD && addr <= 0x1000 && (z80Control.hostType == MZ700 || z80Control.hostType == MZ800))
+            {
+                // Then page in the lower DRAM bank.
+                outZ80IO(IO_TZ_MMIO0, 0);
+            }
+            if(target == MAINBOARD && (addr >= 0xD000 || addr+size >= 0xD000) && (z80Control.hostType == MZ700 || z80Control.hostType == MZ800))
+            {
+                // Then page in the upper DRAM bank.
+                outZ80IO(IO_TZ_MMIO1, 0);
+            }
+
             // Loop, reading a sector at a time from SD file and writing it directly into the Z80 tranZPUter RAM or mainboard RAM.
             //
             loadSize = 0;
@@ -1679,6 +1973,19 @@ FRESULT loadZ80Memory(const char *src, uint32_t fileOffset, uint32_t addr, uint3
                 }
                 loadSize += readSize;
             } while(loadSize < size);
+          
+            // Reset the memory management for MZ-700/MZ-800.
+            //
+            if(target == MAINBOARD && addr <= 0x1000 && (z80Control.hostType == MZ700 || z80Control.hostType == MZ800))
+            {
+                // Restore lower memory bank to BIOS.
+                outZ80IO(IO_TZ_MMIO2, 0);
+            }
+            if(target == MAINBOARD && (addr >= 0xD000 || addr+size >= 0xD000) && (z80Control.hostType == MZ700 || z80Control.hostType == MZ800))
+            {
+                // Restore upper memory bank to VRAM etc.
+                outZ80IO(IO_TZ_MMIO3, 0);
+            }
         } else
         {
             printf("Failed to request Z80 access.\n");
@@ -1701,14 +2008,13 @@ FRESULT loadZ80Memory(const char *src, uint32_t fileOffset, uint32_t addr, uint3
 
     // If requested or an error occurs, then release the Z80 bus as no more uploads will be taking place in this batch.
     //
-    if(releaseBus == 1 || fr0)
+    if(z80Control.holdZ80 == 0 && (releaseBus == 1 || fr0))
     {
         // Restore the control latch to its original configuration.
         //
         writeCtrlLatch(z80Control.runCtrlLatch);
         releaseZ80();
     }
-
     return(fr0 ? fr0 : FR_OK);    
 }
 
@@ -1721,9 +2027,13 @@ FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint32_t *bytesRead, en
     // Locals.
     FIL           File;
     unsigned int  readSize;
+    uint32_t      addrOffset = SRAM_BANK0_ADDR;
     t_svcDirEnt   mzfHeader;
     FRESULT       fr0;
 
+//printf("z80Control 2a:\n svcControlAddr=%08lx\nrefreshAddr=%02x\ndisableRefresh=%02x\nrunCtrlLatch=%02x\ncurCtrlLatch=%02x\nholdZ80=%02x\nctrlMode=%02x\nbusDir=%02x\nhostType=%02x\nmachineMode=%02x\nresetEvent=%02x\nsvcRequest=%02x\n",
+//        z80Control.svcControlAddr, z80Control.refreshAddr, z80Control.disableRefresh, z80Control.runCtrlLatch, z80Control.curCtrlLatch, z80Control.holdZ80, z80Control.ctrlMode, z80Control.busDir, z80Control.hostType,
+//        z80Control.machineMode, z80Control.resetEvent, z80Control.svcRequest );
     // Sanity check on filenames.
     if(src == NULL)
         return(FR_INVALID_PARAMETER);
@@ -1741,29 +2051,47 @@ FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint32_t *bytesRead, en
     {
         // Firstly, close the file, no longer needed.
         f_close(&File);
-      
-        // Save the header into the CMT area for reference, some applications expect it.
-        // This assumes the TZFS is running and the memory bank is 64K block 0.
+
+        // Setup bank in which to load the header/data. Default is bank 0, different host hardware uses different banks.
         //
-        copyToZ80(MZ_CMT_ADDR, (uint8_t *)&mzfHeader, MZF_HEADER_SIZE, TRANZPUTER);
+        if(target == TRANZPUTER && z80Control.hostType == MZ800)
+        {
+            addrOffset = SRAM_BANK6_ADDR;
+        } 
+      
+        // Save the header into the CMT area for reference, some applications expect it. If the load address is below 1200H this could be wiped out, the code below stores a copy
+        // in the service record sector on exit for this purpose. The caller needs to check the service record and if the Load Address is below >= 1200H use the CMT header else
+        // use the service sector.
+        //
+        // NB: This assumes the TZFS is running and made this call.
+        //
+        copyToZ80(addrOffset+MZ_CMT_ADDR, (uint8_t *)&mzfHeader, MZF_HEADER_SIZE, target);
      
         // Now obtain the parameters.
         //
         if(addr == 0xFFFFFFFF)
+        {
             addr = mzfHeader.loadAddr;
+        }
 
         // Look at the attribute byte, if it is >= 0xF8 then it is a special tranZPUter binary object requiring loading into a seperate memory bank.
         // The attribute & 0x07 << 16 specifies the memory bank in which to load the image.
         if(mzfHeader.attr >= 0xF8)
         {
             addr += ((mzfHeader.attr & 0x07) << 16);
-            //printf("CPM: Addr=%08lx\n", addr);
+            printf("CPM: Addr=%08lx, Size=%08lx\n", addr, mzfHeader.fileSize);
+        } else
+        {
+            addr += addrOffset;
         }
 
         // Ok, load up the file into Z80 memory.
-        fr0 = loadZ80Memory(src, MZF_HEADER_SIZE, addr, 0, bytesRead, target, releaseBus);
-    }
+        fr0 = loadZ80Memory(src, MZF_HEADER_SIZE, addr, (mzfHeader.attr >= 0xF8 ? 0 : mzfHeader.fileSize), bytesRead, target, releaseBus);
 
+        // If the load address was below 0x11D0, the lowest free point in the original memory map then the load is said to be in lower DRAM. In this case the CMT header wont be available
+        // so load the header into the service sector as well so the caller can determine the load state.
+        memcpy((uint8_t *)&svcControl.sector, (uint8_t *)&mzfHeader, MZF_HEADER_SIZE);
+    }
     return(fr0 ? fr0 : FR_OK);    
 }
 
@@ -1801,11 +2129,48 @@ FRESULT saveZ80Memory(const char *dst, uint32_t addr, uint32_t size, t_svcDirEnt
 
         if(!fr0)
         {
-            if( (target != MAINBOARD && reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target) == 0) || (target == MAINBOARD && reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT) == 0) )
+      
+            // If the Z80 is in RUN mode, request the bus.
+            // This mechanism allows for the load command to leave the BUS under the tranZPUter control for multiple transactions.
+            // Care needs to be taken though that no more than 2-3ms passes without a call to refreshZ80AllRows() otherwise memory loss 
+            // may occur.
+            //
+            if(z80Control.ctrlMode == Z80_RUN)
             {
-                // Setup the pins to perform a read operation (after setting the latch to starting value).
+                // Request the board according to the target flag, target = MAINBOARD then the mainboard is controlled otherwise the tranZPUter board.
+                if(target == TRANZPUTER || target == FPGA)
+                {
+                    reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target);
+                } else
+                {
+                    reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT);
+                }
+
+                // If successful, setup the control pins for upload mode.
                 //
-                writeCtrlLatch(z80Control.curCtrlLatch);
+                if(z80Control.ctrlMode != Z80_RUN)
+                {
+                    // Setup the pins to perform a write operation.
+                    //
+                    setZ80Direction(WRITE);
+                   
+                    // Setup the control latch to the required starting configuration.
+                    writeCtrlLatch(z80Control.curCtrlLatch);
+                }
+            } else
+            {
+                // See if the bus needs changing.
+                //
+                enum CTRL_MODE newMode = (target == MAINBOARD) ? MAINBOARD_ACCESS : TRANZPUTER_ACCESS;
+                reqZ80BusChange(newMode);
+            }
+
+            // If we have bus control, complete the task,
+            //
+            if( z80Control.ctrlMode != Z80_RUN )
+            {
+                // Setup the pins to perform a read operation.
+                //
                 setZ80Direction(READ);
     
                 // Loop, reading a sector worth of data (or upto limit remaining) from the Z80 tranZPUter RAM or mainboard RAM and writing it into the open SD card file.
@@ -1837,10 +2202,16 @@ FRESULT saveZ80Memory(const char *dst, uint32_t addr, uint32_t size, t_svcDirEnt
                     if (fr0 || writeSize < sizeToWrite || saveSize >= size) break;       // error, disk full or range written.
                 }
     
-                // Restore the control latch to its original configuration.
+                // Release the bus if it is not being held for further transations.
                 //
-                writeCtrlLatch(z80Control.runCtrlLatch);
-                releaseZ80();
+                if(z80Control.holdZ80 == 0 && z80Control.ctrlMode != Z80_RUN)
+                {
+                    // Restore the control latch to its original configuration.
+                    //
+                    setZ80Direction(WRITE);
+                    writeCtrlLatch(z80Control.runCtrlLatch);
+                    releaseZ80();
+                }
                 printf("Saved %ld bytes, final address:%lx\n", saveSize, memPtr);
     
             } else
@@ -1865,7 +2236,7 @@ FRESULT saveZ80Memory(const char *dst, uint32_t addr, uint32_t size, t_svcDirEnt
 
 // Function to dump out a given section of the Z80 memory on the tranZPUter board or mainboard.
 //
-int memoryDumpZ80(uint32_t memaddr, uint32_t memsize, uint32_t dispaddr, uint8_t dispwidth, enum TARGETS target)
+int memoryDumpZ80(uint32_t memaddr, uint32_t memsize, uint32_t dispaddr, uint8_t dispwidth, uint8_t memCtrl, enum TARGETS target)
 {
     uint8_t  data;
     int8_t   keyIn         = 0;
@@ -1880,14 +2251,61 @@ int memoryDumpZ80(uint32_t memaddr, uint32_t memsize, uint32_t dispaddr, uint8_t
     if((target == MAINBOARD && (memaddr+memsize) > 0x10000) || (target == TRANZPUTER && (memaddr+memsize) > 0x80000) || (target == FPGA && (memaddr+memsize) > 0x1000000))
         return(1);
 
-    // Request the correct bus.
+    // If the Z80 is in RUN mode, request the bus.
+    // This mechanism allows for the load command to leave the BUS under the tranZPUter control for multiple transactions.
+    // Care needs to be taken though that no more than 2-3ms passes without a call to refreshZ80AllRows() otherwise memory loss 
+    // may occur.
     //
-    if( (target != MAINBOARD && reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target) == 0) || (target == MAINBOARD && reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT) == 0) )
+    if(z80Control.ctrlMode == Z80_RUN)
     {
-        // Setup the pins to perform a read operation (after setting the latch to starting value).
+        // Request the board according to the target flag, target = MAINBOARD then the mainboard is controlled otherwise the tranZPUter board.
+        if(target == TRANZPUTER || target == FPGA)
+        {
+            reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target);
+        } else
+        {
+            reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT);
+        }
+
+        // If successful, setup the control pins for upload mode.
         //
-        writeCtrlLatch(z80Control.curCtrlLatch);
+        if(z80Control.ctrlMode != Z80_RUN)
+        {
+            // Setup the pins to perform a write operation.
+            //
+            setZ80Direction(WRITE);
+           
+            // Setup the control latch to the required starting configuration.
+            writeCtrlLatch(z80Control.curCtrlLatch);
+        }
+    } else
+    {
+        // See if the bus needs changing.
+        //
+        enum CTRL_MODE newMode = (target == MAINBOARD) ? MAINBOARD_ACCESS : TRANZPUTER_ACCESS;
+        reqZ80BusChange(newMode);
+    }
+
+    // If we have bus control, complete the task,
+    //
+    if( z80Control.ctrlMode != Z80_RUN )
+    {
+        // Setup the pins to perform a read operation.
+        //
         setZ80Direction(READ);
+        
+        // If the host hardware is an MZ-700/MZ-800 and memCtrl has been set then we need to issue memory management commands to page in all the DRAM.
+        //
+        if(target == MAINBOARD && memCtrl == 1 && (z80Control.hostType == MZ700 || z80Control.hostType == MZ800))
+        {
+            // First reset memory map.
+            outZ80IO(IO_TZ_MMIO4, 0);
+
+            // Then page in the DRAM banks.
+            inZ80IO(IO_TZ_MMIO1);
+            outZ80IO(IO_TZ_MMIO0, 0);
+            outZ80IO(IO_TZ_MMIO1, 0);
+        }
 
         while (1)
         {
@@ -1958,11 +2376,24 @@ int memoryDumpZ80(uint32_t memaddr, uint32_t memsize, uint32_t dispaddr, uint8_t
             }
         }
        
-
-        // Restore the control latch to its original configuration.
+        // Reset the memory management for MZ-700/MZ-800.
         //
-        writeCtrlLatch(z80Control.runCtrlLatch);
-        releaseZ80();
+        if(target == MAINBOARD && memCtrl == 1 && (z80Control.hostType == MZ700 || z80Control.hostType == MZ800))
+        {
+            // Bring back the monitor ROM.
+            outZ80IO(IO_TZ_MMIO2, 0);
+            outZ80IO(IO_TZ_MMIO3, 0);
+        }
+       
+        // Release the bus if it is not being held for further transations.
+        //
+        if(z80Control.holdZ80 == 0 && z80Control.ctrlMode != Z80_RUN)
+        {
+            // Restore the control latch to its original configuration.
+            //
+            writeCtrlLatch(z80Control.runCtrlLatch);
+            releaseZ80();
+        }
     }
 
     // Normal exit, return -1, escape exit return 0.
@@ -2069,7 +2500,7 @@ uint8_t loadBIOS(const char *biosFileName, uint8_t machineMode, uint32_t loadAdd
 {
     // Locals.
     uint8_t result = FR_OK;
-
+   
     // Load up the given BIOS into tranZPUter memory.
     if((result=loadZ80Memory(biosFileName, 0, loadAddr, 0, 0, TRANZPUTER, 1)) != FR_OK)
     {
@@ -2094,7 +2525,6 @@ uint8_t loadBIOS(const char *biosFileName, uint8_t machineMode, uint32_t loadAdd
 void hardResetTranZPUter(void)
 {
     // Locals.
-    FRESULT  result = 0;
     uint8_t  cpuConfig;
 
     // Firstly, ascertain what CPU we are using, soft or hard.
@@ -2103,6 +2533,9 @@ void hardResetTranZPUter(void)
 
     // Load up the default ROMS.
     loadTranZPUterDefaultROMS(cpuConfig);
+   
+    // Setup the Interrupts for IORQ and MREQ.
+    setupIRQ();
 
     return;
 }
@@ -2125,10 +2558,6 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
         case CPUMODE_IS_T80:
         case CPUMODE_IS_Z80:
         default:
-            // Start off by clearing active memory banks, the AS6C4008 chip holds random values at power on.
-            fillZ80Memory(0x000000, 0x10000, 0x00, TRANZPUTER); // TZFS and Sharp MZ80A mode.
-            fillZ80Memory(0x040000, 0x20000, 0x00, TRANZPUTER); // CPM Mode.
-
             // Now load the default BIOS into memory for the host type.
             switch(z80Control.hostType)
             {
@@ -2138,19 +2567,35 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
 
                 case MZ800:
                     // The MZ-800 uses a composite ROM containing the modified BIOS of the MZ-700 (1Z_013B), the IPL of the MZ-800 (9Z_504M), the CGROM for video text output
-                    // and the IOCS, a BASIC common code area,
+                    // and the BASIC IOCS, a common code area for BASIC,
                     //
-                    // First we load the MZ-700 compatible BIOS.
-                    printf("Loading 1Z_013B\n");
-                    result = loadBIOS(MZ_ROM_1Z_013B,     MZ800, MZ_MROM_ADDR);
+                    // First we load the MZ-700 compatible BIOS in page 0 to support TZFS when activated.
+                    result = loadBIOS(MZ_ROM_1Z_013A_40C, MZ700, MZ_MROM_ADDR);
+
+                    // Next we load the MZ-800 BIOS in page 7.
+                    if(!result)
+                    {
+                        printf("Loading 1Z_013B\n");
+                        result = loadBIOS(MZ_ROM_1Z_013B,     MZ800, MZ_800_MROM_ADDR);
+                    }
+
+                    // Load up the CGROM into RAM.
+                    //printf("Loading CGROM\n");
+                    //result = loadBIOS(MZ_ROM_800_CGROM,   MZ800, MZ_800_CGROM_ADDR);
 
                     // Next we load the modified 9Z-504M - modified to add an option to start TZFS.
-                    printf("Loading 9Z_504M\n");
-                    result = loadBIOS(MZ_ROM_9Z_504M,     MZ800, MZ_800_IPL_ADDR);
+                    if(!result)
+                    {
+                        printf("Loading 9Z_504M\n");
+                        result = loadBIOS(MZ_ROM_9Z_504M,     MZ800, MZ_800_IPL_ADDR);
+                    }
                    
                     // Finally we load the common IOCS.
-                    printf("Loading IOCS\n");
-                    result = loadBIOS(MZ_ROM_800_IOCS,    MZ800, MZ_800_IOCS_ADDR);
+                    if(!result)
+                    {
+                        printf("Loading BASIC IOCS\n");
+                        result = loadBIOS(MZ_ROM_800_IOCS,    MZ800, MZ_800_IOCS_ADDR);
+                    }
                     break;
 
                 case MZ80B:
@@ -2162,25 +2607,21 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
                     result = loadBIOS(MZ_ROM_SA1510_40C, MZ80A, MZ_MROM_ADDR);
                     break;
             }
-            // The MZ-800 architecure occupies the TZFS memory area, so we dont load TZFS at this point. If the user selects TZFS then a request to load will be made.
-            if(z80Control.hostType != MZ800)
+            if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0,      MZ_UROM_ADDR,            0x1800, 0, TRANZPUTER, 1) != FR_OK))
             {
-                if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0,      MZ_UROM_ADDR,            0x1800, 0, TRANZPUTER, 1) != FR_OK))
-                {
-                    printf("Error: Failed to load bank 1 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
-                }
-                if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x1800, MZ_BANKRAM_ADDR+0x10000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
-                {
-                    printf("Error: Failed to load page 2 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
-                }
-                if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x2800, MZ_BANKRAM_ADDR+0x20000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
-                {
-                    printf("Error: Failed to load page 3 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
-                }
-                if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x3800, MZ_BANKRAM_ADDR+0x30000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
-                {
-                    printf("Error: Failed to load page 4 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
-                }
+                printf("Error: Failed to load bank 1 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
+            }
+            if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x1800, MZ_BANKRAM_ADDR+0x10000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
+            {
+                printf("Error: Failed to load page 2 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
+            }
+            if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x2800, MZ_BANKRAM_ADDR+0x20000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
+            {
+                printf("Error: Failed to load page 3 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
+            }
+            if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x3800, MZ_BANKRAM_ADDR+0x30000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
+            {
+                printf("Error: Failed to load page 4 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
             }
             break;
 
@@ -2203,6 +2644,9 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
         //
         if(cpuConfig == CPUMODE_IS_Z80)
         {
+            // Check to see if autoboot is needed.
+            osControl.tzAutoBoot = testTZFSAutoBoot();
+    
             // If autoboot flag set, force a restart to the ROM which will call User ROM startup code.
             if(osControl.tzAutoBoot)
             {
@@ -2212,10 +2656,14 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
                     resetZ80(TZMM_BOOT);
                 } else
                 {
-                    // The MZ-800 wants to run the original software so reset leaving the memory mode as original.
-                    resetZ80(TZMM_ORIG);
+                    // On the MZ-800, once all firmware loaded, set the memory mode to MZ-800 and reset to enable processing on the tranZPUter memory rather than host memory.
+                    resetZ80(TZMM_MZ800);
                 }
+            } else
+            {
+                setCtrlLatch(TZMM_ORIG);
             }
+
         }
         // For the T80 we just issue a soft reset.
         else if(cpuConfig == CPUMODE_IS_T80)
@@ -2227,10 +2675,17 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
         else if(cpuConfig == CPUMODE_IS_ZPU_EVO)
         {
             writeZ80IO(IO_TZ_CPUCFG, cpuConfig | CPUMODE_CLK_EN | CPUMODE_RESET_CPU, TRANZPUTER);
+        } else
+        {
+            // Set the memory model to BOOT so we can bootstrap TZFS.
+            resetZ80(TZMM_ORIG);
         }
 
         // No longer need refresh on the mainboard as all operations are in static RAM or FPGA.
         z80Control.disableRefresh = 1;
+    } else
+    {
+        printf("Firmware load failure\n");
     }
     return;
 }
@@ -2243,21 +2698,54 @@ uint8_t setZ80SvcStatus(uint8_t status)
     // Locals
     uint8_t result = 1;
 
+    // If the Z80 is in RUN mode, request the bus.
+    // This mechanism allows for the load command to leave the BUS under the tranZPUter control for multiple transactions.
+    // Care needs to be taken though that no more than 2-3ms passes without a call to refreshZ80AllRows() otherwise memory loss 
+    // may occur.
+    //
+    if(z80Control.ctrlMode == Z80_RUN)
+    {
+        // Request the tranZPUter bus as the service register is inside the CPLD.
+        result = reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, TRANZPUTER);
+
+        // If successful, setup the control pins for upload mode.
+        //
+        if(z80Control.ctrlMode != Z80_RUN)
+        {
+            // Setup the pins to perform a write operation.
+            //
+            setZ80Direction(WRITE);
+           
+            // Setup the control latch to the required starting configuration.
+            writeCtrlLatch(z80Control.curCtrlLatch);
+        }
+    } else
+    {
+        // See if the bus needs changing.
+        //
+        if(z80Control.ctrlMode == MAINBOARD_ACCESS)
+        {
+            reqZ80BusChange(TRANZPUTER_ACCESS);
+        }
+    }
+
     // Request the tranZPUter bus.
     //
-    if(reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, TRANZPUTER) == 0)
+    if( z80Control.ctrlMode != Z80_RUN )
     {
-        // Setup the pins to perform a write operation.
-        //
-        writeCtrlLatch(z80Control.curCtrlLatch);
-
         // Update the memory location.
         //
         result=writeZ80Memory(z80Control.svcControlAddr+TZSVC_RESULT_OFFSET, status, TRANZPUTER);
 
-        // Release the Z80.
-        writeCtrlLatch(z80Control.runCtrlLatch);
-        releaseZ80();
+        // Release the bus if it is not being held for further transations.
+        //
+        if(z80Control.holdZ80 == 0 && z80Control.ctrlMode != Z80_RUN)
+        {
+            // Restore the control latch to its original configuration.
+            //
+            writeCtrlLatch(z80Control.runCtrlLatch);
+            releaseZ80();
+        }
 
         // Update in-memory copy of the result variable.
         svcControl.result = status;
@@ -3310,7 +3798,7 @@ uint8_t svcLoadFile(enum FILE_TYPE type)
         if(svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo, type))
         {
             // Call method to load an MZF file.
-            result = loadMZFZ80Memory(fqfn, 0xFFFFFFFF, 0, TRANZPUTER, 1);
+            result = loadMZFZ80Memory(fqfn, 0xFFFFFFFF, 0, (svcControl.memTarget == 0 ? TRANZPUTER : MAINBOARD), 1);
 
             // Store the filename, used in reload or immediate saves.
             //
@@ -3362,6 +3850,7 @@ uint8_t svcSaveFile(enum FILE_TYPE type)
     FRESULT           result    = FR_OK;
     char              fqfn[FF_LFN_BUF + 13];  // 0:\12345678\<filename>
     char              asciiFileName[TZSVC_FILENAME_SIZE+1];
+    uint32_t          addrOffset = SRAM_BANK0_ADDR;
     t_svcDirEnt       mzfHeader;
 
     // Setup the defaults
@@ -3372,8 +3861,16 @@ uint8_t svcSaveFile(enum FILE_TYPE type)
     //
     if(type == MZF)
     {
+        // Setup bank in which to load the header/data. Default is bank 0, different host hardware uses different banks.
+        //
+        if(svcControl.memTarget == 0 && z80Control.hostType == MZ800)
+        {
+            addrOffset = SRAM_BANK6_ADDR;
+        } 
+            result = loadMZFZ80Memory(fqfn, 0xFFFFFFFF, 0, (svcControl.memTarget == 0 ? TRANZPUTER : MAINBOARD), 1);
+      
         // Get the MZF header which contains the details of the file to save.
-        copyFromZ80((uint8_t *)&mzfHeader, MZ_CMT_ADDR, MZF_HEADER_SIZE, TRANZPUTER);
+        copyFromZ80((uint8_t *)&mzfHeader, addrOffset + MZ_CMT_ADDR, MZF_HEADER_SIZE, TRANZPUTER);
 
         // Need to extract and convert the filename to create a file.
         //
@@ -3387,7 +3884,7 @@ uint8_t svcSaveFile(enum FILE_TYPE type)
         convertToFAT32FileNameFormat(fqfn);
 
         // Call the main method to save memory passing in the correct MZF details and header.
-        result = saveZ80Memory(fqfn, (mzfHeader.loadAddr < MZ_CMT_DEFAULT_LOAD_ADDR-3 ? MZ_CMT_DEFAULT_LOAD_ADDR : mzfHeader.loadAddr), mzfHeader.fileSize, &mzfHeader, TRANZPUTER);
+        result = saveZ80Memory(fqfn, (mzfHeader.loadAddr < MZ_CMT_DEFAULT_LOAD_ADDR-3 ? addrOffset+MZ_CMT_DEFAULT_LOAD_ADDR : addrOffset+mzfHeader.loadAddr), mzfHeader.fileSize, &mzfHeader, (svcControl.memTarget == 0 ? TRANZPUTER : MAINBOARD));
     } else
     // Cassette images are for NASCOM/Microsoft Basic. The files are in NASCOM format so the header needs to be skipped.
     // BAS files are for human readable BASIC files.
@@ -3644,7 +4141,7 @@ uint8_t svcReadSDRaw(void)
         printf("svcReadSDRaw: Illegal input values: vDriveNo=%d\n", svcControl.vDriveNo);
         return(TZSVC_STATUS_FILE_ERROR);
     }
-printf("disk_read, drive=%d, sector=%08lx, sector number=%08lx\n", svcControl.vDriveNo, svcControl.sector, svcControl.sectorLBA);
+//printf("disk_read, drive=%d, sector=%08lx, sector number=%08lx\n", svcControl.vDriveNo, svcControl.sector, svcControl.sectorLBA);
     // Extract LBA sector number and perform physical read.
     result = disk_read(svcControl.vDriveNo, svcControl.sector, svcControl.sectorLBA, 1); 
 
@@ -3672,7 +4169,7 @@ uint8_t svcWriteSDRaw(void)
         return(TZSVC_STATUS_FILE_ERROR);
     }
 
-printf("disk_write, drive=%d, sector=%08lx, sector number=%08lx\n", svcControl.vDriveNo, svcControl.sector, svcControl.sectorLBA);
+//printf("disk_write, drive=%d, sector=%08lx, sector number=%08lx\n", svcControl.vDriveNo, svcControl.sector, svcControl.sectorLBA);
     // Extract LBA sector number and perform physical write.
     result = disk_write(svcControl.vDriveNo, svcControl.sector, svcControl.sectorLBA, 1); 
 
@@ -3705,7 +4202,7 @@ uint32_t getServiceAddr(void)
         // zOS
         addr = TZSVC_CMD_STRUCT_ADDR_ZOS;
     }
-printf("getServiceAddr:%02x,%02x,%02x,%01x,%08lx,%02x\n", z80Control.runCtrlLatch, z80Control.curCtrlLatch, memoryMode, cpuConfig, addr, svcControl.cmd);
+//printf("getServiceAddr:%02x,%02x,%02x,%01x,%08lx,%02x\n", z80Control.runCtrlLatch, z80Control.curCtrlLatch, memoryMode, cpuConfig, addr, svcControl.cmd);
     return(addr);
 }
 
@@ -3717,6 +4214,8 @@ void processServiceRequest(void)
     //
     uint8_t    refreshCacheDir = 0;
     uint8_t    status          = 0;
+    uint8_t    doExit          = 0;
+    uint8_t    doReset         = 0;
     uint32_t   actualFreq;
     uint32_t   copySize        = TZSVC_CMD_STRUCT_SIZE;
   
@@ -3989,20 +4488,15 @@ void processServiceRequest(void)
                     // Disable secondary frequency.
                     setZ80CPUFrequency(0, 4);
 
-                    // Set the memory model to ORIGinal.
-                    setCtrlLatch(TZMM_ORIG);
-
                     // Clear the stack and monitor variable area as DRAM wont have been refreshed so will contain garbage.
                     fillZ80Memory(MZ_MROM_STACK_ADDR, MZ_MROM_STACK_SIZE, 0x00, MAINBOARD);
-                   
+
                     // Set to refresh mode just in case the I/O processor performs any future action in silent mode!
                     z80Control.disableRefresh = 0;
                    
-                    // Now reset the machine so everything starts as power on.
-                    resetZ80(TZMM_ORIG);
-                 
-                    // Disable the interrupts so no further service processing.
-                    disableIRQ();
+                    // Set a flag to perform the physical reset. This is necessary as the service routine holds the Z80 bus and there is an issue with the Z80 if you reset whilst
+                    // the bus is being held (it sometimes misses the first instruction).
+                    doExit = 1;
                     break;
 
                 default:
@@ -4025,9 +4519,28 @@ void processServiceRequest(void)
         if(refreshCacheDir)
             svcCacheDir((const char *)svcControl.directory, svcControl.fileType, 1);
 
-        // Finally, release the Z80 Bus.
+        // Finally, return the memory management mode to original and release the Z80 Bus.
+        writeCtrlLatch(z80Control.runCtrlLatch);
         z80Control.holdZ80 = 0;
         releaseZ80();
+   
+        // If the doExit flag is set it means the CPU should be set to original memory mode and reset.
+        if(doExit == 1)
+        {
+            // Now reset the machine so everything starts as power on.
+            resetZ80(TZMM_ORIG);
+            z80Control.runCtrlLatch = TZMM_ORIG;
+
+            // Disable the interrupts so no further service processing.
+            disableIRQ();
+        }
+        // If the doReset force a reset of the CPU.
+        if(doReset == 1)
+        {
+            // Reset the machine requested by earlier action.
+            resetZ80(TZMM_BOOT);
+            z80Control.runCtrlLatch = TZMM_BOOT;
+        }
     } else
     {
         printf("Failed to request access to the Z80 Bus, cannot service request.\n");
@@ -4044,7 +4557,7 @@ uint8_t testTZFSAutoBoot(void)
     FIL       File;
 
     // Detect if the autoboot tranZPUter TZFS flag is set. This is a file called TZFSBOOT in the SD root directory.
-    if(f_open(&File, "TZFSBOOT.FLG", FA_OPEN_EXISTING | FA_READ) == FR_OK)
+    if(!f_open(&File, TZFS_AUTOBOOT_FLAG, FA_OPEN_EXISTING | FA_READ))
     {
         result = 1;
         f_close(&File);
@@ -4061,9 +4574,25 @@ void setHost(void)
     // Locals.
     uint8_t   cpldInfo;
 
-    // Request the correct bus.
+    // If the Z80 is in RUN mode, request the bus.
+    // This mechanism allows for the load command to leave the BUS under the tranZPUter control for multiple transactions.
+    // Care needs to be taken though that no more than 2-3ms passes without a call to refreshZ80AllRows() otherwise memory loss 
+    // may occur.
     //
-    if( reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, TRANZPUTER) == 0) 
+    if(z80Control.ctrlMode == Z80_RUN)
+    {
+        // Request the tranZPUter bus as the information registers are in the CPLD.
+        reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, TRANZPUTER);
+    } else
+    {
+        // See if the bus needs changing.
+        //
+        reqZ80BusChange(TRANZPUTER_ACCESS);
+    }
+
+    // If we have bus control, complete the task,
+    //
+    if( z80Control.ctrlMode != Z80_RUN )
     {
         // Setup the pins to perform an IO read operation.
         //
@@ -4073,9 +4602,14 @@ void setHost(void)
         //
         cpldInfo = inZ80IO(IO_TZ_CPLDINFO);
       
-        // Release the bus to continue.
+        // Release the bus if it is not being held for further transations.
         //
-        releaseZ80();
+        if(z80Control.holdZ80 == 0 && z80Control.ctrlMode != Z80_RUN)
+        {
+            // Release the bus to continue.
+            //
+            releaseZ80();
+        }
     } else
     {
         printf("Failed to access tranZPUter bus to read CPLDINFO, defaulting to MZ80A\n");
@@ -4143,8 +4677,8 @@ void setupTranZPUter(void)
     // Reset the interrupts so they take into account the current host rather than the default.
     setupIRQ();
 
-    // Check to see if autoboot is needed.
-    osControl.tzAutoBoot = testTZFSAutoBoot();
+    // Start off by clearing active memory banks, the AS6C4008 chip holds random values at power on.
+    fillZ80Memory(0x000000, 0x80000, 0x00, TRANZPUTER);
 }
 
 // Test routine. Add code here to test an item within the kernel. Anything accessing hardware generally has to call the kernel as it doesnt have real access.
@@ -4153,7 +4687,6 @@ void testRoutine(void)
 {
     // Locals.
     //
-    uint8_t  result = 0;
     uint32_t startTime = *ms;
 
     printf("Testing BUSRQ/BUSACK mechanism...\n");

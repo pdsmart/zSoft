@@ -97,6 +97,7 @@ void usage(void)
     printf("  -s | --size              Size of memory block to dump (alternatively use --end).\n");
     printf("  -f | --fpga              Operations will take place in the FPGA memory. Default without this flag is to target the tranZPUter memory.\n");
     printf("  -m | --mainboard         Operations will take place on the MZ80A mainboard. Default without this flag is to target the tranZPUter memory.\n");
+    printf("  -M | --mempage           Machines with banked DRAM will have the DRAM paged in for dumping.\n");
     printf("  -v | --verbose           Output more messages.\n");
 
     printf("\nExamples:\n");
@@ -121,6 +122,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
     int        help_flag         = 0;
     int        fpga_flag         = 0;
     int        mainboard_flag    = 0;
+    int        mempage_flag      = 0;
     int        verbose_flag      = 0;
     int        opt; 
     long       val               = 0;
@@ -154,6 +156,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
         {"size",          's',  OPTPARSE_REQUIRED},
         {"fpga",          'f',  OPTPARSE_NONE},
         {"mainboard",     'm',  OPTPARSE_NONE},
+        {"mempage",       'M',  OPTPARSE_NONE},
         {"verbose",       'v',  OPTPARSE_NONE},
         {0}
     };
@@ -175,6 +178,10 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
             case 'm':
                 mainboard_flag = 1;
+                break;
+
+            case 'M':
+                mempage_flag = 1;
                 break;
 
             case 'a':
@@ -258,7 +265,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
 
     // Call the dump utility to list out memory.
     //
-    memoryDumpZ80(startAddr, memSize, startAddr, 32, mainboard_flag == 1 ? MAINBOARD : fpga_flag == 1 ? FPGA : TRANZPUTER);
+    memoryDumpZ80(startAddr, memSize, startAddr, 32, mempage_flag == 0 ? 0 : 1, mainboard_flag == 1 ? MAINBOARD : fpga_flag == 1 ? FPGA : TRANZPUTER);
 
     return(0);
 }

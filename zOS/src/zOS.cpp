@@ -106,8 +106,8 @@
 #endif
 
 // Version info.
-#define VERSION      "v1.1f"
-#define VERSION_DATE "06/03/2021"
+#define VERSION      "v1.1k"
+#define VERSION_DATE "11/03/2021"
 #define PROGRAM_NAME "zOS"
 
 // Utility functions.
@@ -260,7 +260,7 @@ void tranZPUterControl(void)
 {
     // Locals.
     uint8_t        ioAddr;
-  
+testTZFSAutoBoot(); 
     // Loop waiting on events and processing.
     //
     while(1)
@@ -341,6 +341,11 @@ int cmdProcessor(void)
     // Initialise any globals in the structure used to pass working variables to apps.
     G.Sector = 0;
 
+  #if defined __TRANZPUTER__
+    // Setup the tranZPUter hardware ready for action!
+    setupTranZPUter();
+  #endif
+
     // Initialise the first disk if FS enabled as external commands depend on it.
   #if defined(__SD_CARD__)
     fr = FR_NOT_ENABLED;
@@ -359,9 +364,6 @@ int cmdProcessor(void)
         fsInitialised   = 1;
 
       #if defined __TRANZPUTER__
-        // Setup the tranZPUter ready for action!
-        setupTranZPUter();
-       
         // Setup memory on Z80 to default.
         loadTranZPUterDefaultROMS(CPUMODE_SET_Z80);
 

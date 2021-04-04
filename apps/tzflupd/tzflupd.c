@@ -13,6 +13,7 @@
 // History:         Jan 2021 - Initial write of the TranZPUter software using NXP/Freescale flash
 //                             driver source.
 //                  Feb 2021 - Getopt too buggy with long arguments so replaced with optparse.
+//                  Mar 2021 - Change sector size to K64F default and fixed some bugs.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -86,15 +87,14 @@
 //#include <tools.c>
 
 // Version info.
-#define VERSION              "v1.1"
-#define VERSION_DATE         "21/02/2021"
+#define VERSION              "v1.2"
+#define VERSION_DATE         "11/03/2021"
 #define APP_NAME             "TZFLUPD"
 
 // Global scope variables.
 FATFS     diskHandle;
-char      buffer[512];
+char      buffer[FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE];
 uint8_t   FLASH_PROTECTION_SIGNATURE[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xde, 0xf9, 0xff, 0xff};
-
 
 // Simple help screen to remmber how this utility works!!
 //
@@ -105,6 +105,7 @@ void usage(void)
     printf("  -h | --help              This help text.\n");
     printf("  -f | --file              Binary file to upload and flash into K64F.\n");
     printf("\nOptions:-\n");
+    printf("  -d | --debug             Add debug steps to programming.\n");
     printf("  -v | --verbose           Output more messages.\n");
 
     printf("\nExamples:\n");
@@ -130,6 +131,122 @@ FRESULT initSDCard(void)
     return(result);
 }
 
+// Local memory dump routine for debug purposes.
+//
+int dumpMemory(uint32_t memaddr, uint32_t memsize, uint32_t memwidth, uint32_t dispaddr, uint8_t dispwidth)
+{
+    uint8_t  displayWidth = dispwidth;;
+    uint32_t pnt          = memaddr;
+    uint32_t endAddr      = memaddr + memsize;
+    uint32_t addr         = dispaddr;
+    uint32_t i = 0;
+    //uint32_t data;
+    int8_t   keyIn;
+    char c = 0;
+
+    // If not set, calculate output line width according to connected display width.
+    //
+    if(displayWidth == 0)
+    {
+        switch(getScreenWidth())
+        {
+            case 40:
+                displayWidth = 8;
+                break;
+            case 80:
+                displayWidth = 16;
+                break;
+            default:
+                displayWidth = 32;
+                break;
+        }
+    }
+
+    while (1)
+    {
+        printf("%08lX", addr); // print address
+        printf(":  ");
+
+        // print hexadecimal data
+        for (i=0; i < displayWidth; )
+        {
+            switch(memwidth)
+            {
+                case 16:
+                    if(pnt+i < endAddr)
+                        printf("%04X", *(uint16_t *)(pnt+i));
+                    else
+                        printf("    ");
+                        //printf("    ");
+                    i+=2;
+                    break;
+
+                case 32:
+                    if(pnt+i < endAddr)
+                        printf("%08lX", *(uint32_t *)(pnt+i));
+                    else
+                        printf("        ");
+                    i+=4;
+                    break;
+
+                case 8:
+                default:
+                    if(pnt+i < endAddr)
+                        printf("%02X", *(uint8_t *)(pnt+i));
+                    else
+                        printf("  ");
+                    i++;
+                    break;
+            }
+            fputc((char)' ', stdout);
+        }
+
+        // print ascii data
+        printf(" |");
+
+        // print single ascii char
+        for (i=0; i < displayWidth; i++)
+        {
+            c = (char)*(uint8_t *)(pnt+i);
+            if ((pnt+i < endAddr) && (c >= ' ') && (c <= '~'))
+                fputc((char)c, stdout);
+            else
+                fputc((char)' ', stdout);
+        }
+
+        puts("|");
+
+        // Move on one row.
+        pnt  += displayWidth;
+        addr += displayWidth;
+
+        // User abort (ESC), pause (Space) or all done?
+        //
+        keyIn = getKey(0);
+        if(keyIn == ' ')
+        {
+            do {
+                keyIn = getKey(0);
+            } while(keyIn != ' ' && keyIn != 0x1b);
+        }
+        // Escape key pressed, exit with 0 to indicate this to caller.
+        if (keyIn == 0x1b)
+        {
+            return(0);
+        }
+
+        // End of buffer, exit the loop.
+        if(pnt >= (memaddr + memsize))
+        {
+            break;
+        }
+    }
+
+    // Normal exit, return -1 to show no key pressed.
+    return(-1);
+}
+
+
 // Main entry and start point of a zOS/ZPUTA Application. Only 2 parameters are catered for and a 32bit return code, additional parameters can be added by changing the appcrt0.s
 // startup code to add them to the stack prior to app() call.
 //
@@ -143,6 +260,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
     int             argc              = 0;
     int             help_flag         = 0;
     int             uploadFNLen       = 0;
+    int             debug_flag        = 0;
     int             verbose_flag      = 0;
     int             opt; 
     int             updateFNLen       = 0;
@@ -180,6 +298,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
     {
         {"help",          'h',               OPTPARSE_NONE},
         {"file",          'f',               OPTPARSE_REQUIRED},
+        {"debug",         'd',               OPTPARSE_NONE},
         {"verbose",       'v',               OPTPARSE_NONE},
         {0}
     };
@@ -198,6 +317,10 @@ uint32_t app(uint32_t param1, uint32_t param2)
             case 'f':
                 strcpy(updateFile, options.optarg);
                 updateFNLen = strlen(updateFile);                
+                break;
+
+            case 'd':
+                debug_flag = 1;
                 break;
 
             case 'v':
@@ -272,54 +395,53 @@ uint32_t app(uint32_t param1, uint32_t param2)
     // If all ok, indicate file has been opened then prepare to read and flash.
     if(fResult == FR_OK)
     {
-        printf("Opened file: %s, size=%ld bytes\n", updateFile, fileSize);
-        printf("Flash will now commence, no further output if core kernel drivers being updated.\nPlease reset after 30 seconds if no further message seen...\n");
+        // Indicate file, size and that it has been verified using the security flags.
+        printf("%s %s\n\n", APP_NAME, VERSION);
+        printf("Firmware update file: %s, size=%ld bytes\n\n", updateFile, fileSize);
+
+        printf("*******************************************************************************************************************\n");
+        printf("Flash will now commence, no further output will be made until the flash is successfully programmed.\n");
+        printf("If no further output is seen within 30 seconds, please assume the programming failed and make a hard reset.\n");
+        printf("If device doesnt restart use an OpenSDA or JTAG programmer to reprogram the OS.\n");
+        printf("*******************************************************************************************************************\n");
 
         // Slight delay to allow the output to flush to the user serial console.
-        uint32_t startTime = G->millis;
-        while((G->millis - startTime) < 5000);
-      
-        // Enter a loop, reading sector at a time from the SD card and flashing it into the Flash RAM.
+        uint32_t startTime = *G->millis;
+        while((*G->millis - startTime) < 1000) {};
+
+        // Enter a loop, interrupts disabled, reading sector at a time from the SD card and flashing it into the Flash RAM.
         //
+        __disable_irq();
         bytesProcessed = 0;
         do {
-            sizeToRead = (fileSize-bytesProcessed) > SECTOR_SIZE ? SECTOR_SIZE : fileSize - bytesProcessed;
+            sizeToRead = (fileSize-bytesProcessed) > FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE ? FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE : fileSize - bytesProcessed;
             fResult = f_read(&fileHandle, buffer, sizeToRead, &readSize);
             if (fResult || readSize == 0) break;   /* error or eof */                
 
             // If a sector isnt full, ie. last sector, pad with 0xFF.
             //
-            if(readSize != SECTOR_SIZE)
+            if(readSize != FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE)
             {
-                for(uint16_t idx=readSize; idx < SECTOR_SIZE; idx++) { buffer[idx] = 0xFF; }
+                for(uint16_t idx=readSize; idx < FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE; idx++) { buffer[idx] = 0xFF; }
             }
 
-            // Flash the sector into the correct location governed by the bytes already processed. We flash in 8 byte rows, we could flash full sectors but need to avoid the
-            // device protection region. The only downside of flashing in 8 byte chunks is the call overheads but these are negligible on the K64F.
+            // Flash the sector into the correct location governed by the bytes already processed. We flash a K64F programming sector at a time with unused space set to 0xFF.
             //
-            __disable_irq();
-
-            // Now program the sectors worth of data.
-            for(uint32_t idx=bytesProcessed; idx < bytesProcessed+SECTOR_SIZE; idx+=8)
+            flashResult = FLASH_Erase(&flashDriver, bytesProcessed, FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE, kFLASH_ApiEraseKey);
+            // If no previous errors, program the next sector.
+            if(flashResult == kStatus_FLASH_Success)
             {
-                // Skip the device protection bits, we dont want to overwrite these, should only be programed whenan external OpenSDA is connected.
-                if(idx < FLASH_PROTECTION_START_ADDR && idx > FLASH_PROTECTION_START_ADDR+FLASH_PROTECTION_SIZE-1) 
-                {
-                    // If no previous errors, program the next 8 bytes.
-                    flashResult = FLASH_Erase(&flashDriver, idx, 8, kFLASH_ApiEraseKey);
-                    if(flashResult == kStatus_FLASH_Success)
-                        flashResult = FLASH_Program(&flashDriver, idx, (uint32_t*)buffer[idx], 8);
-                }
+                flashResult = FLASH_Program(&flashDriver, bytesProcessed, (uint32_t*)buffer, FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE);
             }
-            __enable_irq();
 
             // Update the address/bytes processed count.
-            bytesProcessed += SECTOR_SIZE;
+            bytesProcessed += FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE;
         } while(bytesProcessed < fileSize && flashResult == kStatus_FLASH_Success);
+        __enable_irq();
 
         // Verbose output.
         if(verbose_flag)
-            printf("Bytes processed:%ld\n", bytesProcessed);
+            printf("Bytes processed:%ld, exit status:%s\n", bytesProcessed, flashResult == kStatus_FLASH_Success ? "Success" : "Fail");
 
         // Success in programming, clear rest of flash RAM.
         if(flashResult == kStatus_FLASH_Success)
@@ -340,21 +462,22 @@ uint32_t app(uint32_t param1, uint32_t param2)
         // Any errors, report (assuming kernel still intact) and hang.
         if (flashResult != kStatus_FLASH_Success)
         {
-            // This message may not be seen if the kernel has been wiped. put here incase of error before erase.
+            // This message may not be seen if the kernel has been wiped. put here in-case of error before erase.
             printf("Error: Failed to program new upgrade into Flash memory area!\n");
             printf("       Reset device. If device doesnt restart use an OpenSDA or JTAG programmer to reprogram.\n\n");
             while(1) {};
         }
 
         // Debug - place a message in an unused sector which can be checked to see if programming worked.
-        if(0)
+        if(debug_flag)
         {
             sprintf(buffer, "FLASH PROGRAMMING CHECK MESSAGE");
-            for(uint16_t idx=strlen(buffer); idx < SECTOR_SIZE; idx++) { buffer[idx] = 0x00; }
+            for(uint16_t idx=strlen(buffer); idx < FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE; idx++) { buffer[idx] = 0x00; }
             __disable_irq();
-            flashResult = FLASH_Erase(&flashDriver, bytesProcessed+4096, SECTOR_SIZE, kFLASH_ApiEraseKey);
-            flashResult = FLASH_Program(&flashDriver, bytesProcessed+4096, (uint32_t*)buffer, SECTOR_SIZE);
+            flashResult = FLASH_Erase(&flashDriver,   bytesProcessed+FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE, FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE, kFLASH_ApiEraseKey);
+            flashResult = FLASH_Program(&flashDriver, bytesProcessed+FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE, (uint32_t*)buffer, FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE);
             __enable_irq();
+            printf("Wrote check string at: %08lx\n", bytesProcessed+FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE);
         }
 
         // Just in case we have output connectivity. If the update doesnt change too much then we should maintain connectivity with the USB.
