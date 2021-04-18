@@ -452,7 +452,7 @@
 //#define readCtrlLatch()              ( ((GPIOB_PDIR & 0x00000200) >> 5) | (GPIOB_PDIR & 0x0000000f) )
 #define readCtrlLatchDirect()        ( inZ80IO(IO_TZ_CTRLLATCH) )
 #define readCtrlLatch()              ( readZ80IO(IO_TZ_CTRLLATCH, TRANZPUTER) )
-#define writeCtrlLatch(a)            { printf("WL:%02x\n", a); setZ80Direction(WRITE); outZ80IO(IO_TZ_CTRLLATCH, a); } 
+#define writeCtrlLatch(a)            { setZ80Direction(WRITE); outZ80IO(IO_TZ_CTRLLATCH, a); } 
 //#define setZ80Direction(a)           { for(uint8_t idx=Z80_D0; idx <= Z80_D7; idx++) { if(a == WRITE) { pinOutput(idx); } else { pinInput(idx); } }; z80Control.busDir = a; }
 #define setZ80Direction(a)           {{ if(a == WRITE) { setZ80DataAsOutput(); } else { setZ80DataAsInput(); } }; z80Control.busDir = a; }
 #define reqZ80BusChange(a)           { if(a == MAINBOARD_ACCESS && z80Control.ctrlMode == TRANZPUTER_ACCESS) \

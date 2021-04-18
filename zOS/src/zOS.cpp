@@ -1,7 +1,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // Name:            zOS.cpp
-// Created:         January 2019 - April 2020
+// Created:         January 2019 - April 2021
 // Author(s):       Philip Smart
 // Description:     ZPU and Teensy 3.5 (Freescale K64F) OS and test application.
 //                  This program implements methods, tools, test mechanisms and performance analysers such
@@ -9,7 +9,7 @@
 //                  validated and rated in terms of performance.
 //
 // Credits:         
-// Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
+// Copyright:       (c) 2019-2021 Philip Smart <philip.smart@net2net.org>
 //                  (c) 2013      ChaN, framework for the SD Card testing.
 //
 // History:         January 2019   - Initial script written for the STORM processor then changed to the ZPU.
@@ -22,13 +22,17 @@
 //                  July 2020      - Tweaks to accomodate v2.1 of the tranZPUter board.
 //                  December 2020  - Updates to allow soft CPU functionality on the v1.3 tranZPUter SW-700
 //                                   board.
+//                  April 2021     - Bug fixes to the SD directory cache and better interoperability with
+//                                   the MZ-800. Bug found which was introduced in December where the
+//                                   Z80 direction wasnt always set correctly resulting in some strange
+//                                   and hard to debug behaviour.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //                  USELOADB              - The Byte write command is implemented in hw/sw so use it.
 //                  USE_BOOT_ROM          - The target is ROM so dont use initialised data.
 //                  MINIMUM_FUNTIONALITY  - Minimise functionality to limit code size.
 //                  __ZPU__               - Target CPU is the ZPU
-//                  __K64F__              - Target CPU is the K64F on the Teensy 3.5
+//                  __K64F__              - Target CPU is the K64F
 //                  __SD_CARD__           - Add the SDCard logic.
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,8 +110,8 @@
 #endif
 
 // Version info.
-#define VERSION      "v1.1k"
-#define VERSION_DATE "11/03/2021"
+#define VERSION      "v1.2"
+#define VERSION_DATE "17/04/2021"
 #define PROGRAM_NAME "zOS"
 
 // Utility functions.
@@ -260,7 +264,7 @@ void tranZPUterControl(void)
 {
     // Locals.
     uint8_t        ioAddr;
-testTZFSAutoBoot(); 
+
     // Loop waiting on events and processing.
     //
     while(1)
@@ -367,12 +371,20 @@ int cmdProcessor(void)
         // Setup memory on Z80 to default.
         loadTranZPUterDefaultROMS(CPUMODE_SET_Z80);
 
+        // Kludge logic. Threads interfere with the heap management and if sufficient space hasnt been allocated and the heap free pointer far enough advanced
+        // before the thread starts, svcCacheDir may fail on future cache operations of larger directories.
+        uint8_t *cache = (uint8_t *)malloc(32768);
+
         // Cache initial directory.
         svcCacheDir(TZSVC_DEFAULT_MZF_DIR, MZF, 1);
 
+        // If memory allocated previously, free it.
+        if(cache != NULL)
+            free(cache);
+
         // For the tranZPUter, once we know that an SD card is available, launch seperate thread to handle hardware and service functionality.
         // No SD card = no tranZPUter functionality.
-        G.ctrlThreadId = threads.addThread(tranZPUterControl, 0, 16384);
+        G.ctrlThreadId = threads.addThread(tranZPUterControl, 0, 8192);
       #endif
     }
   #endif

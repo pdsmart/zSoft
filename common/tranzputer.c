@@ -26,7 +26,7 @@
 //                  this code but is suspended if zOS launches an application which will call this
 //                  functionality.
 // Credits:         
-// Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
+// Copyright:       (c) 2019-2021 Philip Smart <philip.smart@net2net.org>
 //
 // History:         v1.0 May 2020  - Initial write of the TranZPUter software.
 //                  v1.1 July 2020 - Updated for v1.1 of the hardware, all pins have been routed on the PCB
@@ -57,6 +57,9 @@
 //                                   Found and fixed a major bug introduced in v1.4. The Z80 direction 
 //                                   wasnt being set on occasion so an expected write wouldnt occur
 //                                   which led to some interesting behaviour!
+//                  v1.6 Apr 2021  - Fixed a SD directory cache bug when switching between directories.
+//                                   The bug occurs due to an interaction between the heap management
+//                                   and threads.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -2079,7 +2082,7 @@ FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint32_t *bytesRead, en
         if(mzfHeader.attr >= 0xF8)
         {
             addr += ((mzfHeader.attr & 0x07) << 16);
-            printf("CPM: Addr=%08lx, Size=%08lx\n", addr, mzfHeader.fileSize);
+            //printf("CPM: Addr=%08lx, Size=%08lx\n", addr, mzfHeader.fileSize);
         } else
         {
             addr += addrOffset;
@@ -3529,7 +3532,7 @@ uint8_t svcCacheDir(const char *directory, enum FILE_TYPE type, uint8_t force)
                 // Open the file so we can read out the MZF header which is the information TZFS/CPM needs.
                 //
                 result = f_open(&File, fqfn, FA_OPEN_EXISTING | FA_READ);
-
+             
                 // If no error occurred, read in the header.
                 //
                 if(!result) result = f_read(&File, (char *)&dirEnt, TZSVC_CMPHDR_SIZE, &readSize);
@@ -3543,7 +3546,8 @@ uint8_t svcCacheDir(const char *directory, enum FILE_TYPE type, uint8_t force)
                     // Cache this entry. The SD filename is dynamically allocated as it's size can be upto 255 characters for LFN names. The Sharp name is 
                     // fixed at 17 characters as you cant reliably rely on terminators and the additional data makes it a constant 32 chars long.
                     osControl.dirMap.mzfFile[fileNo] = (t_sharpToSDMap *)malloc(sizeof(t_sharpToSDMap));
-                    osControl.dirMap.mzfFile[fileNo]->sdFileName = (uint8_t *)malloc(strlen(fno.fname)+1);
+                    if(osControl.dirMap.mzfFile[fileNo] != NULL)
+                        osControl.dirMap.mzfFile[fileNo]->sdFileName = (uint8_t *)malloc(strlen(fno.fname)+1);
 
                     if(osControl.dirMap.mzfFile[fileNo] == NULL || osControl.dirMap.mzfFile[fileNo]->sdFileName == NULL)
                     {
@@ -3799,7 +3803,6 @@ uint8_t svcLoadFile(enum FILE_TYPE type)
         {
             // Call method to load an MZF file.
             result = loadMZFZ80Memory(fqfn, 0xFFFFFFFF, 0, (svcControl.memTarget == 0 ? TRANZPUTER : MAINBOARD), 1);
-
             // Store the filename, used in reload or immediate saves.
             //
             osControl.lastFile = (uint8_t *)realloc(osControl.lastFile, strlen(fqfn)+1);
