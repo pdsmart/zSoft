@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Target machine, used to select the right software for the SD card.
-#TARGET=MZ-700
-TARGET=MZ-80A
+# Not used: Target machine, used to select the right software for the SD card.
+# TARGET=MZ-700
+# TARGET=MZ-80A
 
 ZPU_SHARPMZ_BUILD=1
 ZPU_SHARPMZ_APPADDR=0x100000
@@ -112,6 +112,7 @@ if [ $? != 0 ]; then
 fi
 
 # Use copytosd.sh to transfer files to an SD card. Still need to copy the k64F files manually.
+# ---------------
 # Copy across all the Z80/TZFS software into the target, keep it in one place for placing onto an SD card!
 #cp $tzfsdir/roms/tzfs.rom                   $k64fsddir/TZFS/
 #cp $tzfsdir/roms/monitor_SA1510.rom         $k64fsddir/TZFS/SA1510.rom

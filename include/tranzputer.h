@@ -599,8 +599,10 @@ enum CPLD_FLAGS {
 //
 enum FILE_TYPE {
     MZF                              = 0,                                // Sharp MZF tape image files.
-    CAS                              = 1,                                // BASIC CASsette image files.
-    BAS                              = 2,                                // BASic ASCII text script files.
+    MZFHDR                           = 1,                                // Sharp MZF Header from file only.
+    CAS                              = 2,                                // BASIC CASsette image files.
+    BAS                              = 3,                                // BASic ASCII text script files.
+
     ALL                              = 10,                               // All files to be considered.
     ALLFMT                           = 11                                // Special case for directory listings, all files but truncated and formatted.
 };
@@ -839,7 +841,7 @@ char                                  *getVideoFrame(enum VIDEO_FRAMES);
 char                                  *getAttributeFrame(enum VIDEO_FRAMES);
 FRESULT                               loadZ80Memory(const char *, uint32_t, uint32_t, uint32_t, uint32_t *, enum TARGETS, uint8_t);
 FRESULT                               saveZ80Memory(const char *, uint32_t, uint32_t, t_svcDirEnt *, enum TARGETS);
-FRESULT                               loadMZFZ80Memory(const char *, uint32_t, uint32_t *, enum TARGETS, uint8_t);
+FRESULT                               loadMZFZ80Memory(const char *, uint32_t, uint32_t *, uint8_t, enum TARGETS, uint8_t);
 
 // Getter/Setter methods!
 uint8_t                               isZ80Reset(void);

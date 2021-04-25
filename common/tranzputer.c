@@ -2025,7 +2025,7 @@ FRESULT loadZ80Memory(const char *src, uint32_t fileOffset, uint32_t addr, uint3
 // Method to load an MZF format file from the SD card directly into the tranZPUter static RAM, FPGA or mainboard RAM.
 // If the load address is specified then it overrides the MZF header value, otherwise load addr is taken from the header.
 //
-FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint32_t *bytesRead, enum TARGETS target, uint8_t releaseBus)
+FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint32_t *bytesRead, uint8_t hdrOnly, enum TARGETS target, uint8_t releaseBus)
 {
     // Locals.
     FIL           File;
@@ -2040,7 +2040,7 @@ FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint32_t *bytesRead, en
     // Sanity check on filenames.
     if(src == NULL)
         return(FR_INVALID_PARAMETER);
-    
+
     // Try and open the source file.
     fr0 = f_open(&File, src, FA_OPEN_EXISTING | FA_READ);
 
@@ -2066,34 +2066,37 @@ FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint32_t *bytesRead, en
         // in the service record sector on exit for this purpose. The caller needs to check the service record and if the Load Address is below >= 1200H use the CMT header else
         // use the service sector.
         //
-        // NB: This assumes the TZFS is running and made this call.
+        // NB: This assumes TZFS is running and made this call.
         //
         copyToZ80(addrOffset+MZ_CMT_ADDR, (uint8_t *)&mzfHeader, MZF_HEADER_SIZE, target);
-     
-        // Now obtain the parameters.
-        //
-        if(addr == 0xFFFFFFFF)
+
+        if(hdrOnly == 0)
         {
-            addr = mzfHeader.loadAddr;
+            // Now obtain the parameters.
+            //
+            if(addr == 0xFFFFFFFF)
+            {
+                addr = mzfHeader.loadAddr;
+            }
+
+            // Look at the attribute byte, if it is >= 0xF8 then it is a special tranZPUter binary object requiring loading into a seperate memory bank.
+            // The attribute & 0x07 << 16 specifies the memory bank in which to load the image.
+            if(mzfHeader.attr >= 0xF8)
+            {
+                addr += ((mzfHeader.attr & 0x07) << 16);
+                //printf("CPM: Addr=%08lx, Size=%08lx\n", addr, mzfHeader.fileSize);
+            } else
+            {
+                addr += addrOffset;
+            }
+
+            // Ok, load up the file into Z80 memory.
+            fr0 = loadZ80Memory(src, MZF_HEADER_SIZE, addr, (mzfHeader.attr >= 0xF8 ? 0 : mzfHeader.fileSize), bytesRead, target, releaseBus);
+
+            // If the load address was below 0x11D0, the lowest free point in the original memory map then the load is said to be in lower DRAM. In this case the CMT header wont be available
+            // so load the header into the service sector as well so the caller can determine the load state.
+            memcpy((uint8_t *)&svcControl.sector, (uint8_t *)&mzfHeader, MZF_HEADER_SIZE);
         }
-
-        // Look at the attribute byte, if it is >= 0xF8 then it is a special tranZPUter binary object requiring loading into a seperate memory bank.
-        // The attribute & 0x07 << 16 specifies the memory bank in which to load the image.
-        if(mzfHeader.attr >= 0xF8)
-        {
-            addr += ((mzfHeader.attr & 0x07) << 16);
-            //printf("CPM: Addr=%08lx, Size=%08lx\n", addr, mzfHeader.fileSize);
-        } else
-        {
-            addr += addrOffset;
-        }
-
-        // Ok, load up the file into Z80 memory.
-        fr0 = loadZ80Memory(src, MZF_HEADER_SIZE, addr, (mzfHeader.attr >= 0xF8 ? 0 : mzfHeader.fileSize), bytesRead, target, releaseBus);
-
-        // If the load address was below 0x11D0, the lowest free point in the original memory map then the load is said to be in lower DRAM. In this case the CMT header wont be available
-        // so load the header into the service sector as well so the caller can determine the load state.
-        memcpy((uint8_t *)&svcControl.sector, (uint8_t *)&mzfHeader, MZF_HEADER_SIZE);
     }
     return(fr0 ? fr0 : FR_OK);    
 }
@@ -3793,16 +3796,24 @@ uint8_t svcLoadFile(enum FILE_TYPE type)
     //
     svcSetDefaults(type);
 
-    // MZF are handled with their own methods as it involves looking into the file to determine the name and details.
+    // MZF and MZF Headers are handled with their own methods as it involves looking into the file to determine the name and details.
     //
-    if(type == MZF)
+    if(type == MZF || type == MZFHDR)
     {
+        // Tidy up the MZF filename suitable for file matching.
+//        for(int idx=0; idx < MZF_FILENAME_LEN; idx++)
+//        {
+//            svcControl.filename[idx] = (svcControl.filename[idx] == 0x0d ? 0x00 : svcControl.filename[idx]);
+//        }
+//
+        
         // Find the file using the given file number or file name.
         //
-        if(svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo, type))
+        if(svcFindFileCache(fqfn, (char *)&svcControl.filename, svcControl.fileNo, MZF))
         {
             // Call method to load an MZF file.
-            result = loadMZFZ80Memory(fqfn, 0xFFFFFFFF, 0, (svcControl.memTarget == 0 ? TRANZPUTER : MAINBOARD), 1);
+            result = loadMZFZ80Memory(fqfn, (svcControl.loadAddr == 0xFFFF ? 0xFFFFFFFF : svcControl.loadAddr), 0, (type == MZFHDR ? 1 : 0), (svcControl.memTarget == 0 ? TRANZPUTER : MAINBOARD), 1);
+
             // Store the filename, used in reload or immediate saves.
             //
             osControl.lastFile = (uint8_t *)realloc(osControl.lastFile, strlen(fqfn)+1);
@@ -3814,6 +3825,7 @@ uint8_t svcLoadFile(enum FILE_TYPE type)
             {
                 strcpy((char *)osControl.lastFile, fqfn);
             }
+
         } else
         {
             result = FR_NO_FILE;
@@ -3870,7 +3882,6 @@ uint8_t svcSaveFile(enum FILE_TYPE type)
         {
             addrOffset = SRAM_BANK6_ADDR;
         } 
-            result = loadMZFZ80Memory(fqfn, 0xFFFFFFFF, 0, (svcControl.memTarget == 0 ? TRANZPUTER : MAINBOARD), 1);
       
         // Get the MZF header which contains the details of the file to save.
         copyFromZ80((uint8_t *)&mzfHeader, addrOffset + MZ_CMT_ADDR, MZF_HEADER_SIZE, TRANZPUTER);
@@ -4296,7 +4307,7 @@ void processServiceRequest(void)
                 case TZSVC_CMD_LOADFILE:
                     status=svcLoadFile(svcControl.fileType);
                     break;
-                
+                  
                 // Save a file directly from target memory.
                 case TZSVC_CMD_SAVEFILE:
                     status=svcSaveFile(svcControl.fileType);
