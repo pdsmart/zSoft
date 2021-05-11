@@ -26,6 +26,7 @@
 //                                   the MZ-800. Bug found which was introduced in December where the
 //                                   Z80 direction wasnt always set correctly resulting in some strange
 //                                   and hard to debug behaviour.
+//                  May 2021       - Preparations to add the M68000 architecture.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //                  USELOADB              - The Byte write command is implemented in hw/sw so use it.
@@ -65,7 +66,7 @@
   #include <../libraries/include/stdmisc.h>
   #include <TeensyThreads.h>
 
-#else // __ZPU__
+#elif defined __ZPU__
   #include <stdint.h>
   #include <stdlib.h>
   #include <string.h>
@@ -82,12 +83,21 @@
 //  void        *sys_realloc(void *, size_t);   // Reallocate a block of memory managed by the OS.
 //  void        *sys_calloc(size_t, size_t);    // Allocate and zero a block of memory managed by the OS.
 //  void        sys_free(void *);               // Free memory managed by the OS.
+#elif defined __M68K__
+  #include <stdint.h>
+  #include <stdlib.h>
+  #include <stdio.h>
+  #include <string.h>
+  #include <../libraries/include/stdmisc.h>
+  #include "m68k_soc.h"
 #endif
 
 #include "interrupts.h"
 #include "ff.h"            /* Declarations of FatFs API */
 #include "diskio.h"
+#if defined __K64F__ || defined __ZPU__
 #include <fcntl.h>
+#endif
 #include <sys/stat.h>
 #include "utils.h"
 #include "readline.h"
@@ -110,7 +120,7 @@
 #endif
 
 // Version info.
-#define VERSION      "v1.2"
+#define VERSION      "v1.2a"
 #define VERSION_DATE "17/04/2021"
 #define PROGRAM_NAME "zOS"
 
@@ -245,8 +255,10 @@ uint8_t getCommandLine(char *buf, uint8_t bufSize)
       #if defined BUILTIN_READLINE
         #if defined __ZPU__
         readline((uint8_t *)buf, bufSize, HISTORY_FILE_ZPU);
-        #else
+        #elif defined __K64F__
         readline((uint8_t *)buf, bufSize, HISTORY_FILE_K64F);
+        #elif defined __M68K__
+        readline((uint8_t *)buf, bufSize, HISTORY_FILE_M68K);
         #endif
       #else
         ptr = buf;
@@ -491,8 +503,15 @@ int cmdProcessor(void)
                     else if(cfgSoC.implFRAMNV)  { p1 = cfgSoC.addrFRAMNV; }
                     else if(cfgSoC.implFRAMNVC) { p1 = cfgSoC.addrFRAMNVC; }
                     else { p1 = cfgSoC.stackStartAddr - 512; }
+                  #elif defined __M68K__
+                    if(cfgSoC.implInsnBRAM)     { p1 = cfgSoC.addrInsnBRAM; }
+                    else if(cfgSoC.implBRAM)    { p1 = cfgSoC.addrBRAM; }
+                    else if(cfgSoC.implRAM)     { p1 = cfgSoC.addrRAM; }
+                    else if(cfgSoC.implSDRAM)   { p1 = cfgSoC.addrSDRAM; }
+                    else if(cfgSoC.implWBSDRAM) { p1 = cfgSoC.addrWBSDRAM; }
+                    else { p1 = cfgSoC.stackStartAddr - 512; }
                   #else
-                    #error "Target CPU not defined, use __ZPU__ or __K64F__"
+                    #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
                   #endif
                 }
                 if (!xatoi(&ptr,  &p2))
@@ -510,8 +529,15 @@ int cmdProcessor(void)
                     else if(cfgSoC.implFRAMNV)  { p2 = cfgSoC.sizeFRAMNV; }
                     else if(cfgSoC.implFRAMNVC) { p2 = cfgSoC.sizeFRAMNVC; }
                     else { p2 = cfgSoC.stackStartAddr + 8; }
+                  #elif defined __M68K__
+                    if(cfgSoC.implInsnBRAM)     { p2 = cfgSoC.sizeInsnBRAM; }
+                    else if(cfgSoC.implBRAM)    { p2 = cfgSoC.sizeBRAM; }
+                    else if(cfgSoC.implRAM)     { p2 = cfgSoC.sizeRAM; }
+                    else if(cfgSoC.implSDRAM)   { p2 = cfgSoC.sizeSDRAM; }
+                    else if(cfgSoC.implWBSDRAM) { p2 = cfgSoC.sizeWBSDRAM; }
+                    else { p2 = cfgSoC.stackStartAddr + 8; }
                   #else
-                    #error "Target CPU not defined, use __ZPU__ or __K64F__"
+                    #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
                   #endif
                 }
                 if (!xatoi(&ptr,  &p3) || (p3 != 8 && p3 != 16 && p3 != 32))
@@ -630,8 +656,15 @@ int cmdProcessor(void)
                     else if(cfgSoC.implFRAMNV)  { p1 = cfgSoC.addrFRAMNV; }
                     else if(cfgSoC.implFRAMNVC) { p1 = cfgSoC.addrFRAMNVC; }
                     else { p1 = cfgSoC.stackStartAddr - 512; }
+                  #elif defined __M68K__
+                    if(cfgSoC.implInsnBRAM)     { p1 = cfgSoC.addrInsnBRAM; }
+                    else if(cfgSoC.implBRAM)    { p1 = cfgSoC.addrBRAM; }
+                    else if(cfgSoC.implRAM)     { p1 = cfgSoC.addrRAM; }
+                    else if(cfgSoC.implSDRAM)   { p1 = cfgSoC.addrSDRAM; }
+                    else if(cfgSoC.implWBSDRAM) { p1 = cfgSoC.addrWBSDRAM; }
+                    else { p1 = cfgSoC.stackStartAddr - 512; }
                   #else
-                    #error "Target CPU not defined, use __ZPU__ or __K64F__"
+                    #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
                   #endif
                 }
                 if (!xatoi(&ptr,  &p2))
@@ -649,8 +682,15 @@ int cmdProcessor(void)
                     else if(cfgSoC.implFRAMNV)  { p2 = cfgSoC.sizeFRAMNV; }
                     else if(cfgSoC.implFRAMNVC) { p2 = cfgSoC.sizeFRAMNVC; }
                     else { p2 = cfgSoC.stackStartAddr + 8; }
+                  #elif defined __M68K__
+                    if(cfgSoC.implInsnBRAM)     { p2 = cfgSoC.sizeInsnBRAM; }
+                    else if(cfgSoC.implBRAM)    { p2 = cfgSoC.sizeBRAM; }
+                    else if(cfgSoC.implRAM)     { p2 = cfgSoC.sizeRAM; }
+                    else if(cfgSoC.implSDRAM)   { p2 = cfgSoC.sizeSDRAM; }
+                    else if(cfgSoC.implWBSDRAM) { p2 = cfgSoC.sizeWBSDRAM; }
+                    else { p2 = cfgSoC.stackStartAddr + 8; }
                   #else
-                    #error "Target CPU not defined, use __ZPU__ or __K64F__"
+                    #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
                   #endif
                 }
                 if (!xatoi(&ptr,  &p3))
@@ -735,10 +775,12 @@ int cmdProcessor(void)
                 showSoCConfig();
                 break;
 
+           #if defined __ZPU__ || defined __K64F__
             // Test point - add code here when a test is needed on a kernel element then invoke after boot.
             case CMD_MISC_TEST:
                 testRoutine();
                 break;
+           #endif
 
         #if defined(__SD_CARD__)
             // CMD_FS_CAT <name> - cat/output file
@@ -874,7 +916,7 @@ int cmdProcessor(void)
 int main(int argc, char **argv)
 {
     // Locals.
-  #if defined __ZPU__
+  #if defined __ZPU__ || defined __M68K__
     FILE osIO;
   #endif
 
@@ -919,9 +961,12 @@ int main(int argc, char **argv)
     // Initialise and clear screen.
     mzInit();
 
-  #else
+  #elif defined __ZPU__
     fdev_setup_stream(&osIO, uart_putchar, uart_getchar, _FDEV_SETUP_RW);
     stdout = stdin = stderr = &osIO;
+
+  #elif defined __M68K__
+
   #endif
 
     // Setup the configuration using the SoC configuration register if implemented otherwise the compiled internals.

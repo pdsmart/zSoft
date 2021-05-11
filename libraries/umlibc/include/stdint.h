@@ -115,10 +115,10 @@ typedef unsigned long long int uint64_t;
 
 typedef int int8_t __attribute__((__mode__(__QI__)));
 typedef unsigned int uint8_t __attribute__((__mode__(__QI__)));
-typedef int int16_t __attribute__ ((__mode__ (__HI__)));
-typedef unsigned int uint16_t __attribute__ ((__mode__ (__HI__)));
-typedef int int32_t __attribute__ ((__mode__ (__SI__)));
-typedef unsigned int uint32_t __attribute__ ((__mode__ (__SI__)));
+typedef int int16_t __attribute__((__mode__ (__HI__)));
+typedef unsigned int uint16_t __attribute__((__mode__ (__HI__)));
+typedef int int32_t __attribute__((__mode__ (__SI__)));
+typedef unsigned int uint32_t __attribute__((__mode__ (__SI__)));
 typedef int int64_t __attribute__((__mode__(__DI__)));
 typedef unsigned int uint64_t __attribute__((__mode__(__DI__)));
 

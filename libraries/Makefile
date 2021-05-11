@@ -27,16 +27,23 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #########################################################################################################
-ifeq ($(__ZPU__),)
-  BASEDIR             = $(CURDIR)/..
-  TOOLSPATH           = $(BASEDIR)/tools
-  COMPILERPATH        = $(TOOLSPATH)/arm/bin	
-  BASE                = $(abspath $(COMPILERPATH))/arm-none-eabi
-else
+ifeq ($(__ZPU__),1)
   BASEDIR             = $(CURDIR)/..
   TOOLSPATH           = /opt/zpu
   COMPILERPATH        = $(TOOLSPATH)/bin	
   BASE                = zpu-elf
+else ifeq ($(__K64F__),1)
+  BASEDIR             = $(CURDIR)/..
+  TOOLSPATH           = $(BASEDIR)/tools
+  COMPILERPATH        = $(TOOLSPATH)/arm/bin	
+  BASE                = $(abspath $(COMPILERPATH))/arm-none-eabi
+else ifeq ($(__M68K__),1)
+  BASEDIR             = $(CURDIR)/..
+  TOOLSPATH           = /usr
+  COMPILERPATH        = $(TOOLSPATH)/bin	
+  BASE                = m68k-linux-gnu
+else
+$(error Undefined CPU architecture.)
 endif
 CC                    = $(BASE)-gcc
 CXX                   = $(BASE)-g++
@@ -134,14 +141,17 @@ ZPUOPTS        += -mmult \
 
 # Build time flags dependent on CPU target.
 CFLAGS                = -I. -I$(UMLIBC_DIR)/include -I$(COMMON_DIR) -I$(INCLUDE_DIR) -I$(TEENSY35_DIR)
-ifeq ($(__ZPU__),)
-  CFLAGS             +=  -D__K64F__
-  CFLAGS             +=  -fno-builtin -mlong-calls -mthumb -MMD -g -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
-else
+ifeq ($(__ZPU__),1)
   CFLAGS             +=  -D__ZPU__
   CFLAGS             +=  -O3
   CFLAGS             +=  $(ZPUOPTS)
   CFLAGS             +=  --std=gnu99 # Use C99 + GNU extensions to provide anonymous unions.
+else ifeq ($(__K64F__),1)
+  CFLAGS             +=  -D__K64F__
+  CFLAGS             +=  -fno-builtin -mlong-calls -mthumb -MMD -g -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
+else ifeq ($(__M68K__),1)
+  CFLAGS             +=  -D__M68K__
+  CFLAGS             +=  -fno-builtin -g --std=gnu99
 endif
 
 # Linker flags.
@@ -149,10 +159,12 @@ LDFLAGS               = -static
 
 # Library name is suffixed by CPU.
 #
-ifeq ($(__ZPU__),)
-  LIBTRG              = -k64f
-else
+ifeq ($(__ZPU__),1)
   LIBTRG              = -zpu
+else ifeq ($(__K64F__),1)
+  LIBTRG              = -k64f
+else ifeq ($(__M68K__),1)
+  LIBTRG              = -m68k
 endif
 
 

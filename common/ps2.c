@@ -12,9 +12,12 @@
     #define int16_t  __int16_t
     #define int8_t   __int8_t
     #include "k64f_soc.h"
-#else
+#elif defined __ZPU__
     #include <stdint.h>
     #include "zpu_soc.h"
+#elif defined __M68K__
+    #include <stdint.h>
+    #include "m68k_soc.h"
 #endif
 
 #include "ps2.h"
@@ -108,8 +111,13 @@ void PS2Handler()
 {
     EnableInterrupts();
 }
+#elif defined __M68K__
+void PS2Handler()
+{
+    EnableInterrupts();
+}
 #else
-    #error "Target CPU not defined, use __ZPU__ or __K64F__"
+    #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
 #endif
 
 void PS2Init()

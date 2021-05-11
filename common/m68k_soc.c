@@ -1,13 +1,13 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// Name:            zpu_soc.c
+// Name:            m68k_soc.c
 // Created:         January 2019
 // Author(s):       Philip Smart
-// Description:     ZPU System On a Chip utilities.
+// Description:     M68000 System On a Chip utilities.
 //                  A set of utilities specific to interaction with the ZPU SoC hardware.
 //
 // Credits:         
-// Copyright:       (c) 2019 Philip Smart <philip.smart@net2net.org>
+// Copyright:       (c) 2019-2021 Philip Smart <philip.smart@net2net.org>
 //
 // History:         January 2019   - Initial script written.
 //
@@ -30,11 +30,11 @@
     extern "C" {
 #endif
 
-#include <stdint.h>
+//#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
+//#include <stdlib.h>
 #include "uart.h"
-#include "zpu_soc.h"
+#include "m68k_soc.h"
 
 // Global scope variables.
 #ifdef USE_BOOT_ROM
@@ -53,7 +53,7 @@
                                                    .resetVector    = CPU_RESET_ADDR,
                                                    .cpuMemBaseAddr = CPU_MEM_START,
                                                    .stackStartAddr = STACK_BRAM_ADDR,
-                                                   .zpuId          = ZPU_ID,
+                                                   .m68kId         = M68K_ID,
                                                    .sysFreq        = CLK_FREQ,
                                                    .memFreq        = CLK_FREQ,
                                                    .wbMemFreq      = CLK_FREQ,
@@ -97,7 +97,7 @@ void setupSoCConfig(void)
         cfgSoC.resetVector    = SOCCFG(SOCCFG_CPURSTADDR);
         cfgSoC.cpuMemBaseAddr = SOCCFG(SOCCFG_CPUMEMSTART);
         cfgSoC.stackStartAddr = SOCCFG(SOCCFG_STACKSTART);
-        cfgSoC.zpuId          = SOCCFG(SOCCFG_ZPU_ID);
+        cfgSoC.m68kId         = SOCCFG(SOCCFG_M68K_ID);
         cfgSoC.sysFreq        = SOCCFG(SOCCFG_SYSFREQ);
         cfgSoC.memFreq        = SOCCFG(SOCCFG_MEMFREQ);
         cfgSoC.wbMemFreq      = SOCCFG(SOCCFG_WBMEMFREQ);
@@ -137,7 +137,7 @@ void setupSoCConfig(void)
         cfgSoC.resetVector    = CPU_RESET_ADDR;
         cfgSoC.cpuMemBaseAddr = CPU_MEM_START;
         cfgSoC.stackStartAddr = STACK_BRAM_ADDR;
-        cfgSoC.zpuId          = ZPU_ID;
+        cfgSoC.m68kId         = M68K_ID;
         cfgSoC.sysFreq        = CLK_FREQ;
         cfgSoC.memFreq        = CLK_FREQ;
         cfgSoC.wbMemFreq      = CLK_FREQ;
@@ -189,7 +189,7 @@ void showSoCConfig(void)
     printf("    CPU Memory Start Address = %08X\n",        cfgSoC.cpuMemBaseAddr);
     printf("    Stack Start Address      = %08X\n",        cfgSoC.stackStartAddr);
     printf("Misc:\n");
-    printf("    ZPU Id                   = %04X\n",        cfgSoC.zpuId);
+    printf("    M68K Id                  = %04X\n",        cfgSoC.m68kId);
     printf("    System Clock Freq        = %d.%04dMHz\n",  (cfgSoC.sysFreq / 1000000), cfgSoC.sysFreq - ((cfgSoC.sysFreq / 1000000) * 1000000));
     if(cfgSoC.implSDRAM)
         printf("    SDRAM Clock Freq         = %d.%04dMHz\n",  (cfgSoC.memFreq / 1000000), cfgSoC.memFreq - ((cfgSoC.memFreq / 1000000) * 1000000));
@@ -224,7 +224,7 @@ void showSoCConfig(void)
     puts("    CPU Memory Start Address = "); printdhex(cfgSoC.cpuMemBaseAddr); puts("\n");
     puts("    Stack Start Address      = "); printdhex(cfgSoC.stackStartAddr); puts("\n");
     puts("Misc:\n");
-    puts("    ZPU Id                   = "); printhex((uint16_t)cfgSoC.zpuId); puts("\n");
+    puts("    M68K Id                  = "); printhex((uint16_t)cfgSoC.m68kId); puts("\n");
     puts("    System Clock Freq        = "); printdhex(cfgSoC.sysFreq); puts("\n");
     if(cfgSoC.implSDRAM)
         puts("    SDRAM Clock Freq         = "); printdhex(cfgSoC.memFreq); puts("\n");
@@ -240,57 +240,25 @@ void showSoCConfig(void)
   #endif
 }
 
-// Function to print out the ZPU Id in text form.
-void printZPUId(uint32_t zpuId)
+// Function to print out the M68000 Id in text form.
+void printM68KId(uint32_t m68kId)
 {
-    switch((uint8_t)(zpuId >> 8))
+    switch((uint8_t)(m68kId >> 8))
     {
-        case ZPU_ID_SMALL:
-          #if defined __IOCP__
-            puts("Small");
-          #else
-            printf("Small");
-          #endif
+        case M68K_ID_M68008:
+            printf("M68008");
             break;
 
-        case ZPU_ID_MEDIUM:
-          #if defined __IOCP__
-            puts("Medium");
-          #else
-            printf("Medium");
-          #endif
+        case M68K_ID_M68000:
+            printf("M68000");
             break;
 
-        case ZPU_ID_FLEX:
-          #if defined __IOCP__
-            puts("Flex");
-          #else
-            printf("Flex");
-          #endif
-            break;
-
-        case ZPU_ID_EVO:
-          #if defined __IOCP__
-            puts("EVO");
-          #else
-            printf("EVO");
-          #endif
-            break;
-
-        case ZPU_ID_EVO_MINIMAL:
-          #if defined __IOCP__
-            puts("EVOm");
-          #else
-            printf("EVOm");
-          #endif
+        case M68K_ID_M68020:
+            printf("M68020");
             break;
 
         default:
-          #if defined __IOCP__
-            puts("Unknown");
-          #else
             printf("Unknown");
-          #endif
             break;
     }
 }

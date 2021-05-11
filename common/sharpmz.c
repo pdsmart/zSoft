@@ -57,6 +57,14 @@ extern "C" {
   #include <ctype.h>
   #include <stdmisc.h>
   #include <string.h>
+#elif defined(__M68K__)
+#include <stdint.h>
+  #include <stdio.h>
+  #include "m68k_soc.h"
+//#include <stdlib.h>
+  #include <ctype.h>
+  #include <stdmisc.h>
+  #include <string.h>
 #else
   #error "Target CPU not defined, use __ZPU__ or __K64F__"
 #endif
@@ -1941,10 +1949,13 @@ uint8_t mzSweepKeys(void)
         *(volatile uint8_t *)(MBADDR_8BIT_KEYPA) = strobe;
 
         // Slight delay to allow for bounce.
-        TIMER_MILLISECONDS_UP = 0; while(TIMER_MILLISECONDS_UP == 0);
+        TIMER_MILLISECONDS_UP = 0; while(TIMER_MILLISECONDS_UP < 1);
 
         // Read the scan lines.
         keyboard.scanbuf[0][strobe-0xF0] = (uint8_t)(*(volatile uint32_t *)(MBADDR_8BIT_KEYPB));
+//        keyboard.scanbuf[0][strobe-0xF0] = (uint8_t)(*(volatile uint32_t *)(MBADDR_8BIT_KEYPB));
+//printf("R%02x ", (uint8_t)(*(volatile uint32_t *)(MBADDR_8BIT_KEYPB)));
+
     }
 
     // Now look for active keys.
@@ -1984,6 +1995,7 @@ uint8_t mzSweepKeys(void)
         }
         keyboard.scanbuf[1][strobeIdx] = keyboard.scanbuf[0][strobeIdx];
     }
+//printf("\n");
 
     // Check for modifiers.
     //
@@ -2074,6 +2086,7 @@ int mzGetKey(uint8_t mode)
                     retcode = keyboard.repeatKey;
                 }
             }
+         
             // Process internal keys, dont return.
             //
             switch(retcode)

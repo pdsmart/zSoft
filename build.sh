@@ -1,7 +1,7 @@
 #!/bin/bash
 #========================================================================================================
 # NAME
-#     build.sh -  Shell script to build a ZPU/K64F program or OS.
+#     build.sh -  Shell script to build a ZPU/K64F/M68K program or OS.
 #
 # SYNOPSIS
 #     build.sh [-CIOoMBAsTZdxh]
@@ -9,7 +9,7 @@
 # DESCRIPTION
 #
 # OPTIONS
-#     -C <CPU>      = Small, Medium, Flex, Evo, EvoMin, K64F - defaults to Evo.
+#     -C <CPU>      = Small, Medium, Flex, Evo, EvoMin, K64F, M68K - defaults to Evo.
 #     -I <iocp ver> = 0 - Full, 1 - Medium, 2 - Minimum, 3 - Tiny (bootstrap only)
 #     -O <os>       = zputa, zos
 #     -o <os ver>   = 0 - Standalone, 1 - As app with IOCP Bootloader,
@@ -48,6 +48,7 @@
 #          v1.21         : Additional changes to manage heap.
 #          v1.22         : Added code to build the libraries.
 #          v1.23         : Added flags for Sharp MZ series specific build.
+#          v1.24         : Added M68000 support
 #========================================================================================================
 # This source file is free software: you can redistribute it and#or modify
 # it under the terms of the GNU General Public License as published
@@ -295,11 +296,13 @@ OSNAME=`echo ${OS} | tr 'A-Z' 'a-z'`
 
 #     -C <CPU>      = Small, Medium, Flex, Evo, K64F - defaults to Evo.
 # Check the CPU is correctly defined.
-if [ "${CPU}" != "SMALL" -a "${CPU}" != "MEDIUM" -a "${CPU}" != "FLEX" -a "${CPU}" != "EVO" -a "${CPU}" != "EVOMIN" -a "${CPU}" != "K64F" ]; then
-    FatalUsage "Given <cpu> is not valid, must be one of 'Small', 'Medium', 'Flex', 'Evo', 'K64F'"
+if [ "${CPU}" != "SMALL" -a "${CPU}" != "MEDIUM" -a "${CPU}" != "FLEX" -a "${CPU}" != "EVO" -a "${CPU}" != "EVOMIN" -a "${CPU}" != "K64F" -a "${CPU}" != "M68K" ]; then
+    FatalUsage "Given <cpu> is not valid, must be one of 'Small', 'Medium', 'Flex', 'Evo', 'K64F', 'M68K'"
 fi
 if [ ${CPU} = "K64F" ]; then
     CPUTYPE="__K64F__"
+elif [ ${CPU} = "M68K" ]; then
+    CPUTYPE="__M68K__"
 else
     CPUTYPE="__ZPU__"
 fi
@@ -310,14 +313,18 @@ if [ "${CPU}" = "K64F" -a "${OS_BASEADDR}" = "0x00001000" -a "${APP_BASEADDR}" =
     getHex 0x1fff0000 APP_BASEADDR;
 fi
 
-# Check IOCP_VERSION which has no meaning for the K64F processor.
+# Check IOCP_VERSION which has no meaning for the K64F/M68K processors.
 if [ "${CPU}" = "K64F" -a "${IOCP_VERSION}" != "3" ]; then
     Fatal "-I < iocp ver> has no meaning for the K64F, there is no version or indeed no need for IOCP on this processor."
+elif [ "${CPU}" = "M68K" -a "${IOCP_VERSION}" != "3" ]; then
+    Fatal "-I < iocp ver> has no meaning for the M68K, there is no version or indeed no need for IOCP on this processor."
 fi
 
-# Check OSVER which has no meaning for the K64F processor.
+# Check OSVER which has no meaning for the K64F/M68K processors.
 if [ "${CPU}" = "K64F" -a "${OSVER}" != "2" ]; then
     Fatal "-o <os ver> has no meaning for the K64F, base is in Flash RAM and applications, if SD card enabled, are in RAM."
+elif [ "${CPU}" = "M68K" -a "${OSVER}" != "2" ]; then
+    Fatal "-o <os ver> has no meaning for the M68K, base is in Flash RAM and applications, if SD card enabled, are in RAM."
 fi
 
 # Setup any specific build options.
@@ -329,10 +336,10 @@ fi
 
 # Setup any specific build options.
 if [ ${SHARPMZ} -eq 1 ]; then
-    if [  "${CPU}" != "EVO" -o "${OS}" != "ZOS" ]; then
+    if [[ "${CPU}" != "EVO" && "${CPU}" != "M68K" ]] || [[ "${OS}" != "ZOS" ]]; then
         Fatal "-Z only valid for zOS build on ZPU hardware."
     fi
-    if [ "${CPU}" = "EVO" -a "${OS}" = "ZOS" ]; then 
+    if [[ "${CPU}" = "EVO" || "${CPU}" = "M68K" ]] && [[ "${OS}" = "ZOS" ]]; then 
         BUILDFLAGS="__SHARPMZ__=1"
     fi
 fi
@@ -345,8 +352,12 @@ mkdir -p ${BUILDPATH}/build/SD
 # Build message according to CPU Type
 if [ "${CPUTYPE}" = "__ZPU__" ]; then
     Log "Building: ${OS}, OS_BASEADDR=${OS_BASEADDR}, APP_BASEADDR=${APP_BASEADDR} ..."
-else
+elif [ "${CPUTYPE}" = "__K64F__" ]; then
     Log "Building: ${OS} ..."
+elif [ "${CPUTYPE}" = "__M68K__" ]; then
+    Log "Building: ${OS} ..."
+else
+    Fatal "Internal error, unrecognised CPUTYPE at Build Info"
 fi
 
 # Stack start address (at the moment) is top of BRAM less 8 bytes (2 words), standard for the ZPU. There is
@@ -435,7 +446,7 @@ if [ "${CPUTYPE}" = "__K64F__" ]; then
     OS_BASEADDR=0x000000;
     OS_BOOTLEN=0x000000;
 
-else
+elif [ "${CPUTYPE}" = "__ZPU__" ]; then
     if [ ${OSVER} = 0 ]; then
         OSBUILDSTR="${OSNAME}_standalone_boot_in_bram"
         OS_BOOTADDR=0x000000;
@@ -456,6 +467,12 @@ else
     else
         FatalUsage "Illegal OS Version."
     fi 
+elif [ "${CPUTYPE}" = "__M68K__" ]; then
+    #OSBUILDSTR="${OSNAME}_m68k"
+    OSBUILDSTR="${OSNAME}_standalone_boot_in_bram"
+    OS_BOOTADDR=0x000000;
+    OS_BASEADDR=0x000000;
+    OS_BOOTLEN=0x000000;
 fi
 
 # For the ZPU, the start of the Boot loader, OS and application can change so need to calculate the Boot start and len, OS start and len, application Start and len.
@@ -499,7 +516,9 @@ if [ "${CPUTYPE}" = "__ZPU__" ]; then
     # Calculate the heap start and end.
     subHex ${APP_STACK_STARTADDR} 4               APP_HEAP_ENDADDR
     subHex ${APP_HEAP_ENDADDR} ${APP_HEAP_SIZE}   APP_HEAP_STARTADDR
-else
+
+elif [ "${CPUTYPE}" = "__K64F__" ]; then
+
     # For the K64F the OS location and size is the 512K Flash RAM, this can be changed if a bootloader is installed before zOS.
     OS_STARTADDR=0x00000000
     addHex ${OS_STARTADDR} 0x00080000             OS_LEN
@@ -537,6 +556,51 @@ else
 
 #subHex ${APP_STACK_STARTADDR} ${APP_STARTADDR} APP_STACK_STARTADDR
 #    subHex ${APP_HEAP_STARTADDR} ${APP_STARTADDR} APP_HEAP_STARTADDR
+
+elif [ "${CPUTYPE}" = "__M68K__" ]; then
+
+    # Calculate the Start address of the OS. The OS has a Boot Address followed by a reserved space for microcode and hooks before the main OS code.
+    addHex ${OS_BOOTLEN} ${OS_BASEADDR}           OS_STARTADDR
+
+    # Calculate the Start address of the Application. An Application has a Boot Address, a reserved space for OS Hooks and then the application start.
+    addHex ${APP_BOOTLEN} ${APP_BASEADDR}         APP_STARTADDR
+
+    # Calculate the maximum Application length by subtracting the size of the BRAM - Application Start - Stack Space
+    if [ "${APP_LEN}" = "" -a $(( 16#`echo ${APP_STARTADDR} | tr 'a-z' 'A-Z'|sed 's/0X//g'` )) -lt  $(( 16#`echo ${BRAM_SIZE} | tr 'a-z' 'A-Z'|sed 's/0X//g'` )) ]; then
+        subHex ${BRAM_SIZE} ${APP_STARTADDR}      APP_LEN
+        subHex ${APP_LEN} 0x20                    APP_LEN
+    
+    # If the APPLEN isnt set, give it a meaningful default.
+    elif [ $(( 16#`echo ${APP_LEN} | tr 'a-z' 'A-Z'|sed 's/0X//g'` )) -eq 0 ]; then
+        APP_LEN=0x10000;
+    fi
+
+    # Calculate the start of the Operating system code as the first section from the boot address is reserved.
+    addHex ${OS_BOOTADDR} ${OS_BOOTLEN}           OS_STARTADDR
+
+    # Calculate the length of the OS which is the start address of the App less the Boot address of the OS.
+    subHex ${APP_BASEADDR} ${OS_BOOTADDR}         OS_LEN
+    subHex ${OS_LEN} ${OS_BOOTLEN}                OS_LEN
+
+    # Calculate the heap and stack vars.
+    subHex ${BRAM_SIZE} 8                         OS_STACK_ENDADDR
+    subHex ${OS_STACK_ENDADDR} ${OS_STACK_SIZE}   OS_STACK_STARTADDR
+    subHex ${OS_STACK_STARTADDR} 4                OS_HEAP_ENDADDR
+    subHex ${OS_HEAP_ENDADDR} ${OS_HEAP_SIZE}     OS_HEAP_STARTADDR
+
+    # Stack start address for the APP. Normally this isnt used as the stack from zOS/ZPUTA is maintained, but available incase of
+    # need for a local stack.
+    addHex ${APP_STARTADDR} ${APP_LEN}            APP_ENDADDR
+    #subHex ${APP_ENDADDR} ${OS_STACK_SIZE}        APP_ENDADDR
+    subHex ${APP_ENDADDR} 8                       APP_STACK_ENDADDR
+    subHex ${APP_STACK_ENDADDR} ${APP_STACK_SIZE} APP_STACK_STARTADDR
+
+    # Calculate the heap start and end.
+    subHex ${APP_STACK_STARTADDR} 4               APP_HEAP_ENDADDR
+    subHex ${APP_HEAP_ENDADDR} ${APP_HEAP_SIZE}   APP_HEAP_STARTADDR
+
+else
+    Fatal "Internal error, unrecognised CPUTYPE at calcblock"
 fi
 
 Debug "OS_BASEADDR=${OS_BASEADDR}, OS_BOOTLEN=${OS_BOOTLEN}, OS_STARTADDR=${OS_STARTADDR}, OS_LEN=${OS_LEN}"
@@ -552,8 +616,12 @@ if [ "${OS}" = "ZPUTA" ]; then
     Log "ZPUTA - ${OSBUILDSTR}"
     if [ "${CPUTYPE}" = "__ZPU__" ]; then
         TMPLFILE=${BUILDPATH}/startup/zputa_zpu.tmpl
-    else
+    elif [ "${CPUTYPE}" = "__ZPU__" ]; then
         TMPLFILE=${BUILDPATH}/startup/zputa_k64f.tmpl
+    elif [ "${CPUTYPE}" = "__M68K__" ]; then
+        TMPLFILE=${BUILDPATH}/startup/zputa_m68k.tmpl
+    else
+        Fatal "Internal error, unrecognised CPUTYPE at zputa cfg"
     fi
     cat ${TMPLFILE} | sed -e "s/BOOTADDR/${OS_BOOTADDR}/g"               \
                           -e "s/BOOTLEN/${OS_BOOTLEN}/g"                 \
@@ -578,9 +646,14 @@ if [ "${OS}" = "ZPUTA" ]; then
     if [ "${CPUTYPE}" = "__ZPU__" ]; then
         Log "make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} ${BUILDFLAGS}"
         make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} ${BUILDFLAGS}
-    else
+    elif [ "${CPUTYPE}" = "__K64F__" ]; then
         Log "make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} ${BUILDFLAGS}"
         make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} ${BUILDFLAGS}
+    elif [ "${CPUTYPE}" = "__M68K__" ]; then
+        Log "make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} ${BUILDFLAGS}"
+        make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} ${BUILDFLAGS}
+    else
+        Fatal "Internal error, unrecognised CPUTYPE at ZPUTA Make"
     fi
     if [ $? != 0 ]; then
         Fatal "Aborting, failed to build ZPUTA!"
@@ -593,8 +666,12 @@ elif [ "${OS}" = "ZOS" ]; then
     Log "zOS - ${OSBUILDSTR}"
     if [ "${CPUTYPE}" = "__ZPU__" ]; then
         TMPLFILE=${BUILDPATH}/startup/zos_zpu.tmpl
-    else
+    elif [ "${CPUTYPE}" = "__K64F__" ]; then
         TMPLFILE=${BUILDPATH}/startup/zos_k64f.tmpl
+    elif [ "${CPUTYPE}" = "__M68K__" ]; then
+        TMPLFILE=${BUILDPATH}/startup/zos_m68k.tmpl
+    else
+        Fatal "Internal error, unrecognised CPUTYPE at zos cfg"
     fi
     cat ${TMPLFILE} | sed -e "s/BOOTADDR/${OS_BOOTADDR}/g"               \
                           -e "s/BOOTLEN/${OS_BOOTLEN}/g"                 \
@@ -618,9 +695,15 @@ elif [ "${OS}" = "ZOS" ]; then
     if [ "${CPUTYPE}" = "__ZPU__" ]; then
         Log "make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE} ${BUILDFLAGS}"
         make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE} ${BUILDFLAGS}
-    else
+    elif [ "${CPUTYPE}" = "__K64F__" ]; then
+        Log "make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE} ${BUILDFLAGS}"
         Log "make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE} ${BUILDFLAGS}"
         make ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE} ${BUILDFLAGS}
+    elif [ "${CPUTYPE}" = "__M68K__" ]; then
+        Log "make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE} ${BUILDFLAGS}"
+        make ${OSBUILDSTR} ${CPUTYPE}=1 ${OSTYPE}=1 OS_BASEADDR=${OS_BOOTADDR} OS_APPADDR=${APP_BASEADDR} CPU=${CPU} HEAPADDR=${OS_HEAP_STARTADDR} HEAPSIZE=${OS_HEAP_SIZE} STACKADDR=${OS_STACK_STARTADDR} STACKENDADDR=${OS_STACK_ENDADDR} STACKSIZE=${OS_STACK_SIZE} ${BUILDFLAGS}
+    else
+        Fatal "Internal error, unrecognised CPUTYPE at ZOS Make"
     fi
     if [ $? != 0 ]; then
         Fatal "Aborting, failed to build zOS!"
@@ -631,9 +714,14 @@ elif [ "${OS}" = "ZOS" ]; then
     if [ "${CPUTYPE}" = "__ZPU__" ]; then
         cp ${BUILDPATH}/zOS/${OSBUILDSTR}.bin ${BUILDPATH}/build/SD/${OS_SD_TARGET}
         cp ${BUILDPATH}/zOS/${OSBUILDSTR}.bin ${BUILDPATH}/build/SD/ZOS/ZOS.ROM
-    else
+    elif [ "${CPUTYPE}" = "__K64F__" ]; then
         cp ${BUILDPATH}/zOS/main.bin ${BUILDPATH}/build/SD/${OS_SD_TARGET}
         cp ${BUILDPATH}/zOS/main.bin ${BUILDPATH}/build/SD/ZOS/ZOS.K64F.ROM
+    elif [ "${CPUTYPE}" = "__M68K__" ]; then
+        cp ${BUILDPATH}/zOS/main.bin ${BUILDPATH}/build/SD/${OS_SD_TARGET}
+        cp ${BUILDPATH}/zOS/main.bin ${BUILDPATH}/build/SD/ZOS/ZOS.M68K.ROM
+    else
+        Fatal "Internal error, unrecognised CPUTYPE at ZOS Copy"
     fi
 fi
 
@@ -644,9 +732,14 @@ fi
 if [ "${CPUTYPE}" = "__ZPU__" ]; then
     TMPLFILE=${BUILDPATH}/startup/app_${OSNAME}_zpu.tmpl
     LDFILE=${BUILDPATH}/startup/app_zpu_${OS_BOOTADDR}_${APP_BASEADDR}.ld
-else
+elif [ "${CPUTYPE}" = "__K64F__" ]; then
     TMPLFILE=${BUILDPATH}/startup/app_${OSNAME}_k64f.tmpl
     LDFILE=${BUILDPATH}/startup/app_k64f_${OS_BOOTADDR}_${APP_BASEADDR}.ld
+elif [ "${CPUTYPE}" = "__M68K__" ]; then
+    TMPLFILE=${BUILDPATH}/startup/app_${OSNAME}_m68k.tmpl
+    LDFILE=${BUILDPATH}/startup/app_m68k_${OS_BOOTADDR}_${APP_BASEADDR}.ld
+else
+    Fatal "Internal error, unrecognised CPUTYPE at LD tmpl setup"
 fi
 
 cd ${BUILDPATH}/apps

@@ -12,7 +12,10 @@
     #define int16_t  __int16_t
     #define int8_t   __int8_t
     #include "k64f_soc.h"
-#else
+#elif defined __ZPU__
+    #include <stdint.h>
+    #include "zpu_soc.h"
+#elif defined __M68K__
     #include <stdint.h>
     #include "zpu_soc.h"
 #endif
@@ -31,8 +34,13 @@ void SetIntHandler(void(*handler)())
 {
     _inthandler_fptr=handler;
 }
+#elif defined __M68K__
+void SetIntHandler(void(*handler)())
+{
+    return;
+}
 #else
-  #error "Target CPU not defined, use __ZPU__ or __K64F__"
+  #error "Target CPU not defined, use __ZPU__, __K64F__ or M68K"
 #endif
 
 #if !defined(FUNCTIONALITY) || FUNCTIONALITY <= 2
@@ -50,8 +58,10 @@ void EnableInterrupt(uint32_t intrMask)
     INTERRUPT_CTRL(INTR0) = intrSetting; 
   #elif defined __K64F__
     intrSetting = 0;
+  #elif defined __M68K__
+    intrSetting = 0;
   #else
-    #error "Target CPU not defined, use __ZPU__ or __K64F__"
+    #error "Target CPU not defined, use __ZPU__, __K64F__ or M68K"
   #endif
 }
 
@@ -65,8 +75,9 @@ void DisableInterrupt(uint32_t intrMask)
     intrSetting &= ~intrMask;
     INTERRUPT_CTRL(INTR0) = intrSetting;
   #elif defined __K64F__
+  #elif defined __M68K__
   #else
-    #error "Target CPU not defined, use __ZPU__ or __K64F__"
+    #error "Target CPU not defined, use __ZPU__, __K64F__ or M68K"
   #endif
 }
 

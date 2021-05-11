@@ -39,7 +39,7 @@ struct MasterBootRecord
 	unsigned char bootcode[446];	// ignored
 	struct PartitionEntry Partition[4];	// We copy these (and byteswap if need be)
 	unsigned short Signature;		// This lets us detect an MBR (and the need for byteswapping).
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 extern struct PartitionEntry partitions[4];	// FirstBlock and LastBlock will be byteswapped as necessary
 extern int partitioncount;
@@ -72,7 +72,7 @@ typedef struct
     unsigned short      ModifyDate;         /* last update date */
     unsigned short      StartCluster;       /* starting cluster of file */
     unsigned long       FileSize;           /* size of file in bytes */
-} __attribute__ ((packed)) DIRENTRY;
+} __attribute__((packed)) DIRENTRY;
 
 typedef union {
     unsigned short fat16[256];

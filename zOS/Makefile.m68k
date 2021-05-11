@@ -1,0 +1,367 @@
+########################################################################################################
+##
+## Name:            Makefile.m68k
+## Created:         January 2019
+## Author(s):       Philip Smart
+## Description:     zOS - zpu Operating System
+##                  This makefile builds the zOS application the purpose of which is to provide test,
+##                  monitoring tools and an execution environment for applications for the M68000 and
+##                  devices within the SoC. 
+##                  zOS more recently upgraded to handle the K64F and embedded M68000 on the 
+##                  tranZPUter SW-700 v1.3a board.
+##
+## Credits:         
+## Copyright:       (c) 2019-2021 Philip Smart <philip.smart@net2net.org>
+##
+## History:         January 2019   - Initial script written for the STORM processor then changed to the ZPU.
+##                  April 2020     - Split from the latest ZPUTA and added K64F logic to support the
+##                                   tranZPUter SW board.
+##                  December 2020  - Additions to support zOS running as host on Sharp MZ hardware.
+##
+## Notes:           Optional component enables:
+##                  USELOADB              - The Byte write command is implemented in hw#sw so use it.
+##                  USE_BOOT_ROM          - The target is ROM so dont use initialised data.
+##                  MINIMUM_FUNTIONALITY  - Minimise functionality to limit code size.
+##                  __SD_CARD__           - Add the SDCard logic.
+##
+#########################################################################################################
+## This source file is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This source file is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#########################################################################################################
+BASE	        = m68k-linux-gnu
+CC              = $(BASE)-gcc
+CXX             = $(BASE)-g++
+LD              = $(BASE)-gcc
+AS              = $(BASE)-as
+CP              = $(BASE)-objcopy
+DUMP            = $(BASE)-objdump
+
+# Addresses where the zOS base program loads and where apps load and execute.
+# With IOCP. These are defaults as they should be overriden by caller.
+ifeq ($(OS_BASEADDR),)
+OS_BASEADDR = 0x01000
+endif
+ifeq ($(OS_APPADDR),)
+OS_APPADDR  = 0x0C000
+endif
+
+BASEDIR         = $(CURDIR)/..
+SWDIR           = $(BASEDIR)/
+ROMGEN          = $(SWDIR)/tools/zpugen
+IOCPDIR         = $(SWDIR)/iocp
+
+# we use startup assembly and linkers from here
+STARTUP_DIR     = $(SWDIR)/startup
+
+# we fetch RAM prologue / epilogue from here
+RTL_DIR         = $(BASEDIR)/rtl
+
+# we use printf from here
+COMMON_DIR      = $(SWDIR)/common
+UMM_DIR         = $(SWDIR)/common/umm
+FATFS_DIR       = $(SWDIR)/common/FatFS
+PFS_DIR         = $(SWDIR)/common/PetitFS
+INCLUDE_DIR     = $(SWDIR)/include
+LIB_DIR         = $(SWDIR)/libraries/lib
+LIB_INCLUDE_DIR = $(SWDIR)/libraries/include
+
+# Linker mapping file spec file.
+LINKMAPBOOTSTANDALONE = $(STARTUP_DIR)/zos_standalone_boot_in_bram.ld
+LINKMAPBOOTIOCP       = $(STARTUP_DIR)/zos_with_iocp_in_bram.ld
+LINKMAPBOOTTINYIOCP   = $(STARTUP_DIR)/zos_with_tiny_iocp_in_bram.ld
+LINKMAPRAM            = $(STARTUP_DIR)/zos_as_app_in_ram.ld
+
+# Working directory to build object files.
+BUILD_DIR       = $(abspath $(CURDIR)/build)
+
+# Startup files, RAM has no microcode, ROM has microcode.
+RAMSTARTUP_SRC  = $(STARTUP_DIR)/ramcrt0.s
+RAMSTARTUP_OBJ  = #$(patsubst $(STARTUP_DIR)/%.s,$(BUILD_DIR)/%.o,$(RAMSTARTUP_SRC))
+ROMSTARTUP_SRC  = $(STARTUP_DIR)/zosromcrt0.s
+ROMSTARTUP_OBJ  = $(patsubst $(STARTUP_DIR)/%.s,$(BUILD_DIR)/%.o,$(ROMSTARTUP_SRC))
+
+# List of source files for the OS.
+COMMON_SRC      = $(COMMON_DIR)/utils.c $(COMMON_DIR)/uart.c $(COMMON_DIR)/m68k_soc.c $(COMMON_DIR)/interrupts.c $(COMMON_DIR)/ps2.c $(COMMON_DIR)/readline.c
+COMMON_SRC     += #$(COMMON_DIR)/xprintf.c $(COMMON_DIR)/spi.c
+#COMMON_SRC     += $(COMMON_DIR)/divsi3.c $(COMMON_DIR)/udivsi3.c $(COMMON_DIR)/modsi3.c $(COMMON_DIR)/umodsi3.c
+UMM_C_SRC       = #$(UMM_DIR)/umm_malloc.c
+FATFS_SRC       = $(FATFS_DIR)/sdmmc_zpu.c $(FATFS_DIR)/ff.c $(FATFS_DIR)/ffunicode.c
+PFS_SRC         = $(PFS_DIR)/sdmmc_zpu.c   $(PFS_DIR)/pff.c
+MAIN_SRC        = $(CURDIR)/src/zOS.cpp
+ifeq ($(__SHARPMZ__),1)
+  COMMON_SRC   += $(COMMON_DIR)/sharpmz.c
+endif
+
+# Expand to targets.
+SOURCES        := $(MAIN_SRC:.cpp=.o) $(COMMON_SRC:.c=.o) $(UMM_C_SRC:.c=.o) $(FATFS_SRC:.c=.o) 
+OBJS           := $(foreach src,$(SOURCES), $(BUILD_DIR)/$(src))
+
+
+# Versions to build.
+MAIN_PRJ_TO_BOOT= zos_standalone_boot_in_bram
+MAIN_PRJ_IN_BOOT= zos_with_iocp_in_bram
+MAIN_PRJ_TINY_BOOT=zos_with_tiny_iocp_in_bram
+MAIN_PRJ_RAM    = zos_as_app_in_ram
+
+CFLAGS          = -I. -I$(COMMON_DIR) -I$(FATFS_DIR) -I$(DHRY_DIR) -I$(CORE_DIR) -I$(INCLUDE_DIR) -I$(LIB_INCLUDE_DIR)
+CFLAGS         += -nostartfiles -nostdlib -c -O3 -ffunction-sections -fdata-sections
+CFLAGS         += -DOS_BASEADDR=$(OS_BASEADDR) -DOS_APPADDR=$(OS_APPADDR)
+CFLAGS         += -D__M68K__ -D__ZOS__
+CFLAGS         += -DUMM_BEST_FIT -DUMM_INFO -DUMM_DBG_LOG_LEVEL=0
+CFLAGS         += --std=gnu99 # Use C99 + GNU extensions to provide anonymous unions.
+#
+# Allow local overrides to the HEAPADDR for certain applications.
+ifeq (,$(findstring __HEAPADDR__,$(CFLAGS)))
+ifeq ($(HEAPADDR),)
+  CFLAGS      += -D__HEAPADDR__=0xE000
+else
+  CFLAGS      += -D__HEAPADDR__=$(HEAPADDR)
+endif
+endif
+
+# Allow local overrides to the HEAPSIZE for certain applications.
+ifeq (,$(findstring __HEAPSIZE__,$(CFLAGS)))
+ifeq ($(HEAPSIZE),)
+  CFLAGS      += -D__HEAPSIZE__=0x1000
+else
+  CFLAGS      += -D__HEAPSIZE__=$(HEAPSIZE)
+endif
+endif
+ifeq ($(__SHARPMZ__),1)
+  CFLAGS      += -D__SHARPMZ__
+endif
+#
+# Enable debug output.
+OFLAGS         += -DDEBUG
+# Assume loadb as implemented in hardware or software (time penalty).
+OFLAGS         += -DUSELOADB
+# Dont allow an initialised DATA segment so binary can be located in ROM.
+	#OFLAGS += -DUSE_BOOT_ROM
+# Remove functionality to create a minimal system for limited space.
+	#OFLAGS += -DMINIMUM_FUNCTIONALITY
+
+#
+# Enable SD Card functionality
+OFLAGS         += -D__SD_CARD__
+FLAGS_STR       = -DFLAGS_STR="$(CFLAGS)"
+LFLAGS          = -nostartfiles -nostdlib -Wl,--gc-sections -Wl,--relax -O3 -L$(LIB_DIR) --std=gnu99 -D__M68K__
+LIBS            = -lumstdio-m68k -lumansi-m68k -limath2-m68k -lummisc-m68k
+
+# compiler options for C++ only
+CXXFLAGS      = -std=gnu++98 -felide-constructors -fno-exceptions -fno-rtti
+#CXXFLAGS       = -std=gnu++14 -felide-constructors -fno-exceptions -fno-rtti
+
+#
+# Assembler flags.
+ASFLAGS         = -I. -I$(COMMON_DIR) -I$(INCLUDE_DIR) -I$(STARTUP_DIR) --defsym OS_BASEADDR=$(OS_BASEADDR) --defsym OS_APPADDR=$(OS_APPADDR)
+#
+
+# Our target.
+all: $(BUILD_DIR) $(MAIN_PRJ_TO_BOOT) $(ROMGEN) # $(MAIN_PRJ_IN_BOOT) $(MAIN_PRJ_TINY_BOOT) $(MAIN_PRJ_RAM) $(ROMGEN)
+#
+$(MAIN_PRJ_TO_BOOT): $(BUILD_DIR) $(MAIN_PRJ_TO_BOOT).bin $(MAIN_PRJ_TO_BOOT).srec $(MAIN_PRJ_TO_BOOT).rpt $(MAIN_PRJ_TO_BOOT).lss $(MAIN_PRJ_TO_BOOT).dmp $(MAIN_PRJ_TO_BOOT)_BOOTROM.vhd $(MAIN_PRJ_TO_BOOT)_COMBINEDBOOTROM.vhd $(MAIN_PRJ_TO_BOOT)_BOOTBRAM.vhd
+#
+$(MAIN_PRJ_IN_BOOT): $(BUILD_DIR) $(MAIN_PRJ_IN_BOOT).bin $(MAIN_PRJ_IN_BOOT).srec $(MAIN_PRJ_IN_BOOT).rpt $(MAIN_PRJ_IN_BOOT).lss $(MAIN_PRJ_IN_BOOT).dmp $(MAIN_PRJ_IN_BOOT)_BOOTROM.vhd $(MAIN_PRJ_IN_BOOT)_COMBINEDBOOTBRAM.vhd
+#
+$(MAIN_PRJ_TINY_BOOT): $(BUILD_DIR) $(MAIN_PRJ_TINY_BOOT).bin $(MAIN_PRJ_TINY_BOOT).rpt $(MAIN_PRJ_TINY_BOOT).lss $(MAIN_PRJ_TINY_BOOT).dmp
+#
+$(MAIN_PRJ_RAM): $(BUILD_DIR) $(MAIN_PRJ_RAM).bin $(MAIN_PRJ_RAM).srec $(MAIN_PRJ_RAM).rpt $(MAIN_PRJ_RAM).lss $(MAIN_PRJ_RAM).dmp $(MAIN_PRJ_RAM)_APPRAM.vhd $(MAIN_PRJ_RAM)_COMBINEDAPPRAM.vhd
+
+clean:
+	rm -fr $(BUILD_DIR)/*
+	rm -f $(BUILD_DIR)/*.o *.hex *.lss *.elf *.map *.lst *.srec $(MAIN_PRJ_TO_BOOT) $(MAIN_PRJ_IN_BOOT).rom $(MAIN_PRJ_TINY_BOOT).rom $(MAIN_PRJ_RAM) *~ */*.o *.bin *.srec *.dmp *.vhd *.rpt
+
+
+# Convert ELF binary to bin file.
+%.bin: %.elf
+	@$(CP) -O binary $< $@
+
+# Convert ELF to srec format for serial upload.
+%.srec: %.elf
+	@$(CP) -O srec $< $@
+
+%.rpt: %.elf
+	@echo ""
+	@echo >$@ -n  "Start of code:\t"
+	@$(DUMP) -x $< | grep >>$@ _ramstart
+	@echo >>$@ -n "  BOOT start:\t"
+	@$(DUMP) -x $< | grep  >>$@ __boot_start__
+	@echo >>$@ -n "       end:  \t"	
+	@$(DUMP) -x $< | grep >>$@ __boot_end__
+	@echo >>$@ -n "  TEXT start:\t"
+	@$(DUMP) -x $< | grep  >>$@ __text_start__
+	@echo >>$@ -n "       end:  \t"
+	@$(DUMP) -x $< | grep >>$@ __text_end__
+	@echo >>$@ -n "  RODATA start:\t"
+	@$(DUMP) -x $< | grep  >>$@ __rodata_start__
+	@echo >>$@ -n "         end:  \t"
+	@$(DUMP) -x $< | grep >>$@ __rodata_end__
+	@echo >>$@ -n "End of code:\t"
+	@$(DUMP) -x $< | grep >>$@ _ramend
+	@echo >>$@ -n  "Start of data:\t"
+	@$(DUMP) -x $< | grep >>$@ _datastart
+	@echo >>$@ -n "  DATA start: \t"
+	@$(DUMP) -x $< | grep  >>$@ __data_start__
+	@echo >>$@ -n "       end:   \t"
+	@$(DUMP) -x $< | grep >>$@ __data_end__
+	@echo >>$@ -n "  BSS start:  \t"
+	@$(DUMP) -x $< | grep  >>$@ __bss_start__
+	@echo >>$@ -n "      end:    \t"
+	@$(DUMP) -x $< | grep >>$@ __bss_end__
+	@echo >>$@ -n "End of data:\t"
+	@$(DUMP) -x $< | grep >>$@ _dataend
+	@cat $@
+
+%.dmp: %.elf
+	@$(DUMP) -x $< >>$@
+
+# Create extended listing file from ELF output file.
+# testing: option -C
+%.lss: %.elf
+	@echo
+	@$(DUMP) -h -S -C $< > $@
+
+$(ROMGEN): $(SWDIR)/tools/src/zpugen.c
+	gcc -o $(SWDIR)/tools/zpugen $(SWDIR)/tools/src/zpugen.c
+
+# Put the boot code and app code into a ROM compatible with the Small, Medium and Flex CPUś
+%_BOOTROM.vhd: %.bin $(ROMGEN)
+	@sed 's/dualportram/BootROM/' >zOS_BootROM.vhd <$(RTL_DIR)/rom_prologue.vhd
+	@$(ROMGEN) 32 $*.bin 0 > ROMCODE.dat
+	@cat ROMCODE.dat $(RTL_DIR)/rom_epilogue.vhd >> zOS_BootROM.vhd
+	@cp zOS_BootROM.vhd $(RTL_DIR)/
+	@rm ROMCOD*.dat zOS_BootROM.vhd
+	@echo "zOS_BootROM.vhd updated."
+
+%_COMBINEDBOOTROM.vhd: %.bin $(ROMGEN)
+	@sed 's/dualportram/BootROM/' >IOCP_zOS_BootROM.vhd <$(RTL_DIR)/rom_prologue.vhd
+	@$(ROMGEN) 32 $(IOCPDIR)/iocp.bin 0 > ROMCODE.dat
+	@$(ROMGEN) 32 $*.bin 2048 > APPCODE.dat
+	@cat ROMCODE.dat APPCODE.dat $(RTL_DIR)/rom_epilogue.vhd >> IOCP_zOS_BootROM.vhd
+	@cp IOCP_zOS_BootROM.vhd $(RTL_DIR)/
+	@rm ROMCOD*.dat APPCODE*.dat IOCP_zOS_BootROM.vhd
+	@echo "IOCP_zOS_BootROM.vhd updated."
+
+# Put the boot code into a BRAM used for boot code.
+%_BOOTBRAM.vhd: %.bin $(ROMGEN)
+	@sed 's/byteaddr_dp_32bit_bram/DualPortBootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_dp_32bit_bram_tmpl.vhd
+	@$(ROMGEN) BA 32 $*.bin /tmp/zpu_work.tmp 0 > zOS_DualPortBootBRAM.vhd
+	@cp zOS_DualPortBootBRAM.vhd $(RTL_DIR)/
+	@sed 's/byteaddr_dp_3264bit_bram/DualPort3264BootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_dp_3264bit_bram_tmpl.vhd
+	@$(ROMGEN) BA 64 $*.bin /tmp/zpu_work.tmp 0 > zOS_DualPort3264BootBRAM.vhd
+	@cp zOS_DualPort3264BootBRAM.vhd $(RTL_DIR)/
+	@sed 's/zpu_soc_pkg/softZPU_pkg/' > $(RTL_DIR)/TZSW_DualPortBootBRAM.vhd < zOS_DualPortBootBRAM.vhd
+	@sed 's/zpu_soc_pkg/softZPU_pkg/' > $(RTL_DIR)/TZSW_DualPort3264BootBRAM.vhd < zOS_DualPort3264BootBRAM.vhd
+	@sed 's/byteaddr_sp_32bit_bram/SinglePortBootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_sp_32bit_bram_tmpl.vhd
+	@$(ROMGEN) BA 32 $*.bin /tmp/zpu_work.tmp 0 > zOS_SinglePortBootBRAM.vhd
+	@rm -f /tmp/zpu_work.tmp
+	@cp zOS_SinglePortBootBRAM.vhd $(RTL_DIR)/
+	@sed 's/zpu_soc_pkg/softZPU_pkg/' > $(RTL_DIR)/TZSW_SinglePortBootBRAM.vhd < zOS_SinglePortBootBRAM.vhd
+	@rm zOS_DualPortBootBRAM.vhd zOS_DualPort3264BootBRAM.vhd zOS_SinglePortBootBRAM.vhd
+	@echo "zOS_DualPortBootBRAM.vhd, zOS_DualPort3264BootBRAM.vhd and zOS_SinglePortBootBRAM updated."
+	@echo ""
+
+# Put the boot code and app code into a BRAM used for both boot code and application, ie. one block of BRAM.
+%_COMBINEDBOOTBRAM.vhd: %.bin $(ROMGEN)
+	@sed 's/byteaddr_dp_32bit_bram/DualPortBootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_dp_32bit_bram_tmpl.vhd
+	@$(ROMGEN) BC 32 $(IOCPDIR)/iocp.bin 0 $*.bin 2048 /tmp/zpu_work.tmp > IOCP_zOS_DualPortBootBRAM.vhd
+	@sed 's/byteaddr_dp_3264bit_bram/DualPort3264BootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_dp_3264bit_bram_tmpl.vhd
+	@$(ROMGEN) BC 64 $(IOCPDIR)/iocp.bin 0 $*.bin 2048 /tmp/zpu_work.tmp > IOCP_zOS_DualPort3264BootBRAM.vhd
+	@rm -f /tmp/zpu_work.tmp
+	@cp IOCP_zOS_DualPortBootBRAM.vhd $(RTL_DIR)/
+	@cp IOCP_zOS_DualPort3264BootBRAM.vhd $(RTL_DIR)/
+	@sed 's/byteaddr_sp_32bit_bram/SinglePortBootBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_sp_32bit_bram_tmpl.vhd
+	@$(ROMGEN) BC 32 $(IOCPDIR)/iocp.bin 0 $*.bin 2048 /tmp/zpu_work.tmp > IOCP_zOS_SinglePortBootBRAM.vhd
+	@rm -f /tmp/zpu_work.tmp
+	@cp IOCP_zOS_SinglePortBootBRAM.vhd $(RTL_DIR)/
+	@rm IOCP_zOS_DualPortBootBRAM.vhd IOCP_zOS_DualPort3264BootBRAM.vhd IOCP_zOS_SinglePortBootBRAM.vhd
+	@echo "IOCP_zOS_DualPortBootBRAM.vhd, IOCP_zOS_DualPort3264BootBRAM.vhd and IOCP_zOS_SinglePortBootBRAM updated."
+	@echo ""
+
+# Put the app code into a seperate BRAM instantiation file, used when a 2nd block of App BRAM is created seperate to the boot BRAM and requires to be preloaded.
+%_APPRAM.vhd: %.bin $(ROMGEN)
+	@sed 's/byteaddr_sp_32bit_bram/SinglePortBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_sp_32bit_bram_tmpl.vhd
+	@$(ROMGEN) BA 32 $*.bin /tmp/zpu_work.tmp 0 > zOS_SinglePortBRAM.vhd
+	@rm -f /tmp/zpu_work.tmp
+	@cp zOS_SinglePortBRAM.vhd $(RTL_DIR)/
+	@sed 's/zpu_soc_pkg/softZPU_pkg/' > $(RTL_DIR)/TZSW_SinglePortBRAM.vhd < zOS_SinglePortBRAM.vhd
+	@rm zOS_SinglePortBRAM.vhd
+	@echo "zOS_SinglePortBRAM updated."
+
+%_COMBINEDAPPRAM.vhd: %.bin $(ROMGEN)
+	@sed 's/byteaddr_sp_32bit_bram/SinglePortBRAM/' >/tmp/zpu_work.tmp <$(RTL_DIR)/byteaddr_sp_32bit_bram_tmpl.vhd
+	@$(ROMGEN) BA 32 $*.bin /tmp/zpu_work.tmp 0 > IOCP_zOS_SinglePortBRAM.vhd
+	@rm -f /tmp/zpu_work.tmp
+	@cp IOCP_zOS_SinglePortBRAM.vhd $(RTL_DIR)/
+	@rm IOCP_zOS_SinglePortBRAM.vhd
+	@echo "IOCP_zOS_SinglePortBRAM updated."
+
+# Link - this produces an ELF binary.
+#$(MAIN_PRJ_TO_BOOT).elf: $(ROMSTARTUP_OBJ) $(OBJS)
+$(MAIN_PRJ_TO_BOOT).elf: $(OBJS)
+	$(LD) $(LFLAGS) -T $(LINKMAPBOOTSTANDALONE) -o $@ $+ $(LIBS)
+
+$(MAIN_PRJ_IN_BOOT).elf: $(RAMSTARTUP_OBJ) $(OBJS)
+	$(LD) $(LFLAGS) -T $(LINKMAPBOOTIOCP) -o $@ $+ $(LIBS)
+
+$(MAIN_PRJ_TINY_BOOT).elf: $(RAMSTARTUP_OBJ) $(OBJS)
+	$(LD) $(LFLAGS) -T $(LINKMAPBOOTTINYIOCP) -o $@ $+ $(LIBS)
+
+$(MAIN_PRJ_RAM).elf: $(RAMSTARTUP_OBJ) $(OBJS)
+	$(LD) $(LFLAGS) -T $(LINKMAPRAM) -o $@ $+ $(LIBS)
+
+$(BUILD_DIR)/%.o: %.c Makefile
+	@mkdir -p "$(dir $@)"
+	$(CC) $(CFLAGS) $(OFLAGS) -o $@ -c $<
+
+$(BUILD_DIR)/%.o: %.cpp Makefile
+	@mkdir -p "$(dir $@)"
+	$(CXX) $(CFLAGS) $(CXXFLAGS) $(OFLAGS) -o $@ -c $<
+
+$(BUILD_DIR)/src/%.o: %.cpp Makefile
+	@mkdir -p "$(dir $@)"
+	$(CXX) $(CFLAGS) $(CXXFLAGS) $(OFLAGS) -o $@ -c $<
+
+$(BUILD_DIR)/%.o: $(COMMON_DIR)/%.c Makefile
+	@mkdir -p "$(dir $@)"
+	$(CC) $(CFLAGS) $(OFLAGS) -o $@ -c $<
+
+$(BUILD_DIR)/%.o: $(DHRY_DIR)/%.c Makefile
+	@mkdir -p "$(dir $@)"
+	$(CC) $(CFLAGS) $(OFLAGS) -o $@ -c $<
+
+#$(BUILD_DIR)/%.o: $(CORE_DIR)/%.c Makefile
+#	@mkdir -p "$(dir $@)"
+#	$(CC) $(CFLAGS) $(OFLAGS) $(FLAGS_STR) -o $@ -c $<
+
+$(BUILD_DIR)/%.o: $(FATFS_DIR)/%.c Makefile
+	@mkdir -p "$(dir $@)"
+	$(CC) $(CFLAGS) $(OFLAGS) -o $@ -c $<
+
+$(BUILD_DIR)/%.o: $(PFS_DIR)/%.c Makefile
+	@mkdir -p "$(dir $@)"
+	$(CC) $(CFLAGS) $(OFLAGS)  -o $@ -c $<
+
+$(BUILD_DIR)/%.o: %.s
+	@mkdir -p "$(dir $@)"
+	$(AS) $(ASFLAGS) -o $@ $<
+
+$(BUILD_DIR)/%.o: $(STARTUP_DIR)/%.s
+	@mkdir -p "$(dir $@)"
+	$(AS) $(ASFLAGS) -o $@ $<
+
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+# compiler generated dependency info
+-include $(OBJS:.o=.d)

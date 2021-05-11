@@ -11,11 +11,12 @@
 ##                  as part of the tranZPUter SW project.
 ##
 ## Credits:         
-## Copyright:       (c) 2019-2020 Philip Smart <philip.smart@net2net.org>
+## Copyright:       (c) 2019-2021 Philip Smart <philip.smart@net2net.org>
 ##
 ## History:         July 2019   - Initial Makefile created for template use.
-##                  April 2020     - Split from the latest ZPUTA and added K64F logic to support the
-##                                   tranZPUter SW board.
+##                  April 2020  - Split from the latest ZPUTA and added K64F logic to support the
+##                                tranZPUter SW board.
+##                  April 2021  - Added M68000
 ##
 ## Notes:           Optional component enables:
 ##                  USELOADB              - The Byte write command is implemented in hw#sw so use it.
@@ -42,6 +43,8 @@ ifeq ($(__K64F__),1)
 include        $(ZOS_DIR)/Makefile.k64f
 else ifeq ($(__ZPU__),1)
 include        $(ZOS_DIR)/Makefile.zpu
+else ifeq ($(__M68K__),1)
+include        $(ZOS_DIR)/Makefile.m68k
 else
-$(error Please run using __K64F__=1 or __ZPU__=1 according to target processor)
+$(error Please run using __K64F__=1,  __ZPU__=1 or __M68K__=1 according to target processor)
 endif

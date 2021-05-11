@@ -49,20 +49,28 @@
   #include    <string.h>
   #include    <stdint.h>
   #include    <../libraries/include/stdmisc.h>
-#else
+  #include    <stdlib.h>
+  #include    <stdbool.h>
+  #include    <stddef.h>
+#elif defined __ZPU__
   #include    <stdio.h>
   #include    <stdint.h>
   #include    <stdmisc.h>
   #include    <string.h>
+  #include    <stdlib.h>
+  #include    <stdbool.h>
+  #include    <stddef.h>
+#elif defined __M68K__
+  #include    <stdio.h>
+  #include    <string.h>
+  #include    <stdbool.h>
+  #include    <stdlib.h>
 #endif
 
 #if defined __SD_CARD__
   #include    <ff.h>
 #endif
 
-#include      <stdlib.h>
-#include      <stdbool.h>
-#include      <stddef.h>
 #include      "utils.h"
 
 #if defined __APP__

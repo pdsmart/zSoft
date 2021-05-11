@@ -4488,13 +4488,17 @@ void processServiceRequest(void)
                 // Raw read access to the SD card.
                 //
                 case TZSVC_CMD_SD_READSECTOR:
+//printf("Read Raw Start\n");
                     status=svcReadSDRaw();
+//printf("Read Raw Exit\n");
                     break;
 
                 // Raw write access to the SD card.
                 //
                 case TZSVC_CMD_SD_WRITESECTOR:
+//printf("Write Raw Start\n");
                     status=svcWriteSDRaw();
+//printf("Write Raw Exit\n");
                     break;
 
                 // Command to exit from TZFS and return machine to original mode.

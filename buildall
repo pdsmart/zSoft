@@ -5,6 +5,11 @@
 # TARGET=MZ-80A
 
 ZPU_SHARPMZ_BUILD=1
+#ZPU_SHARPMZ_APPADDR=0x100000
+#ZPU_SHARPMZ_APPSIZE=0x70000
+#ZPU_SHARPMZ_HEAPSIZE=0x8000
+#ZPU_SHARPMZ_STACKSIZE=0x3D80
+
 ZPU_SHARPMZ_APPADDR=0x100000
 ZPU_SHARPMZ_APPSIZE=0x70000
 ZPU_SHARPMZ_HEAPSIZE=0x8000
@@ -26,7 +31,7 @@ rm -fr /dvlp/Projects/dev/github/zSoft/SD/K64F/*
 cd ${ROOT_DIR}/zSoft
 mkdir -p SD/SharpMZ
 mkdir -p SD/Dev
-mkdir -p SD/K64F
+mkdir -p SD/K64F/ZOS
 
 if [ "${ZPU_SHARPMZ_BUILD}x" != "x" -a ${ZPU_SHARPMZ_BUILD} = 1 ]; then
     echo "Building ZPU for Sharp MZ"
@@ -35,11 +40,14 @@ if [ "${ZPU_SHARPMZ_BUILD}x" != "x" -a ${ZPU_SHARPMZ_BUILD} = 1 ]; then
     	echo "Error building Sharp MZ Distribution..."
     	exit 1
     fi
+    # Copy the BRAM ROM templates to the build area for the FPGA.
     cp rtl/TZSW_* ../tranZPUter/FPGA/SW700/v1.3/devices/sysbus/BRAM/
+    # Copy the newly built files into the staging area ready for copying to an SD card.
     cp -r build/SD/* SD/SharpMZ/
+    # The K64F needs a copy of the zOS ROM for the ZPU so that it can load it into the FPGA.
     cp build/SD/ZOS/* SD/K64F/ZOS/
 fi
-    
+
 if [ "${ZPU_E115_BUILD}x" != "x" -a ${ZPU_E115_BUILD} = 1 ]; then
     echo "Building ZPU for Dev board"
     ./build.sh -C EVO -O zos -o 0 -M 0x1FD80 -B 0x0000 -S ${ZPU_E115_STACKSIZE} -N ${ZPU_E115_HEAPSIZE} -A ${ZPU_E115_APPADDR} -a ${ZPU_E115_APPSIZE} -n 0x0000 -s 0x0000 -d 

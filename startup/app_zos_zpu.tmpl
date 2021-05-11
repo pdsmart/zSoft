@@ -34,6 +34,7 @@ MEMORY
 {
   BOOT (rx)  : ORIGIN = BOOTADDR, LENGTH = BOOTLEN    /* Boot section which shouldnt exist in an app, so a link trap as warning */
   CODE (rx)  : ORIGIN = APPSTART, LENGTH = APPLEN    /* Up to the end of the RAM first less stack space */
+  BSS (rx)   : ORIGIN = 0x130000, LENGTH = 0x4000
   HEAP (rx)  : ORIGIN = APP_HEAP_STARTADDR, LENGTH = APP_HEAP_SIZE    /* Allocated heap space within the application. */
   STACK (rx) : ORIGIN = APP_STACK_STARTADDR, LENGTH = APP_STACK_SIZE    /* Allocated stack space within the application. */
 }
@@ -97,9 +98,11 @@ SECTIONS
         . = ALIGN(4);
         __data_end__ = . ;
     } >CODE
+    _dataend = . ;
   
     /* .bss section which is used for uninitialized data */
     . = ALIGN(4);
+    _bssstart = . ;
     .bss :
     {
         __bss_start = . ;
@@ -110,8 +113,8 @@ SECTIONS
         _ebss = .;
         __bss_end__ = . ;
         _end = . ;
-    } >CODE
-    _dataend = . ;
+    } >BSS
+    _bssend = . ;
   
     /* Variable expanded by build.sh */
     .heap APP_HEAP_STARTADDR:

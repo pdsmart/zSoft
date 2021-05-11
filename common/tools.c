@@ -41,6 +41,7 @@ extern "C" {
     #include <WProgram.h>
   #endif
   #include "k64f_soc.h"
+#elif defined __M68K__
 #endif
 
 #if defined(__SD_CARD__)
@@ -387,8 +388,10 @@ FRESULT fileConcatenate(char *src1, char *src2, char *dst)
         perfTime = *G->millis;
       #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
         perfTime = millis();
+      #elif defined __M68K__ 
+        TIMER_MILLISECONDS_UP = 0;
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
+        #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
       #endif
         dstSize = 0;
         for (;;) {
@@ -423,8 +426,10 @@ FRESULT fileConcatenate(char *src1, char *src2, char *dst)
         printBytesPerSec(dstSize, perfTime - *G->millis, "copied");
       #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
         printBytesPerSec(dstSize, perfTime - millis(), "copied");
+      #elif defined __M68K__ 
+        printBytesPerSec(dstSize, TIMER_MILLISECONDS_UP, "copied");
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
+        #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
       #endif
 
     return(fr0 ? fr0 : (fr1 ? fr1 : (fr2 ? fr2 : FR_OK)));
@@ -464,8 +469,10 @@ FRESULT fileCopy(char *src, char *dst)
         perfTime = *G->millis;
       #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
         perfTime = millis();
+      #elif defined __M68K__ 
+        TIMER_MILLISECONDS_UP = 0;
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
+        #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
       #endif
         dstSize = 0;
         for (;;) {
@@ -489,8 +496,10 @@ FRESULT fileCopy(char *src, char *dst)
         printBytesPerSec(dstSize, perfTime - *G->millis, "copied");
       #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
         printBytesPerSec(dstSize, perfTime - millis(), "copied");
+      #elif defined __M68K__ 
+        printBytesPerSec(dstSize, TIMER_MILLISECONDS_UP, "copied");
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
+        #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
       #endif
 
     return(fr0 ? fr0 : (fr1 ? fr1 : FR_OK));
@@ -531,8 +540,10 @@ FRESULT fileXtract(char *src, char *dst, uint32_t startPos, uint32_t len)
         perfTime = *G->millis;
       #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
         perfTime = millis();
+      #elif defined __M68K__ 
+        TIMER_MILLISECONDS_UP = 0;
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
+        #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
       #endif
         dstSize = 0;
 
@@ -565,8 +576,10 @@ FRESULT fileXtract(char *src, char *dst, uint32_t startPos, uint32_t len)
         printBytesPerSec(dstSize, perfTime - *G->millis, "copied");
       #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
         printBytesPerSec(dstSize, perfTime - millis(), "copied");
+      #elif defined __M68K__ 
+        printBytesPerSec(dstSize, TIMER_MILLISECONDS_UP, "copied");
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
+        #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
       #endif
 
     return(fr0 ? fr0 : (fr1 ? fr1 : FR_OK));
@@ -645,8 +658,10 @@ FRESULT fileLoad(char *src, uint32_t addr, uint8_t showStats)
         perfTime = *G->millis;
       #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
         perfTime = millis();
+      #elif defined __M68K__ 
+        TIMER_MILLISECONDS_UP = 0;
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
+        #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
       #endif
         loadSize = 0;
         for (;;) {
@@ -668,8 +683,10 @@ FRESULT fileLoad(char *src, uint32_t addr, uint8_t showStats)
         printBytesPerSec(loadSize, perfTime - *G->millis, "read");
       #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
         printBytesPerSec(loadSize, perfTime - millis(), "read");
+      #elif defined __M68K__ 
+        printBytesPerSec(loadSize, TIMER_MILLISECONDS_UP, "read");
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
+        #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
       #endif
 
     return(fr0 ? fr0 : FR_OK);
@@ -707,8 +724,10 @@ FRESULT fileSave(char *dst, uint32_t addr, uint32_t len)
         perfTime = *G->millis;
       #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
         perfTime = millis();
+      #elif defined __M68K__ 
+        TIMER_MILLISECONDS_UP = 0;
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
+        #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
       #endif
         saveSize = 0;
         for (;;) {
@@ -731,8 +750,10 @@ FRESULT fileSave(char *dst, uint32_t addr, uint32_t len)
         printBytesPerSec(saveSize, perfTime - *G->millis, "written");
       #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
         printBytesPerSec(saveSize, perfTime - millis(), "written");
+      #elif defined __M68K__ 
+        printBytesPerSec(saveSize, TIMER_MILLISECONDS_UP, "written");
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
+        #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
       #endif
 
     return(fr0 ? fr0 : FR_OK);
@@ -769,8 +790,10 @@ FRESULT fileDump(char *src, uint32_t width)
         perfTime = *G->millis;
       #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
         perfTime = millis();
+      #elif defined __M68K__ 
+        TIMER_MILLISECONDS_UP = 0;
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
+        #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
       #endif
         loadSize = 0;
         for (;;) {
@@ -794,8 +817,10 @@ FRESULT fileDump(char *src, uint32_t width)
         printBytesPerSec(loadSize, perfTime - *G->millis, "read");
       #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
         printBytesPerSec(loadSize, perfTime - millis(), "read");
+      #elif defined __M68K__ 
+        printBytesPerSec(loadSize, TIMER_MILLISECONDS_UP, "read");
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
+        #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
       #endif
 
     return(fr0 ? fr0 : FR_OK);
@@ -821,8 +846,10 @@ uint32_t fileExec(char *src, uint32_t addr, uint32_t execAddr, uint8_t execMode,
     uint32_t   (*func)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) = (uint32_t (*)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t))execAddr;
   #elif defined __ZPU__
     uint32_t   (*func)(uint32_t, uint32_t, uint32_t *, uint32_t, uint32_t, uint32_t) = (uint32_t (*)(uint32_t, uint32_t, uint32_t *, uint32_t, uint32_t, uint32_t))execAddr;
+  #elif defined __M68K__ 
+    uint32_t   (*func)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) = (uint32_t (*)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t))execAddr;
   #else
-    #error "Target CPU not defined, use __ZPU__ or __K64F__"
+    #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
   #endif
     void      *gotoptr       = (void *)execAddr;
     FRESULT    fr0;
@@ -838,13 +865,15 @@ uint32_t fileExec(char *src, uint32_t addr, uint32_t execAddr, uint8_t execMode,
             // Call the loaded program entry address, return expected.
             case EXEC_MODE_CALL:
               #if defined __ZPU__
-                //printf("0=%08lx, 1=%08lx, 2=%08lx, _IOB=%08lx %08lx %08lx\n", __iob[0], __iob[1], __iob[2], (uint32_t)(__iob), (uint32_t *)__iob, __iob   );
-                //printf("ExecAddr=%08lx, execMode=%02x, param1=%08lx, param2=%08lx, G=%08lx, cfg=%08lx\n", execAddr, execMode, param1, param2, G, cfg);
+              //printf("0=%08lx, 1=%08lx, 2=%08lx, _IOB=%08lx %08lx %08lx\n", __iob[0], __iob[1], __iob[2], (uint32_t)(__iob), (uint32_t *)__iob, __iob   );
+              //printf("ExecAddr=%08lx, execMode=%02x, param1=%08lx, param2=%08lx, G=%08lx, cfg=%08lx\n", execAddr, execMode, param1, param2, G, cfg);
                 retCode = func(param1, param2, &_memreg, G, cfg, (uint32_t)__iob);
               #elif defined __K64F__
                 retCode = func(param1, param2, G, cfg, (uint32_t)stdin, (uint32_t)stdout, (uint32_t)stderr);
+              #elif defined __M68K__ 
+                retCode = func(param1, param2, G, cfg, (uint32_t)stdin, (uint32_t)stdout, (uint32_t)stderr);
               #else
-                #error "Target CPU not defined, use __ZPU__ or __K64F__"
+                #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
               #endif
                 break;
 
@@ -888,8 +917,10 @@ FRESULT fileBlockRead(FIL *fp, uint32_t len)
     perfTime = *G->millis;
   #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
     perfTime = millis();
+  #elif defined __M68K__ 
+    TIMER_MILLISECONDS_UP = 0;
   #else
-    #error "Target CPU not defined, use __ZPU__ or __K64F__"
+    #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
   #endif
     while (loadSize && !fr0) {
         if (loadSize >= blockLen) { sizeToRead = blockLen; loadSize -= blockLen; }
@@ -910,8 +941,10 @@ FRESULT fileBlockRead(FIL *fp, uint32_t len)
         printBytesPerSec(loadSize, perfTime - *G->millis, "read");
       #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
         printBytesPerSec(loadSize, perfTime - millis(), "read");
+      #elif defined __M68K__ 
+        printBytesPerSec(loadSize, TIMER_MILLISECONDS_UP, "read");
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
+        #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
       #endif
 
     return(fr0 ? fr0 : FR_OK);
@@ -942,8 +975,10 @@ FRESULT fileBlockWrite(FIL *fp, uint32_t len)
     perfTime = *G->millis;
   #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
     perfTime = millis();
+  #elif defined __M68K__ 
+    TIMER_MILLISECONDS_UP = 0;
   #else
-    #error "Target CPU not defined, use __ZPU__ or __K64F__"
+    #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
   #endif
     while (saveSize && !fr0) {
         if (saveSize >= blockLen)    { sizeToWrite = blockLen; saveSize -= blockLen; }
@@ -963,8 +998,10 @@ FRESULT fileBlockWrite(FIL *fp, uint32_t len)
         printBytesPerSec(len, perfTime - *G->millis, "written");
       #elif defined __K64F__ && (defined (__ZPUTA__) || defined (__ZOS__))
         printBytesPerSec(len, perfTime - millis(), "written");
+      #elif defined __M68K__ 
+        printBytesPerSec(len, TIMER_MILLISECONDS_UP, "written");
       #else
-        #error "Target CPU not defined, use __ZPU__ or __K64F__"
+        #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
       #endif
 
     return(fr0 ? fr0 : FR_OK);
@@ -1231,14 +1268,21 @@ void printVersion(uint8_t showConfig)
       printf("\n** %s (", PROGRAM_NAME);
       printCPU();
       printf(" CPU) %s %s **\n\n", VERSION, VERSION_DATE);
+    #elif defined __M68K__ 
+      printf("** %s (", PROGRAM_NAME);
+      printM68KId(cfgSoC.m68kId);
+      printf(" CPU) %s %s **\n\n", VERSION, VERSION_DATE);
     #else
-      #error "Target CPU not defined, use __ZPU__ or __K64F__"
+      #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
     #endif
  
     // Show configuration if requested.
     if(showConfig)
     {
         showSoCConfig();
+        printf("OS:\n");
+        printf("    Base Address             = %08lx\n", (uint32_t)OS_BASEADDR);
+        printf("    App Address              = %08lx\n", (uint32_t)OS_APPADDR);
     }
 
   #else

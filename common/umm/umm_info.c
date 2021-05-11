@@ -8,8 +8,11 @@
 #elif defined(__ZPU__)
   #include <stdint.h>
   #include <stdlib.h>
+#elif defined(__M68K__)
+  #include <stdint.h>
+//  #include <stdlib.h>
 #else
-  #error "Target CPU not defined, use __ZPU__ or __K64F__"
+  #error "Target CPU not defined, use __ZPU__, __K64F__ or M68K"
 #endif
 
 /* ----------------------------------------------------------------------------

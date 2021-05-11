@@ -39,7 +39,7 @@
   #include "usb_serial.h"
   #include "k64f_soc.h"
   #include <../libraries/include/stdmisc.h>
-#else
+#elif defined __ZPU__
   #include <stdint.h>
   #include <string.h>
   #include <stdio.h>
@@ -49,6 +49,11 @@
  #if defined __SHARPMZ__
   #include "sharpmz.h"
  #endif
+#elif defined __M68K__
+  #include <stdio.h>
+//  #include <stdint.h>
+//  #include <stdlib.h>
+  #include <string.h>
 #endif
 
 #if defined(__SD_CARD__)
@@ -275,6 +280,7 @@ int8_t getKey(uint8_t mode)
             keyIn = getserial_nonblocking();
         }
       #endif
+    #elif defined __M68K__
     #else
       #error "Target CPU not defined, use __ZPU__ or __K64F__"
     #endif

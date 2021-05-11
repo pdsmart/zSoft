@@ -71,11 +71,14 @@ extern "C" {
   #define APP_CMD_EXTENSION         "ZPU"
 #elif defined __K64F__
   #define APP_CMD_EXTENSION         "K64"
+#elif defined __M68K__
+  #define APP_CMD_EXTENSION         "M68"
 #else
-  #error "Target CPU not defined, use __ZPU__ or __K64F__"
+  #error "Target CPU not defined, use __ZPU__, __K64F__ or __M68K__"
 #endif
 #define HISTORY_FILE_ZPU            "zOS_zpu.hst"
 #define HISTORY_FILE_K64F           "zOS_k64f.hst"
+#define HISTORY_FILE_M68K           "zOS_m68k.hst"
 #define AUTOEXEC_FILE               "autoexec.bat"
 #define APP_CMD_LOAD_ADDR           OS_APPADDR
 #define APP_CMD_EXEC_ADDR           OS_APPADDR

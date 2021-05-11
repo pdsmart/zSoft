@@ -97,6 +97,17 @@ typedef int (*__compar_fn_t)(const void *, const void *);
 
 #endif
 
+#if __GNUC__ > 5
+__inline__ void abort(void) __ATTR_NORETURN__;
+
+/** The abort() function causes abnormal program termination to occur.
+    In the limited AVR environment, execution is effectively halted
+    by entering an infinite loop. */
+__inline__ void abort(void)
+{
+	for (;;);
+}
+#else
 extern __inline__ void abort(void) __ATTR_NORETURN__;
 
 /** The abort() function causes abnormal program termination to occur.
@@ -107,6 +118,7 @@ abort(void)
 {
 	for (;;);
 }
+#endif
 
 /** The abs() function computes the absolute value of the integer \c i.
    \note The abs() and labs() functions are builtins of gcc.
@@ -252,12 +264,19 @@ extern unsigned long strtoul(const char *__nptr, char **__endptr, int __base);
 
            \code strtol(nptr, (char **)NULL, 10); \endcode
 */
-extern __inline__ long atol(const char *__nptr) __ATTR_PURE__;
-extern __inline__ long
-atol(const char *__nptr)
+#if __GNUC__ > 5
+__inline__ long atol(const char *__nptr) __ATTR_PURE__;
+__inline__ long atol(const char *__nptr)
 {
 	return strtol(__nptr, (char **) 0, 10);
 }
+#else
+extern __inline__ long atol(const char *__nptr) __ATTR_PURE__;
+extern __inline__ long atol(const char *__nptr)
+{
+	return strtol(__nptr, (char **) 0, 10);
+}
+#endif
 
 /**
     The atoi() function converts the initial portion of the string

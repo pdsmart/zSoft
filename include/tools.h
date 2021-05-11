@@ -481,7 +481,7 @@ static t_helpstruct helpTable[] = {
     { CMD_MEM_CLEAR,        "<start> <end> [<word>]",             "Clear memory" },
     { CMD_MEM_COPY,         "<start> <end> <dst addr>",           "Copy memory" },
     { CMD_MEM_DIFF,         "<start> <end> <cmp addr>",           "Compare memory" },
-    { CMD_MEM_DUMP,         "[<start> [<end>] [<size>]]",         "Dump memory" },
+    { CMD_MEM_DUMP,         "[<start> [<len>] [<width>]]",        "Dump memory" },
     { CMD_MEM_EDIT_BYTES,   "<addr> <byte> [...]",                "Edit memory (Bytes)" },
     { CMD_MEM_EDIT_HWORD,   "<addr> <h-word> [...]",              "Edit memory (H-Word)" },
     { CMD_MEM_EDIT_WORD,    "<addr> <word> [...]",                "Edit memory (Word)" },
