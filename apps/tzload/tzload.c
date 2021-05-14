@@ -323,14 +323,14 @@ uint32_t app(uint32_t param1, uint32_t param2)
             printf("Mainboard only has 64K, please change the address and size.\n");
             return(19);
         }
-        if(fpga_flag == 1 && mzf_flag == 0 && (memAddr >= 0x1000000 || memAddr + memSize > 0x1000000))
+        if(fpga_flag == 1 && mzf_flag == 0 && (memAddr >= TZ_MAX_FPGA_MEM || memAddr + memSize > TZ_MAX_FPGA_MEM))
         {
-            printf("FPGA only has a 16M window, please change the address or size.\n");
+            printf("FPGA only has a %dM window, please change the address or size.\n", TZ_MAX_FPGA_MEM/1024000);
             return(20);
         }    
-        if(mainboard_flag == 0 && fpga_flag == 0 && mzf_flag == 0 && (memAddr >= 0x80000 || memAddr + memSize > 0x80000))
+        if(mainboard_flag == 0 && fpga_flag == 0 && mzf_flag == 0 && (memAddr >= TZ_MAX_Z80_MEM || memAddr + memSize > TZ_MAX_Z80_MEM))
         {
-            printf("tranZPUter board only has 512K, please change the address and size.\n");
+            printf("tranZPUter board only has %dK, please change the address and size.\n", TZ_MAX_Z80_MEM/1024);
             return(21);
         }
     }

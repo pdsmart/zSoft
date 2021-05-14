@@ -136,7 +136,7 @@ void showSoCConfig(void)
    #ifdef DRV_MMC
     printf("    MMC                      = %08lX\n", DRV_MMC);
    #endif    
-    puts("\n");
+  //puts("\n");
 }
 
 // Function to print out the ZPU Id in text form.

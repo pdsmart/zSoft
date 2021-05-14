@@ -67,28 +67,29 @@
 // an address to read 32bit word aligned value.
 //
 // Y+100000:Y+17FFFF = 512K Static RAM on the tranZPUter board. All reads are 32bit, all writes are 8, 16 or 32bit wide on word boundary.
-// Y+180000:Y+1BFFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 1 byte at a time. The physical address is word aligned per byte, so 4 bytes on the ZPU address space = 1
+//
+// Y+200000:Y+23FFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 1 byte at a time. The physical address is word aligned per byte, so 4 bytes on the ZPU address space = 1
 //                     byte on the Z80 address space. ie. 0x00780 ZPU = 0x0078 Z80.
-// Y+1C0000:Y+1FFFFF = 64K I/O space on the host mainboard or the underlying CPLD/FPGA. 64K address space is due to the Z80 ability to address 64K via the Accumulator being set in 15:8 and the port in 7:0.
+// Y+240000:Y+27FFFF = 64K I/O space on the host mainboard or the underlying CPLD/FPGA. 64K address space is due to the Z80 ability to address 64K via the Accumulator being set in 15:8 and the port in 7:0.
 //                     The ZPU, via a direct address will mimic this ability for hardware which requires it. ie. A write to 0x3F with 0x10 in the accumulator would yield an address of 0x103f.
 //                     All reads are 8 bit, writes are 8, 16 or 32bit wide on word boundary. The physical address is word aligned per byte, so 4 bytes on the ZPU address space = 1
 //                     byte on the Z80 address space. ie. 0x00780 ZPU = 0x0078 Z80.
 //
-// Y+200000:Y+20FFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 4 bytes at a time, a 32 bit read will return 4 consecutive bytes,1start of read must be on a 32bit word boundary.
-// Y+280000:Y+2FFFFF = 512K unassigned.
+// Y+280000:Y+28FFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 4 bytes at a time, a 32 bit read will return 4 consecutive bytes,1start of read must be on a 32bit word boundary.
+// Y+290000:Y+2FFFFF = Unassigned.
 //
 // Y = 2Mbyte sector in ZPU address space the Z80 bus interface is located. This is normally below the ZPU I/O sector and set to 0xExxxxx
 //
 //
 // 0x000000   00000000 - Normal Sharp MZ behaviour, Video Controller controlled by Z80 bus transactions.
 // Y+100000:Y+17FFFF = 512K Static RAM on the tranZPUter board. All reads are 32bit, all writes are 8, 16 or 32bit wide on word boundary.
-// Y+180000:Y+1BFFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 1 byte at a time. The physical address is word aligned per byte, so 4 bytes on the ZPU address space = 1
+// Y+200000:Y+23FFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 1 byte at a time. The physical address is word aligned per byte, so 4 bytes on the ZPU address space = 1
 //                     byte on the Z80 address space. ie. 0x00780 ZPU = 0x0078 Z80.
-// Y+1C0000:Y+1FFFFF = 64K I/O space on the host mainboard or the underlying CPLD/FPGA. 64K address space is due to the Z80 ability to address 64K via the Accumulator being set in 15:8 and the port in 7:0.
+// Y+240000:Y+27FFFF = 64K I/O space on the host mainboard or the underlying CPLD/FPGA. 64K address space is due to the Z80 ability to address 64K via the Accumulator being set in 15:8 and the port in 7:0.
 //                     The ZPU, via a direct address will mimic this ability for hardware which requires it. ie. A write to 0x3F with 0x10 in the accumulator would yield an address of 0xF103f.
 //                     All reads are 8 bit, writes are 8, 16 or 32bit wide on word boundary. The physical address is word aligned per byte, so 4 bytes on the ZPU address space = 1
 //                     byte on the Z80 address space. ie. 0x00780 ZPU = 0x0078 Z80.
-// Y+200000:Y+20FFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 4 bytes at a time, a 32 bit read will return 4 consecutive bytes,1start of read must be on a 32bit word boundary.
+// Y+290000:Y+28FFFF = 64K address space on host mainboard (ie. RAM/ROM/Memory mapped I/O) accessed 4 bytes at a time, a 32 bit read will return 4 consecutive bytes,1start of read must be on a 32bit word boundary.
 //
 // Where Y is the base address, 0xC00000 in this implementation.
 // -----------------------------------------------------------------------------------------------------------------------
@@ -267,9 +268,9 @@
 
 // Memory mapped I/O on the mainboard. These addresses are processed by the Z80BUS FSM which converts a 32bit ZPU cycle into several 8bi Z80 cycles.
 //
-#define MB_8BIT_BASE_ADDR            Z80_BUS_BASE_ADDR + 0x080000
-#define MB_32BIT_BASE_ADDR           Z80_BUS_BASE_ADDR + 0x100000
-#define MB_32BIT_IO_ADDR             Z80_BUS_BASE_ADDR + 0x0C0000
+#define MB_8BIT_BASE_ADDR            Z80_BUS_BASE_ADDR + 0x100000
+#define MB_32BIT_BASE_ADDR           Z80_BUS_BASE_ADDR + 0x180000
+#define MB_32BIT_IO_ADDR             Z80_BUS_BASE_ADDR + 0x140000
 
 // 8 Bit access addresses - used for writing and reading on a 32bit boundary with lower address lines set to 00. Writing is 1 byte only.
 #define MBADDR_8BIT_KEYPA            MB_8BIT_BASE_ADDR + (4*0xE000)      // Mainboard 8255 Port A

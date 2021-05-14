@@ -27,6 +27,7 @@
 //                                   Z80 direction wasnt always set correctly resulting in some strange
 //                                   and hard to debug behaviour.
 //                  May 2021       - Preparations to add the M68000 architecture.
+//                                 - Updates to allow Z80 to access 1Mbyte static RAM.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //                  USELOADB              - The Byte write command is implemented in hw/sw so use it.
@@ -120,8 +121,8 @@
 #endif
 
 // Version info.
-#define VERSION      "v1.2a"
-#define VERSION_DATE "17/04/2021"
+#define VERSION      "v1.3b"
+#define VERSION_DATE "11/05/2021"
 #define PROGRAM_NAME "zOS"
 
 // Utility functions.

@@ -11,6 +11,7 @@
 // History:         May 2020 - Initial write of the TranZPUter software.
 //                  Jul 2020 - Updates to accommodate v2.1 of the tranZPUter board.
 //                  Sep 2020 - Updates to accommodate v2.2 of the tranZPUter board.
+//                  May 2021 - Changes to use 512K-1Mbyte Z80 Static RAM, build time configurable.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -43,6 +44,8 @@
 #define DEFAULT_BUSREQ_TIMEOUT       5000                                // Timeout for a Z80 Bus request operation in milliseconds.
 #define DEFAULT_RESET_PULSE_WIDTH    500000                              // Pulse width of a reset signal in K64F clock ticks.
 #define TZFS_AUTOBOOT_FLAG           "0:\\TZFSBOOT.FLG"                  // Filename used as a flag, if this file exists in the SD root directory then TZFS is booted automatically.
+#define TZ_MAX_Z80_MEM               0x100000                            // Maximum Z80 memory available on the tranZPUter board.
+#define TZ_MAX_FPGA_MEM              0x1000000                           // Maximum addressable memory area inside the FPGA.
 
 // tranZPUter Memory Modes - select one of the 32 possible memory models using these constants.
 //
@@ -66,14 +69,14 @@
 #define TZMM_FPGA                    0x15                                // Open up access for the K64F to the FPGA resources such as memory. All other access to RAM or mainboard is blocked.
 #define TZMM_TZPUM                   0x16                                // Everything is on mainboard, no access to tranZPUter memory.
 #define TZMM_TZPU                    0x17                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory. K64F drives A18-A16 allowing full access to RAM.
-#define TZMM_TZPU0                   0x18                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 0 is selected.
-#define TZMM_TZPU1                   0x19                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 1 is selected.
-#define TZMM_TZPU2                   0x1A                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 2 is selected.
-#define TZMM_TZPU3                   0x1B                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 3 is selected.
-#define TZMM_TZPU4                   0x1C                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 4 is selected.
-#define TZMM_TZPU5                   0x1D                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 5 is selected.
-#define TZMM_TZPU6                   0x1E                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 6 is selected.
-#define TZMM_TZPU7                   0x1F                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 7 is selected.
+//#define TZMM_TZPU0                   0x18                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 0 is selected.
+//#define TZMM_TZPU1                   0x19                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 1 is selected.
+//#define TZMM_TZPU2                   0x1A                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 2 is selected.
+//#define TZMM_TZPU3                   0x1B                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 3 is selected.
+//#define TZMM_TZPU4                   0x1C                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 4 is selected.
+//#define TZMM_TZPU5                   0x1D                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 5 is selected.
+//#define TZMM_TZPU6                   0x1E                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 6 is selected.
+//#define TZMM_TZPU7                   0x1F                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory management mode is switched. tranZPUter RAM 64K block 7 is selected.
 
 // IO addresses on the tranZPUter or mainboard.
 //
@@ -687,7 +690,7 @@ typedef struct {
 //
 typedef struct {
   #if !defined(__APP__) || defined(__TZFLUPD__)
-    uint32_t                         svcControlAddr;                     // Address of the service control record within the 512K static RAM bank.
+    uint32_t                         svcControlAddr;                     // Address of the service control record within the Z80 static RAM bank.
     uint8_t                          refreshAddr;                        // Refresh address for times when the K64F must issue refresh cycles on the Z80 bus.
     uint8_t                          disableRefresh;                     // Disable refresh if the mainboard DRAM isnt being used.
     uint8_t                          runCtrlLatch;                       // Latch value the Z80 is running with.

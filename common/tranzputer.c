@@ -60,6 +60,7 @@
 //                  v1.6 Apr 2021  - Fixed a SD directory cache bug when switching between directories.
 //                                   The bug occurs due to an interaction between the heap management
 //                                   and threads.
+//                  v1.7 May 2021  - Changes to use 512K-1Mbyte Z80 Static RAM, build time configurable.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -1381,7 +1382,7 @@ uint8_t copyFromZ80(uint8_t *dst, uint32_t src, uint32_t size, enum TARGETS targ
 
     // Sanity checks.
     //
-    if((target == MAINBOARD && (src+size) > 0x10000) || (target == TRANZPUTER && (src+size) > 0x80000) || (target == FPGA && (src+size) > 0x1000000) )
+    if((target == MAINBOARD && (src+size) > 0x10000) || (target == TRANZPUTER && (src+size) > TZ_MAX_Z80_MEM) || (target == FPGA && (src+size) > TZ_MAX_FPGA_MEM) )
         return(1);
 
     // If the Z80 is in RUN mode, request the bus.
@@ -1466,7 +1467,7 @@ uint8_t copyToZ80(uint32_t dst, uint8_t *src, uint32_t size, enum TARGETS target
 
     // Sanity checks.
     //
-    if((target == MAINBOARD && (dst+size) > 0x10000) || (target == TRANZPUTER && (dst+size) > 0x80000) || (target == FPGA && (dst+size) > 0x1000000) )
+    if((target == MAINBOARD && (dst+size) > 0x10000) || (target == TRANZPUTER && (dst+size) > TZ_MAX_Z80_MEM) || (target == FPGA && (dst+size) > TZ_MAX_FPGA_MEM) )
         return(1);
 
     // If the Z80 is in RUN mode, request the bus.
@@ -1549,7 +1550,7 @@ void fillZ80Memory(uint32_t addr, uint32_t size, uint8_t data, enum TARGETS targ
 
     // Sanity checks.
     //
-    if((target == MAINBOARD && (addr+size) > 0x10000) || (target == TRANZPUTER && (addr+size) > 0x80000) || (target == FPGA && (addr+size) > 0x1000000) )
+    if((target == MAINBOARD && (addr+size) > 0x10000) || (target == TRANZPUTER && (addr+size) > TZ_MAX_Z80_MEM) || (target == FPGA && (addr+size) > TZ_MAX_FPGA_MEM) )
         return;
 
     // If the Z80 is in RUN mode, request the bus.
@@ -2254,7 +2255,7 @@ int memoryDumpZ80(uint32_t memaddr, uint32_t memsize, uint32_t dispaddr, uint8_t
 
     // Sanity checks.
     //
-    if((target == MAINBOARD && (memaddr+memsize) > 0x10000) || (target == TRANZPUTER && (memaddr+memsize) > 0x80000) || (target == FPGA && (memaddr+memsize) > 0x1000000))
+    if((target == MAINBOARD && (memaddr+memsize) > 0x10000) || (target == TRANZPUTER && (memaddr+memsize) > TZ_MAX_Z80_MEM) || (target == FPGA && (memaddr+memsize) > TZ_MAX_FPGA_MEM))
         return(1);
 
     // If the Z80 is in RUN mode, request the bus.
@@ -4216,7 +4217,7 @@ uint32_t getServiceAddr(void)
         // zOS
         addr = TZSVC_CMD_STRUCT_ADDR_ZOS;
     }
-//printf("getServiceAddr:%02x,%02x,%02x,%01x,%08lx,%02x\n", z80Control.runCtrlLatch, z80Control.curCtrlLatch, memoryMode, cpuConfig, addr, svcControl.cmd);
+printf("getServiceAddr:%02x,%02x,%02x,%01x,%08lx,%02x\n", z80Control.runCtrlLatch, z80Control.curCtrlLatch, memoryMode, cpuConfig, addr, svcControl.cmd);
     return(addr);
 }
 
@@ -4244,12 +4245,12 @@ void processServiceRequest(void)
         z80Control.svcControlAddr = getServiceAddr();
 
         // Get the command and associated parameters.
-        copyFromZ80((uint8_t *)&svcControl, z80Control.svcControlAddr, TZSVC_CMD_SIZE, z80Control.svcControlAddr > 0x80000 ? FPGA : TRANZPUTER);
+        copyFromZ80((uint8_t *)&svcControl, z80Control.svcControlAddr, TZSVC_CMD_SIZE, z80Control.svcControlAddr > TZ_MAX_Z80_MEM ? FPGA : TRANZPUTER);
 
         // Need to get the remainder of the data for the write operations.
         if(svcControl.cmd == TZSVC_CMD_WRITEFILE || svcControl.cmd == TZSVC_CMD_NEXTWRITEFILE || svcControl.cmd == TZSVC_CMD_WRITESDDRIVE || svcControl.cmd == TZSVC_CMD_SD_WRITESECTOR)
         {
-            copyFromZ80((uint8_t *)&svcControl.sector, z80Control.svcControlAddr+TZSVC_CMD_SIZE, TZSVC_SECTOR_SIZE, z80Control.svcControlAddr > 0x80000 ? FPGA : TRANZPUTER);
+            copyFromZ80((uint8_t *)&svcControl.sector, z80Control.svcControlAddr+TZSVC_CMD_SIZE, TZSVC_SECTOR_SIZE, z80Control.svcControlAddr > TZ_MAX_Z80_MEM ? FPGA : TRANZPUTER);
         }
 
         // Check this is a valid request.
@@ -4531,7 +4532,7 @@ void processServiceRequest(void)
         // Update the status in the service control record then copy it across to the Z80.
         //
         svcControl.result = status;
-        copyToZ80(z80Control.svcControlAddr, (uint8_t *)&svcControl, copySize, z80Control.svcControlAddr > 0x80000 ? FPGA : TRANZPUTER);
+        copyToZ80(z80Control.svcControlAddr, (uint8_t *)&svcControl, copySize, z80Control.svcControlAddr > TZ_MAX_Z80_MEM ? FPGA : TRANZPUTER);
 
         // Need to refresh the directory? Do this at the end of the routine so the Sharp MZ80A isnt held up.
         if(refreshCacheDir)
@@ -4696,7 +4697,7 @@ void setupTranZPUter(void)
     setupIRQ();
 
     // Start off by clearing active memory banks, the AS6C4008 chip holds random values at power on.
-    fillZ80Memory(0x000000, 0x80000, 0x00, TRANZPUTER);
+    fillZ80Memory(0x000000, TZ_MAX_Z80_MEM, 0x00, TRANZPUTER);
 }
 
 // Test routine. Add code here to test an item within the kernel. Anything accessing hardware generally has to call the kernel as it doesnt have real access.
