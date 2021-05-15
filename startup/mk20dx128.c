@@ -1009,6 +1009,7 @@ void _ZPUTA_Vectors(void)
     __asm__ volatile ("b copyFromZ80");
     __asm__ volatile ("b copyToZ80");
     __asm__ volatile ("b fillZ80Memory");
+    __asm__ volatile ("b testZ80Memory");
     __asm__ volatile ("b captureVideoFrame");
     __asm__ volatile ("b refreshVideoFrame");
     __asm__ volatile ("b loadVideoFrameBuffer");

@@ -61,6 +61,7 @@
 //                                   The bug occurs due to an interaction between the heap management
 //                                   and threads.
 //                  v1.7 May 2021  - Changes to use 512K-1Mbyte Z80 Static RAM, build time configurable.
+//                                   Added memory test routines to validate tranZPUter memory.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -1617,6 +1618,298 @@ void fillZ80Memory(uint32_t addr, uint32_t size, uint8_t data, enum TARGETS targ
         releaseZ80();
     }
     return;
+}
+
+// A memory test method extracted from the base zputa code for use with the tranZPUter card.
+//
+uint8_t testZ80Memory(uint32_t start, uint32_t end, uint32_t testsToDo, int verbose, enum TARGETS target)
+{
+    // Locals.
+    uint32_t       memPtr;
+    uint32_t       memPtr2;
+    unsigned long  count;
+    unsigned long  count2;
+    uint8_t        data;
+    uint8_t        readBack;
+    uint8_t        retCode = 0;
+    uint32_t       errCnt = 0;
+
+
+    // Sanity checks.
+    //
+    if((target == MAINBOARD && (start > 0x10000 || end > 0x10000)) || (target == TRANZPUTER && (start > TZ_MAX_Z80_MEM || end > TZ_MAX_Z80_MEM)) || (target == FPGA && (start > TZ_MAX_FPGA_MEM || end > TZ_MAX_FPGA_MEM)) )
+        return(1);
+
+    // If the Z80 is in RUN mode, request the bus.
+    // This mechanism allows for the Z80 BUS to remain under the tranZPUter control for multiple transactions.
+    //
+    if(z80Control.ctrlMode == Z80_RUN)
+    {
+        // Request the board according to the target flag, target = MAINBOARD then the mainboard is controlled otherwise the tranZPUter board.
+        if(target == TRANZPUTER || target == FPGA)
+        {
+            reqTranZPUterBus(DEFAULT_BUSREQ_TIMEOUT, target);
+        } else
+        {
+            reqMainboardBus(DEFAULT_BUSREQ_TIMEOUT);
+        }
+
+        // If successful, setup the control pins for upload mode.
+        //
+        if(z80Control.ctrlMode != Z80_RUN)
+        {
+            // Setup the pins to perform a write operation.
+            //
+            setZ80Direction(WRITE);
+           
+            // Setup the control latch to the required starting configuration.
+            writeCtrlLatch(z80Control.curCtrlLatch);
+        }
+    } else
+    {
+        // See if the bus needs changing.
+        //
+        enum CTRL_MODE newMode = (target == MAINBOARD) ? MAINBOARD_ACCESS : TRANZPUTER_ACCESS;
+        reqZ80BusChange(newMode);
+    }
+
+    // Ensure we dont close the bus connection during the tests.
+    z80Control.holdZ80 = 1;
+
+    // If we have bus control, complete the task,
+    //
+    if( z80Control.ctrlMode != Z80_RUN )
+    {
+        // Setup the pins to perform a write operation (after setting the latch to starting value).
+        //
+        writeCtrlLatch(z80Control.curCtrlLatch);
+
+        // Ascending value test write with readback.
+        if(testsToDo & 0x00000001 && retCode == 0)
+        {
+            if(verbose)
+                printf( "\rR/W 8bit ascending test pattern...    " );
+            memPtr = start;
+            data   = 0x00;
+            count  = end - start;
+            while( count-- && errCnt <= 20)
+            {
+                setZ80Direction(WRITE);
+                writeZ80Memory(memPtr, data, target);
+                setZ80Direction(READ);
+                if( (readBack=readZ80Memory(memPtr)) != data )
+                {
+                    if(verbose)
+                        printf( "\rError (8bit rwap) at 0x%08lX (%02x:%02x)\n", memPtr, readBack, data );
+                    if(errCnt++ == 20)
+                    {
+                        if(verbose)
+                            printf( "\rError count (8bit rwap) > 20, stopping test.\n");
+                        retCode = 10;
+                    }
+                }
+                memPtr++;
+                data++;
+                if( data >= 0xFF )
+                    data = 0x00;
+            }
+        }
+    
+        // Walking value test write with readback.
+        if(testsToDo & 0x00000002 && retCode == 0)
+        {
+            if(verbose)
+                printf( "\rR/W 8bit walking test pattern...    " );
+            memPtr = start;
+            data   = 0x55;
+            count  = end - start;
+            errCnt = 0;
+            while( count-- && errCnt <= 20)
+            {
+                setZ80Direction(WRITE);
+                writeZ80Memory(memPtr, data, target);
+                setZ80Direction(READ);
+                if( (readBack=readZ80Memory(memPtr)) != data )
+                {
+                    if(verbose)
+                        printf( "\rError (8bit rwwp) at 0x%08lX (%02x:%02x)\n", memPtr, readBack, data );
+                    if(errCnt++ == 20)
+                    {
+                        if(verbose)
+                            printf( "\rError count (8bit rwwp) > 20, stopping test.\n");
+                        retCode = 20;
+                    }
+                }
+                memPtr++;
+                if( data == 0x55 )
+                    data = 0xAA;
+                else
+                    data = 0x55;
+            }
+        }
+    
+        // Ascending value test write block then verify block.
+        if(testsToDo & 0x00000004 && retCode == 0)
+        {
+            if(verbose)
+                printf( "\rWrite 8bit ascending test pattern...    " );
+            memPtr = start;
+            data   = 0x00;
+            count  = end - start;
+            while( count-- )
+            {
+                setZ80Direction(WRITE);
+                writeZ80Memory(memPtr, data, target);
+                setZ80Direction(READ);
+                if( (readBack=readZ80Memory(memPtr)) != data )
+                {
+                    if(verbose)
+                        printf( "\rError (8bit wap) at 0x%08lX (%02x:%02x)\n", memPtr, readBack, data );
+                    if(errCnt++ == 20)
+                    {
+                        if(verbose)
+                            printf( "\rError count (8bit rwwp) > 20, stopping test.\n");
+                        retCode = 30;
+                    }
+                }
+                memPtr++;
+                data++;
+                if( data >= 0xFF )
+                    data = 0x00;
+            }
+    
+            if(verbose)
+                printf( "\rRead 8bit ascending test pattern...     " );
+            memPtr = start;
+            data   = 0x00;
+            count  = end - start;
+            errCnt = 0;
+            while( count-- && errCnt <= 20)
+            {
+                setZ80Direction(WRITE);
+                writeZ80Memory(memPtr, data, target);
+                setZ80Direction(READ);
+                if( (readBack=readZ80Memory(memPtr)) != data )
+                {
+                    if(verbose)
+                        printf( "\rError (8bit ap) at 0x%08lX (%02x:%02x)\n", memPtr, readBack, data );
+                    if(errCnt++ == 20)
+                    {
+                        if(verbose)
+                            printf( "\rError count (8bit ap) > 20, stopping test.\n");
+                        retCode = 40;
+                    }
+                } 
+                memPtr++;
+                data++;
+                if( data >= 0xFF )
+                    data = 0x00;
+            }
+        }
+    
+        // Walking value test write block then verify block.
+        if(testsToDo & 0x00000008 && retCode == 0)
+        {
+            if(verbose)
+                printf( "\rWrite 8bit walking test pattern...    " );
+            memPtr = start;
+            data   = 0x55;
+            count  = end - start;
+            setZ80Direction(WRITE);
+            while( count-- )
+            {
+                writeZ80Memory(memPtr, data, target);
+                if( data == 0x55 )
+                    data = 0xAA;
+                else
+                    data = 0x55;
+                memPtr++;
+            }
+    
+            if(verbose)
+                printf( "\rRead 8bit walking test pattern...     " );
+            memPtr = start;
+            data   = 0x55;
+            count  = end - start;
+            errCnt = 0;
+            setZ80Direction(READ);
+            while( count-- && errCnt <= 20)
+            {
+                if( (readBack=readZ80Memory(memPtr)) != data )
+                {
+                    if(verbose)
+                        printf( "\rError (8bit wp) at 0x%08lX (%02x:%02x)\n", memPtr, readBack, data );
+                    if(errCnt++ == 20)
+                    {
+                        if(verbose)
+                            printf( "\rError count (8bit wp) > 20, stopping test.\n");
+                        retCode = 50;
+                    }
+                }
+                memPtr++;
+                if( data == 0x55 )
+                    data = 0xAA;
+                else
+                    data = 0x55;
+            }
+        }
+    
+        // Echo and sticky bit test, more complex as the array has to be scanned for each set to see if any bit in the memory array
+        // has been set with a write to 1 location or bits are staying stuck.
+        if(testsToDo & 0x00000010 && retCode == 0)
+        {
+            if(verbose)
+                printf( "\r8bit echo and sticky bit test...     " );
+            memPtr = start;
+            count  = end - start;
+            errCnt = 0;
+            fillZ80Memory(start, end - start, 0x00, target);
+            while( count-- && errCnt <= 20)
+            {
+                setZ80Direction(WRITE);
+                writeZ80Memory(memPtr, 0xFF, target);
+    
+                memPtr2 = start;
+                count2  = end - start;
+                while( count2-- && errCnt <= 20)
+                {
+                    setZ80Direction(READ);
+                    readBack=readZ80Memory(memPtr2);
+                    if( readBack != 0x00 && readBack != readZ80Memory(memPtr))
+                    {
+                        if(verbose)
+                            printf( "\rError (8bit es) at 0x%08lx:0x%08lX (%02x:%02x)\n", memPtr, memPtr2, readBack, 0x00 );
+                        setZ80Direction(WRITE);
+                        writeZ80Memory(memPtr2, 0x00, target);
+                        if(errCnt++ == 20)
+                        {
+                            if(verbose)
+                                printf( "\rError count (8bit es) > 20, stopping test.\n");
+                            retCode = 60;
+                        }
+                    }
+                    memPtr2++;
+                }
+                setZ80Direction(WRITE);
+                writeZ80Memory(memPtr, 0x00, target);
+                memPtr++;
+            }
+        }
+    }
+     
+    // Release the bus if it is not being held for further transations.
+    //
+    z80Control.holdZ80 = 1;
+    if(z80Control.holdZ80 == 0 && z80Control.ctrlMode != Z80_RUN)
+    {
+        // Restore the control latch to its original configuration.
+        //
+        writeCtrlLatch(z80Control.runCtrlLatch);
+        releaseZ80();
+    }
+
+    // Return completion code.
+    return(retCode);
 }
 
 // A method to read the full video frame buffer from the Sharp MZ80A and store it in local memory (control structure). 
@@ -4217,7 +4510,7 @@ uint32_t getServiceAddr(void)
         // zOS
         addr = TZSVC_CMD_STRUCT_ADDR_ZOS;
     }
-printf("getServiceAddr:%02x,%02x,%02x,%01x,%08lx,%02x\n", z80Control.runCtrlLatch, z80Control.curCtrlLatch, memoryMode, cpuConfig, addr, svcControl.cmd);
+//printf("getServiceAddr:%02x,%02x,%02x,%01x,%08lx,%02x\n", z80Control.runCtrlLatch, z80Control.curCtrlLatch, memoryMode, cpuConfig, addr, svcControl.cmd);
     return(addr);
 }
 

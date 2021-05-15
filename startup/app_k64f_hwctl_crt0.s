@@ -346,6 +346,8 @@ BSS_END:    .word      __bss_section_end__
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      fillZ80Memory             funcAddr
             .equ funcAddr,  funcAddr+funcNext;
+            defapifunc      testZ80Memory             funcAddr
+            .equ funcAddr,  funcAddr+funcNext;
             defapifunc      captureVideoFrame         funcAddr
             .equ funcAddr,  funcAddr+funcNext;
             defapifunc      refreshVideoFrame         funcAddr

@@ -10,6 +10,7 @@
 // Copyright:       (c) 2019-21 Philip Smart <philip.smart@net2net.org>
 //
 // History:         January 2019   - Initial script written.
+//                  May 2021       - Added memory test tz command.
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // This source file is free software: you can redistribute it and#or modify
@@ -113,6 +114,7 @@ extern "C" {
 #define CMD_TZ_RESET              155              // tranZPUter memory reset tool.
 #define CMD_TZ_IO                 156              // tranZPUter memory IO read/write tool.
 #define CMD_TZ_FLUPD              157              // tranZPUter K64F FlashRAM update tool.
+#define CMD_TZ_MTEST              158              // tranZPUter memory test tool. 
 #define CMD_BADKEY                 -1
 #define CMD_NOKEY                   0 
 #define CMD_GROUP_DISK              1
@@ -391,24 +393,25 @@ static t_cmdstruct cmdTable[] = {
     #if (defined(BUILTIN_MISC_TEST) && BUILTIN_MISC_TEST == 1)    || (defined(BUILTIN_MISC_HELP) == 1 && BUILTIN_MISC_HELP == 1)
     { "test",       BUILTIN_MISC_TEST,        CMD_MISC_TEST,        CMD_GROUP_MISC },
     #endif
+  #if defined __SHARPMZ__
     #if (defined(BUILTIN_MISC_CLS) && BUILTIN_MISC_CLS == 1)    || (defined(BUILTIN_MISC_HELP) == 1 && BUILTIN_MISC_HELP == 1)
     { "cls",        BUILTIN_DEFAULT,          CMD_MISC_CLS,         CMD_GROUP_MISC },
     #endif
     #if (defined(BUILTIN_MISC_Z80) && BUILTIN_MISC_Z80 == 1)    || (defined(BUILTIN_MISC_HELP) == 1 && BUILTIN_MISC_HELP == 1)
     { "z80",        BUILTIN_DEFAULT,          CMD_MISC_Z80,         CMD_GROUP_MISC },
     #endif
+  #endif
     // Applications - most are not built in so dont need to be in this table or just placed here commented out for reference.
     { "tbasic",     BUILTIN_DEFAULT,          CMD_APP_TBASIC,       CMD_GROUP_APP },
     { "mbasic",     BUILTIN_DEFAULT,          CMD_APP_MBASIC,       CMD_GROUP_APP },
     { "kilo",       BUILTIN_DEFAULT,          CMD_APP_KILO,         CMD_GROUP_APP },
     { "ed",         BUILTIN_DEFAULT,          CMD_APP_ED,           CMD_GROUP_APP },
-  #if defined __SHARPMZ__
-  #endif
   #if defined __TRANZPUTER__
     { "tzpu",       BUILTIN_DEFAULT,          CMD_TZ_TZPU,          CMD_GROUP_TZ },
     { "tzload",     BUILTIN_DEFAULT,          CMD_TZ_LOAD,          CMD_GROUP_TZ },
     { "tzdump",     BUILTIN_DEFAULT,          CMD_TZ_DUMP,          CMD_GROUP_TZ },
     { "tzclear",    BUILTIN_DEFAULT,          CMD_TZ_CLEAR,         CMD_GROUP_TZ },
+    { "tzmtest",    BUILTIN_DEFAULT,          CMD_TZ_MTEST,         CMD_GROUP_TZ },
     { "tzclk",      BUILTIN_DEFAULT,          CMD_TZ_CLK,           CMD_GROUP_TZ },
     { "tzreset",    BUILTIN_DEFAULT,          CMD_TZ_RESET,         CMD_GROUP_TZ },
     { "tzio",       BUILTIN_DEFAULT,          CMD_TZ_IO,            CMD_GROUP_TZ },
@@ -528,6 +531,7 @@ static t_helpstruct helpTable[] = {
     { CMD_TZ_LOAD,          "--help",                             "Memory load/save tool" },
     { CMD_TZ_DUMP,          "--help",                             "Memory dump tool" },
     { CMD_TZ_CLEAR,         "--help",                             "Memory clearing tool" },
+    { CMD_TZ_MTEST,         "--help",                             "Memory testing tool" },
     { CMD_TZ_CLK,           "--help",                             "CPU Freq set tool" },
     { CMD_TZ_RESET,         "--help",                             "Remote reset tool" },
     { CMD_TZ_IO,            "--help",                             "I/O read/write tool" },

@@ -836,6 +836,7 @@ uint8_t                               inZ80IO(uint32_t);
 uint8_t                               writeZ80IO(uint32_t, uint8_t, enum TARGETS);
 uint8_t                               readZ80IO(uint32_t, enum TARGETS);
 void                                  fillZ80Memory(uint32_t, uint32_t, uint8_t, enum TARGETS);
+uint8_t                               testZ80Memory(uint32_t, uint32_t, uint32_t, int, enum TARGETS);
 void                                  captureVideoFrame(enum VIDEO_FRAMES, uint8_t);
 void                                  refreshVideoFrame(enum VIDEO_FRAMES, uint8_t, uint8_t);
 FRESULT                               loadVideoFrameBuffer(char *, enum VIDEO_FRAMES);

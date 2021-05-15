@@ -121,8 +121,8 @@
 #endif
 
 // Version info.
-#define VERSION      "v1.3b"
-#define VERSION_DATE "11/05/2021"
+#define VERSION      "v1.3"
+#define VERSION_DATE "15/05/2021"
 #define PROGRAM_NAME "zOS"
 
 // Utility functions.
