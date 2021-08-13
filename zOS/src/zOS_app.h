@@ -16,6 +16,7 @@
 //                                   enhanced to work with both the ZPU and K64F for the original purpose
 //                                   of testing but also now for end application programming using the 
 //                                   features of zOS where applicable.
+//                  June 2021      - Remove thread control variables.
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // This source file is free software: you can redistribute it and/or modify
@@ -45,11 +46,7 @@ typedef struct {
     BYTE                     Buff[512];                                // Working buffer
     DWORD                    Sector;                                   // Sector to read
   #if defined __K64F__
-	uint32_t volatile    *millis;                                  // Pointer to the K64F millisecond tick
-  #endif
-  #if defined __TRANZPUTER__
-	int                  ctrlThreadId;                             // Id of tranZPUter control thread.
-	uint8_t              ctrlThreadBusy;                           // Flag to indicate when the control thread cannot be disturbed.
+	uint32_t volatile        *millis;                                  // Pointer to the K64F millisecond tick
   #endif
 } GLOBALS;
 

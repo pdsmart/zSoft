@@ -133,6 +133,7 @@ FRESULT initSDCard(void)
 
 // Local memory dump routine for debug purposes.
 //
+#if 0
 int dumpMemory(uint32_t memaddr, uint32_t memsize, uint32_t memwidth, uint32_t dispaddr, uint8_t dispwidth)
 {
     uint8_t  displayWidth = dispwidth;;
@@ -245,6 +246,7 @@ int dumpMemory(uint32_t memaddr, uint32_t memsize, uint32_t memwidth, uint32_t d
     // Normal exit, return -1 to show no key pressed.
     return(-1);
 }
+#endif
 
 
 // Main entry and start point of a zOS/ZPUTA Application. Only 2 parameters are catered for and a 32bit return code, additional parameters can be added by changing the appcrt0.s
@@ -259,17 +261,17 @@ uint32_t app(uint32_t param1, uint32_t param2)
     //
     int             argc              = 0;
     int             help_flag         = 0;
-    int             uploadFNLen       = 0;
+  //int             uploadFNLen       = 0;
     int             debug_flag        = 0;
     int             verbose_flag      = 0;
     int             opt; 
     int             updateFNLen       = 0;
-    long            val               = 0;
+  //long            val               = 0;
     char           *argv[20];
     char           *ptr               = strtok((char *)param1, " ");
     char            updateFile[32];
-    uint32_t        fileSize;
-    uint32_t        readSize;
+    uint32_t        fileSize          = 0;
+    unsigned int    readSize          = 0;
     uint32_t        sizeToRead;
     uint32_t        bytesProcessed;
     flash_config_t  flashDriver;                                            // Flash driver Structure
@@ -399,11 +401,12 @@ uint32_t app(uint32_t param1, uint32_t param2)
         printf("%s %s\n\n", APP_NAME, VERSION);
         printf("Firmware update file: %s, size=%ld bytes\n\n", updateFile, fileSize);
 
-        printf("*******************************************************************************************************************\n");
+        printf("********************************************************************************************************************\n");
         printf("Flash will now commence, no further output will be made until the flash is successfully programmed.\n");
-        printf("If no further output is seen within 30 seconds, please assume the programming failed and make a hard reset.\n");
-        printf("If device doesnt restart use an OpenSDA or JTAG programmer to reprogram the OS.\n");
-        printf("*******************************************************************************************************************\n");
+        printf("If no further output is seen within 30 seconds, make a hard reset and verify the OS version. If the OS version hasnt\n");
+        printf("changed, reissue this command.\n");
+        printf("If device doesnt restart after a hard reset, use an OpenSDA or JTAG programmer to reprogram the OS.\n");
+        printf("********************************************************************************************************************\n");
 
         // Slight delay to allow the output to flush to the user serial console.
         uint32_t startTime = *G->millis;
@@ -483,7 +486,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
         // Just in case we have output connectivity. If the update doesnt change too much then we should maintain connectivity with the USB.
         if(flashResult != kStatus_FLASH_Success)
         {
-            printf("Error: Flash programming failed, addr:%ld, result:%d\n", bytesProcessed, flashResult);
+            printf("Error: Flash programming failed, addr:%ld, result:%ld\n", bytesProcessed, flashResult);
         }
 
         // Tidy up for exit.

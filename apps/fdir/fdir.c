@@ -94,7 +94,6 @@ uint32_t app(uint32_t param1, uint32_t param2)
     fr          = printDirectoryListing(pathName);
 
     if(fr) { printFSCode(fr); } else { retCode = 0; }
-
     return(retCode);
 }
 

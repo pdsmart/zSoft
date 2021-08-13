@@ -60,32 +60,12 @@ if [ "${ZPU_E115_BUILD}x" != "x" -a ${ZPU_E115_BUILD} = 1 ]; then
 fi
 
 echo "Building for K64F"
-./build.sh -C K64F -O zos  -N 0x10000 -d -T
+./build.sh -C K64F -O zos  -N 0x18000 -d -T
 if [ $? != 0 ]; then
 	echo "Error building K64F Distribution..."
 	exit 1
 fi
 cp -r build/SD/* SD/K64F/
-rsync -avh * psmart@192.168.15.205:${ROOT_DIR}/zSoft/
-if [ $? != 0 ]; then
-	echo "Error syncing K64F Distribution..."
-	exit 1
-fi
-# Simple mechanism to prevent remote build and programming of the K64F.
-diff ${ROOT_DIR}/zSoft/zOS/main.bin ${ROOT_DIR}/zSoft/zOS/main.bak
-if [ $? -ne 0 ]; then
-    echo "GO" >  ${ROOT_DIR}/zSoft/.dobuild
-    rsync -avh .dobuild psmart@192.168.15.205:${ROOT_DIR}/zSoft/
-    if [ $? != 0 ]; then
-        echo "Error syncing K64F Distribution..."
-        exit 1
-    fi
-fi
-cp ${ROOT_DIR}/zSoft/zOS/main.bin ${ROOT_DIR}/zSoft/zOS/main.bak
-)
-if [ $? != 0 ]; then
-	exit 1
-fi
 
 # Ensure the TZFS target directories exist
 k64fsddir=${ROOT_DIR}/zSoft/SD/K64F
@@ -118,6 +98,34 @@ if [ $? != 0 ]; then
 	echo "CPM disks assembly failed..."
 	exit 1
 fi
+)
+if [ $? != 0 ]; then
+	exit 1
+fi
+
+# Copy the files to the remote build server.
+cd ${ROOT_DIR}/zSoft
+rsync -avh * psmart@192.168.15.205:${ROOT_DIR}/zSoft/
+if [ $? != 0 ]; then
+	echo "Error syncing K64F Distribution..."
+	exit 1
+fi
+# Simple mechanism to prevent remote build and programming of the K64F.
+diff ${ROOT_DIR}/zSoft/zOS/main.bin ${ROOT_DIR}/zSoft/zOS/main.bak
+if [ $? -ne 0 ]; then
+    cd ${ROOT_DIR}/zSoft
+    echo "GO" >  ${ROOT_DIR}/zSoft/.dobuild
+    rsync -avh .dobuild psmart@192.168.15.205:${ROOT_DIR}/zSoft/
+    if [ $? != 0 ]; then
+        echo "Error syncing K64F Distribution..."
+        exit 1
+    fi
+fi
+cp ${ROOT_DIR}/zSoft/zOS/main.bin ${ROOT_DIR}/zSoft/zOS/main.bak
+)
+if [ $? != 0 ]; then
+	exit 1
+fi
 
 # Use copytosd.sh to transfer files to an SD card. Still need to copy the k64F files manually.
 # ---------------
@@ -136,7 +144,3 @@ fi
 #cp $tzfsdir/MZF/${TARGET}/*                 $k64fsddir/MZF/
 #cp $tzfsdir/BAS/*                           $k64fsddir/BAS/
 #cp $tzfsdir/CAS/*                           $k64fsddir/CAS/
-)
-if [ $? != 0 ]; then
-	exit 1
-fi

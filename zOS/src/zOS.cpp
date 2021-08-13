@@ -28,6 +28,13 @@
 //                                   and hard to debug behaviour.
 //                  May 2021       - Preparations to add the M68000 architecture.
 //                                 - Updates to allow Z80 to access 1Mbyte static RAM.
+//                  June 2021      - Tracking a very hard bug (enabling of the MZ80B emulation which wasnt
+//                                   quite working would cause disk access to randomly fail. The FPGA
+//                                   is isolated from the K64F and trying interrupts disabled yielded no
+//                                   success. Still ongoing but in the interim I disabled/removed threads
+//                                   which are normally the first port of call for strange behaviour
+//                                   but it was seen that using them for running the tranzputer service
+//                                   wasnt really needed as this could be based on a readline idle call.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //                  USELOADB              - The Byte write command is implemented in hw/sw so use it.
@@ -121,8 +128,8 @@
 #endif
 
 // Version info.
-#define VERSION      "v1.3"
-#define VERSION_DATE "15/05/2021"
+#define VERSION      "v1.32"
+#define VERSION_DATE "25/07/2021"
 #define PROGRAM_NAME "zOS"
 
 // Utility functions.
@@ -255,11 +262,11 @@ uint8_t getCommandLine(char *buf, uint8_t bufSize)
         // Standard line input from command line (UART).
       #if defined BUILTIN_READLINE
         #if defined __ZPU__
-        readline((uint8_t *)buf, bufSize, HISTORY_FILE_ZPU);
+        readline((uint8_t *)buf, bufSize, 0, HISTORY_FILE_ZPU,  NULL);
         #elif defined __K64F__
-        readline((uint8_t *)buf, bufSize, HISTORY_FILE_K64F);
+        readline((uint8_t *)buf, bufSize, 1, HISTORY_FILE_K64F, tranZPUterControl);
         #elif defined __M68K__
-        readline((uint8_t *)buf, bufSize, HISTORY_FILE_M68K);
+        readline((uint8_t *)buf, bufSize, 0, HISTORY_FILE_M68K, NULL);
         #endif
       #else
         ptr = buf;
@@ -271,57 +278,47 @@ uint8_t getCommandLine(char *buf, uint8_t bufSize)
 }
 
 #if defined __TRANZPUTER__
-// Thread to monitor and control the tranZPUter board offering needed services and monitoring.
+// Method to monitor and control the tranZPUter board provided services as requested.
 //
 void tranZPUterControl(void)
 {
     // Locals.
     uint8_t        ioAddr;
 
-    // Loop waiting on events and processing.
+    // If a user reset event occurred, reload the default ROM set.
     //
-    while(1)
+    if(isZ80Reset())
     {
-        // Indicate the thread is busy so we are not interrupted whilst servicing the tranZPUter.
+        // Reset tranZPUter board, set memory map and ROMS as necessary.
         //
-        G.ctrlThreadBusy = 1;
+        hardResetTranZPUter();
 
-        // If a user reset event occurred, reload the default ROM set.
-        //
-        if(isZ80Reset())
+        // Clear reset event which caused this reload.
+        clearZ80Reset();
+    }
+
+    // Has there been an IO instruction for a service request?
+    //
+    if(getZ80IO(&ioAddr) == 1)
+    {
+        switch(ioAddr)
         {
-            // Reset tranZPUter board, set memory map and ROMS as necessary.
+            // Service request. Actual data about the request is stored in the Z80 memory, so read the request and process.
             //
-            hardResetTranZPUter();
-
-            // Clear reset event which caused this reload.
-            clearZ80Reset();
-        }
-
-        // Has there been an IO instruction for a service request?
-        //
-        if(getZ80IO(&ioAddr) == 1)
-        {
-            switch(ioAddr)
-            {
-                // Service request. Actual data about the request is stored in the Z80 memory, so read the request and process.
+            case IO_TZ_SVCREQ:
+                // Handle the service request.
                 //
-                case IO_TZ_SVCREQ:
-                    // Handle the service request.
-                    //
-                    processServiceRequest();
-                    break;
+                processServiceRequest();
+                break;
 
-                default:
-                    break;
-            }
+            default:
+                break;
         }
-       
-        // Indicate the thread is free.
+    } else
+    {
+        // Idle time call the tranzputer service routine to handle non-event driven tasks.
         //
-        G.ctrlThreadBusy = 0;
-        threads.delay(1);
-        threads.yield();
+        TZPUservice();
     }
 }
 #endif
@@ -384,20 +381,8 @@ int cmdProcessor(void)
         // Setup memory on Z80 to default.
         loadTranZPUterDefaultROMS(CPUMODE_SET_Z80);
 
-        // Kludge logic. Threads interfere with the heap management and if sufficient space hasnt been allocated and the heap free pointer far enough advanced
-        // before the thread starts, svcCacheDir may fail on future cache operations of larger directories.
-        uint8_t *cache = (uint8_t *)malloc(32768);
-
         // Cache initial directory.
         svcCacheDir(TZSVC_DEFAULT_MZF_DIR, MZF, 1);
-
-        // If memory allocated previously, free it.
-        if(cache != NULL)
-            free(cache);
-
-        // For the tranZPUter, once we know that an SD card is available, launch seperate thread to handle hardware and service functionality.
-        // No SD card = no tranZPUter functionality.
-        G.ctrlThreadId = threads.addThread(tranZPUterControl, 0, 8192);
       #endif
     }
   #endif
@@ -822,18 +807,6 @@ int cmdProcessor(void)
 
                         if(diskInitialised && fsInitialised && strlen(src1FileName) < 16)
                         {
-                          #if defined __TRANZPUTER__
-                            // If running on the tranZPUter, suspend the control thread if we are to run a tranZPUter applet to prevent clashes with hardware.
-                            //
-                            if(src1FileName[0] == 't' && src1FileName[1] == 'z')
-                            {
-                                // Wait until the control thread has completed a loop then suspend thread for the duration of the app run to avoid clash for resources.
-                                //
-                                while(G.ctrlThreadBusy == 1);
-                                threads.suspend(G.ctrlThreadId);
-                            }
-                          #endif
-
                             // The user normally just types the command, but it is possible to type the drive and or path and or extension, so cater
                             // for these possibilities by trial. An alternate way is to disect the entered command but I think this would take more code space.
                             trying = 1;
@@ -878,11 +851,6 @@ int cmdProcessor(void)
                                     trying = 0;
                                 }
                             }
-
-                          #if defined __TRANZPUTER__
-                            // Restart the suspended control thread, the application should have left the 
-                            threads.restart(G.ctrlThreadId);
-                          #endif
                         }
                         if(!diskInitialised || !fsInitialised || retCode == 0xffffffff)
                         {

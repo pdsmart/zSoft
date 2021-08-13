@@ -154,7 +154,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
         {"verbose",       'v',  OPTPARSE_NONE},
         {0}
     };
-
+printf("GET ARGS\n");
     // Parse the command line options.
     //
     optparse_init(&options, argv);
@@ -209,6 +209,7 @@ uint32_t app(uint32_t param1, uint32_t param2)
         }  
     } 
 
+printf("VALIDATE ARGS\n");
     // Validate the input.
     if(help_flag == 1)
     {
@@ -234,9 +235,11 @@ uint32_t app(uint32_t param1, uint32_t param2)
     // Action the request, output a byte or read a byte.
     if(out_flag)
     {
+printf("Write IO\n");
         writeZ80IO(ioAddr, byte, mainboard_flag);
     } else
     {
+printf("Read IO\n");
         byte = readZ80IO(ioAddr, mainboard_flag);
         printf("%02X\n", byte);
     }

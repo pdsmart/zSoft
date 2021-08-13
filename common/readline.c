@@ -117,7 +117,7 @@
 static uint8_t llen, lpos;
 
 #define MAX_HISTORY_LINES 20
-static uint8_t *history[MAX_HISTORY_LINES] = {};
+static char    *history[MAX_HISTORY_LINES] = {};
 static uint8_t histFreeSlot = 0;
 
 #if defined __SD_CARD__
@@ -271,7 +271,7 @@ static bool find_key (const uint8_t c, int8_t *idx, const int8_t pos)
 }
 
 // Get next character from serial port.
-static bool next_char (enum keytype *type, uint8_t *val)
+static bool next_char (enum keytype *type, uint8_t *val, void (*fn)())
 {
     static int8_t idx, pos;
     int8_t keyIn;
@@ -303,6 +303,11 @@ static bool next_char (enum keytype *type, uint8_t *val)
                 *type = KEY_REGULAR;
                 return true;
             }
+        } else
+        {
+            // Calling the idle function whilst no data present.
+            if(fn != NULL)
+                fn();
         }
     } while(true);
 
@@ -330,15 +335,16 @@ void refreshLine(uint8_t *line, uint8_t llen, uint8_t *lpos)
 void addToHistory(char *buf, uint8_t bytes, uint8_t addHistFile)
 {
     // If the slot in history is already being used, free the memory before allocating a new block suitable to the new line size.
-    if(history[histFreeSlot] != NULL)
-        free(history[histFreeSlot]);
+    if((char *)history[histFreeSlot] != NULL)
+        free((char *)history[histFreeSlot]);
     history[histFreeSlot] = malloc(bytes+1);
+printf("History buffer@%08lx\n", history[histFreeSlot]);
 
     // If malloc was successful, populate the memory with the command entered.
-    if(history[histFreeSlot] != NULL)
+    if((char *)history[histFreeSlot] != NULL)
     {
         // Copy the command into history and update the pointer, wrap around if needed.
-        memcpy(history[histFreeSlot], buf, bytes+1);
+        memcpy((char *)history[histFreeSlot], buf, bytes+1);
         histFreeSlot++;
         if(histFreeSlot >= MAX_HISTORY_LINES)
             histFreeSlot = 0;
@@ -372,9 +378,9 @@ void clearHistory(void)
     //
     for(idx = 0; idx < MAX_HISTORY_LINES; idx++)
     {
-        if(history[idx] != NULL)
+        if((char *)history[idx] != NULL)
         {
-            free(history[idx]);
+            free((char *)history[idx]);
             history[idx] = NULL;
         }
     }
@@ -529,7 +535,7 @@ uint8_t localCommand(uint8_t *line, uint8_t *lineSize)
 }
 
 // Take characters from the Rx FIFO and create a line
-uint8_t *readline (uint8_t *line, int lineSize, const char *histFile)
+uint8_t *readline (uint8_t *line, int lineSize, int disableHistSave, const char *histFile, void (*fn)())
 {
     enum keytype   type;
     uint8_t        val = 0;
@@ -541,13 +547,16 @@ uint8_t *readline (uint8_t *line, int lineSize, const char *histFile)
     FRESULT      fr;
     int          bytes;
 
+    // Update the history save to disk feature.
+    histDisabled = disableHistSave;
+
     // If we havent opened the history file and read the contents AND file based history hasnt been disabled, open the history file and read
     // the contents.
     if(histFp == NULL && histDisabled == 0 && histFile != NULL)
     {
         // Allocate a file control block on the heap and open the history file.
         histFp = malloc(sizeof(FIL));
-
+printf("History heap:%08lx\n", histFp);
         if(histFp != NULL)
         {
             fr = f_open(histFp, histFile, FA_OPEN_ALWAYS | FA_WRITE | FA_READ);
@@ -594,7 +603,7 @@ uint8_t *readline (uint8_t *line, int lineSize, const char *histFile)
 
   #endif
 
-    while (next_char(&type, &val))
+    while (next_char(&type, &val, fn))
     {
         switch (type)
         {
@@ -734,24 +743,24 @@ uint8_t *readline (uint8_t *line, int lineSize, const char *histFile)
             case KEY_CTRL_P:
             case KEY_ARROWUP:
                 // Go to the previous history buffer.
-                if(histPnt == 0 && history[MAX_HISTORY_LINES-1] != NULL)
+                if(histPnt == 0 && (char *)history[MAX_HISTORY_LINES-1] != NULL)
                 {
                     llen = strlen((char *)history[MAX_HISTORY_LINES-1]);
-                    memcpy(line, history[MAX_HISTORY_LINES-1], llen+1);
+                    memcpy(line, (char *)history[MAX_HISTORY_LINES-1], llen+1);
                     histPnt = MAX_HISTORY_LINES-1;
                     refreshLine(line, llen, &lpos);
                 } else
-                if(history[histPnt-1] != NULL)
+                if(histPnt > 0 && histPnt < MAX_HISTORY_LINES && (char *)history[histPnt-1] != NULL)
                 {
                     llen = strlen((char *)history[histPnt-1]);
-                    memcpy(line, history[histPnt-1], llen+1);
+                    memcpy(line, (char *)history[histPnt-1], llen+1);
                     histPnt--;
                     refreshLine(line, llen, &lpos);
                 } else
-                if(history[histPnt] != NULL)
+                if(histPnt >=0 && histPnt < MAX_HISTORY_LINES && (char *)history[histPnt] != NULL)
                 {
                     llen = strlen((char *)history[histPnt]);
-                    memcpy(line, history[histPnt], llen+1);
+                    memcpy(line, (char *)history[histPnt], llen+1);
                     refreshLine(line, llen, &lpos);
                 }
                 break;
@@ -759,17 +768,17 @@ uint8_t *readline (uint8_t *line, int lineSize, const char *histFile)
             case KEY_CTRL_N:
             case KEY_ARROWDN:
                 // Go to the next history buffer.
-                if(histPnt == MAX_HISTORY_LINES-1 && history[0] != NULL)
+                if(histPnt == MAX_HISTORY_LINES-1 && (char *)history[0] != NULL)
                 {
                     llen = strlen((char *)history[0]);
-                    memcpy(line, history[0], llen+1);
+                    memcpy(line, (char *)history[0], llen+1);
                     histPnt = MAX_HISTORY_LINES-1;
                     refreshLine(line, llen, &lpos);
                 } else
-                if(history[histPnt+1] != NULL)
+                if(histPnt < MAX_HISTORY_LINES-1 && (char *)history[histPnt+1] != NULL)
                 {
                     llen = strlen((char *)history[histPnt+1]);
-                    memcpy(line, history[histPnt+1], llen+1);
+                    memcpy(line, (char *)history[histPnt+1], llen+1);
                     histPnt++;
                     refreshLine(line, llen, &lpos);
                 } else

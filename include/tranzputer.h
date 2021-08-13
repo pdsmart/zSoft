@@ -125,14 +125,14 @@
 #define CPUMODE_SET_Z80              0x00                                // Set the CPU to the hard Z80.
 #define CPUMODE_SET_T80              0x01                                // Set the CPU to the soft T80.
 #define CPUMODE_SET_ZPU_EVO          0x02                                // Set the CPU to the soft ZPU Evolution.
-#define CPUMODE_SET_AAA              0x04                                // Place holder for a future soft CPU.
+#define CPUMODE_SET_EMU_MZ           0x04                                // 
 #define CPUMODE_SET_BBB              0x08                                // Place holder for a future soft CPU.
 #define CPUMODE_SET_CCC              0x10                                // Place holder for a future soft CPU.
 #define CPUMODE_SET_DDD              0x20                                // Place holder for a future soft CPU.
 #define CPUMODE_IS_Z80               0x00                                // Status value to indicate if the hard Z80 available.
 #define CPUMODE_IS_T80               0x01                                // Status value to indicate if the soft T80 available.
 #define CPUMODE_IS_ZPU_EVO           0x02                                // Status value to indicate if the soft ZPU Evolution available.
-#define CPUMODE_IS_AAA               0x04                                // Place holder to indicate if a future soft CPU is available.
+#define CPUMODE_IS_EMU_MZ            0x04                                // Status value to indicate if the Sharp MZ Series Emulation is available.
 #define CPUMODE_IS_BBB               0x08                                // Place holder to indicate if a future soft CPU is available.
 #define CPUMODE_IS_CCC               0x10                                // Place holder to indicate if a future soft CPU is available.
 #define CPUMODE_IS_DDD               0x20                                // Place holder to indicate if a future soft CPU is available.
@@ -240,27 +240,31 @@
 #define MZ_80A_CPU_FREQ              2000000                             // CPU Speed of the Sharp MZ-80A
 #define MZ_700_CPU_FREQ              3580000                             // CPU Speed of the Sharp MZ-700
 #define MZ_80B_CPU_FREQ              4000000                             // CPU Speed of the Sharp MZ-80B
+#define MZ_2000_CPU_FREQ             4000000                             // CPU Speed of the Sharp MZ-2000
 #define MZ_800_CPU_FREQ              3580000                             // CPU Speed of the Sharp MZ-800
-#define MZ_ROM_SA1510_40C            "0:\\TZFS\\SA1510.ROM"              // Original 40 character Monitor ROM.
-#define MZ_ROM_SA1510_80C            "0:\\TZFS\\SA1510-8.ROM"            // Original Monitor ROM patched for 80 character screen mode.
-#define MZ_ROM_1Z_013A_40C           "0:\\TZFS\\1Z-013A.ROM"             // Original 40 character Monitor ROM for the Sharp MZ700.
-#define MZ_ROM_1Z_013A_80C           "0:\\TZFS\\1Z-013A-8.ROM"           // Original Monitor ROM patched for the Sharp MZ700 patched for 80 column mode.
-#define MZ_ROM_1Z_013A_KM_40C        "0:\\TZFS\\1Z-013A-KM.ROM"          // Original 40 character Monitor ROM for the Sharp MZ700 with keyboard remapped for the MZ80A.
-#define MZ_ROM_1Z_013A_KM_80C        "0:\\TZFS\\1Z-013A-KM-8.ROM"        // Original Monitor ROM patched for the Sharp MZ700 with keyboard remapped for the MZ80A and patched for 80 column mode.
-#define MZ_ROM_9Z_504M_COMBINED      "0:\\TZFS\\MZ800_IPL.rom"           // Original MZ-800 BIOS which comprises the 1Z_013B BIOS, 9Z_504M IPL, CGROM and IOCS.
-#define MZ_ROM_9Z_504M               "0:\\TZFS\\MZ800_9Z_504M.rom"       // Modified MZ-800 9Z_504M IPL to contain a select TZFS option.
-#define MZ_ROM_1Z_013B               "0:\\TZFS\\MZ800_1Z_013B.rom"       // Original MZ-800 1Z_013B MZ-700 compatible BIOS.
-#define MZ_ROM_800_CGROM             "0:\\TZFS\\MZ800_CGROM.ORI"         // Original MZ-800 Character Generator ROM.
-#define MZ_ROM_800_IOCS              "0:\\TZFS\\MZ800_IOCS.rom"          // Original MZ-800 common IOCS bios.
-#define MZ_ROM_MZ80B_IPL             "0:\\TZFS\\MZ80B_IPL.ROM"           // Original IPL ROM for the Sharp MZ-80B.
-#define MZ_ROM_TZFS                  "0:\\TZFS\\TZFS.ROM"                // tranZPUter Filing System ROM.
-#define MZ_ROM_ZPU_ZOS               "0:\\ZOS\\ZOS.ROM"                  // zOS for the ZPU running on the tranZPUter SW-700 board.
+
+#define MZ_ROM_SP1002                "0:\\TZFS\\sp1002.rom"              // Original MZ-80K ROM
+#define MZ_ROM_SA1510_40C            "0:\\TZFS\\sa1510.rom"              // Original 40 character Monitor ROM.
+#define MZ_ROM_SA1510_80C            "0:\\TZFS\\sa1510-8.rom"            // Original Monitor ROM patched for 80 character screen mode.
+#define MZ_ROM_1Z_013A_40C           "0:\\TZFS\\1z-013a.rom"             // Original 40 character Monitor ROM for the Sharp MZ700.
+#define MZ_ROM_1Z_013A_80C           "0:\\TZFS\\1z-013a-8.rom"           // Original Monitor ROM patched for the Sharp MZ700 patched for 80 column mode.
+#define MZ_ROM_1Z_013A_KM_40C        "0:\\TZFS\\1z-013a-km.rom"          // Original 40 character Monitor ROM for the Sharp MZ700 with keyboard remapped for the MZ80A.
+#define MZ_ROM_1Z_013A_KM_80C        "0:\\TZFS\\1z-013a-km-8.rom"        // Original Monitor ROM patched for the Sharp MZ700 with keyboard remapped for the MZ80A and patched for 80 column mode.
+#define MZ_ROM_9Z_504M_COMBINED      "0:\\TZFS\\mz800_ipl.rom"           // Original MZ-800 BIOS which comprises the 1Z_013B BIOS, 9Z_504M IPL, CGROM and IOCS.
+#define MZ_ROM_9Z_504M               "0:\\TZFS\\mz800_9z_504m.rom"       // Modified MZ-800 9Z_504M IPL to contain a select TZFS option.
+#define MZ_ROM_1Z_013B               "0:\\TZFS\\mz800_1z_013b.rom"       // Original MZ-800 1Z_013B MZ-700 compatible BIOS.
+#define MZ_ROM_800_CGROM             "0:\\TZFS\\mz800_cgrom.ori"         // Original MZ-800 Character Generator ROM.
+#define MZ_ROM_800_IOCS              "0:\\TZFS\\mz800_iocs.rom"          // Original MZ-800 common IOCS bios.
+#define MZ_ROM_MZ80B_IPL             "0:\\TZFS\\mz80b_ipl.rom"           // Original IPL ROM for the Sharp MZ-80B.
+#define MZ_ROM_MZ2000_IPL            "0:\\TZFS\\mz2000_ipl.rom"          // Original IPL ROM for the Sharp MZ-2000.
+#define MZ_ROM_TZFS                  "0:\\TZFS\\tzfs.rom"                // tranZPUter Filing System ROM.
+#define MZ_ROM_ZPU_ZOS               "0:\\ZOS\\zos.rom"                  // zOS for the ZPU running on the tranZPUter SW-700 board.
 
 // CP/M constants.
 //
 #define CPM_MAX_DRIVES               16                                  // Maximum number of drives in CP/M.
-#define CPM_FILE_CCPBDOS             "0:\\CPM\\CPM22.BIN"                // CP/M CCP and BDOS for warm start reloads.
-#define CPM_DRIVE_TMPL               "0:\\CPM\\CPMDSK%02u.RAW"           // Template for CPM disk drives stored on the SD card.
+#define CPM_FILE_CCPBDOS             "0:\\CPM\\cpm22.bin"                // CP/M CCP and BDOS for warm start reloads.
+#define CPM_DRIVE_TMPL               "0:\\CPM\\cpmdsk%02u.raw"           // Template for CPM disk drives stored on the SD card.
 #define CPM_SECTORS_PER_TRACK        32                                  // Number of sectors in a track on the virtual CPM disk.
 #define CPM_TRACKS_PER_DISK          1024                                // Number of tracks on a disk.
 
@@ -294,6 +298,7 @@
 #define TZSVC_CMD_LOAD700BIOS80      0x23                                // Service command requesting that the MZ700 1Z-013A 80 column patched BIOS is loaded.
 #define TZSVC_CMD_LOAD80BIPL         0x24                                // Service command requesting the MZ-80B IPL is loaded.
 #define TZSVC_CMD_LOAD800BIOS        0x25                                // Service command requesting that the MZ800 9Z-504M BIOS is loaded.
+#define TZSVC_CMD_LOAD2000IPL        0x26                                // Service command requesting the MZ-2000 IPL is loaded.
 #define TZSVC_CMD_LOADBDOS           0x30                                // Service command to reload CPM BDOS+CCP.
 #define TZSVC_CMD_ADDSDDRIVE         0x31                                // Service command to attach a CPM disk to a drive number.
 #define TZSVC_CMD_READSDDRIVE        0x32                                // Service command to read an attached SD file as a CPM disk drive.
@@ -304,6 +309,14 @@
 #define TZSVC_CMD_CPU_SETZ80         0x50                                // Service command to switch to the external Z80 hard cpu.
 #define TZSVC_CMD_CPU_SETT80         0x51                                // Service command to switch to the internal T80 soft cpu.
 #define TZSVC_CMD_CPU_SETZPUEVO      0x52                                // Service command to switch to the internal ZPU Evolution cpu.
+#define TZSVC_CMD_EMU_SETMZ80K       0x53                                // Service command to switch to the internal Sharp MZ Series Emulation of the MZ80K.
+#define TZSVC_CMD_EMU_SETMZ80C       0x54                                // ""                             ""                       ""                 MZ80C.
+#define TZSVC_CMD_EMU_SETMZ1200      0x55                                // ""                             ""                       ""                 MZ1200.
+#define TZSVC_CMD_EMU_SETMZ80A       0x56                                // ""                             ""                       ""                 MZ80A.
+#define TZSVC_CMD_EMU_SETMZ700       0x57                                // ""                             ""                       ""                 MZ700.
+#define TZSVC_CMD_EMU_SETMZ800       0x58                                // ""                             ""                       ""                 MZ800.
+#define TZSVC_CMD_EMU_SETMZ80B       0x59                                // ""                             ""                       ""                 MZ80B.
+#define TZSVC_CMD_EMU_SETMZ2000      0x5A                                // ""                             ""                       ""                 MZ2000.
 #define TZSVC_CMD_SD_DISKINIT        0x60                                // Service command to initialise and provide raw access to the underlying SD card.
 #define TZSVC_CMD_SD_READSECTOR      0x61                                // Service command to provide raw read access to the underlying SD card.
 #define TZSVC_CMD_SD_WRITESECTOR     0x62                                // Service command to provide raw write access to the underlying SD card.
@@ -343,6 +356,17 @@
 #define MZF_EXECADDR                 0x16                                // Exec address of program.
 #define MZF_COMMENT                  0x18                                // Comment, used for details of the file or startup code.
 #define MZF_COMMENT_LEN              104                                 // Length of the comment field.
+#define CMT_TYPE_OBJCD               0x001                               // MZF contains a binary object.
+#define CMT_TYPE_BTX1CD              0x002                               // MZF contains a BASIC program.
+#define CMT_TYPE_BTX2CD              0x005                               // MZF contains a BASIC program.
+#define CMT_TYPE_TZOBJCD0            0x0F8                               // MZF contains a TZFS binary object for page 0.
+#define CMT_TYPE_TZOBJCD1            0x0F9 
+#define CMT_TYPE_TZOBJCD2            0x0FA 
+#define CMT_TYPE_TZOBJCD3            0x0FB 
+#define CMT_TYPE_TZOBJCD4            0x0FC 
+#define CMT_TYPE_TZOBJCD5            0x0FD 
+#define CMT_TYPE_TZOBJCD6            0x0FE 
+#define CMT_TYPE_TZOBJCD7            0x0FF                               // MZF contains a TZFS binary object for page 7.
 
 // Constants for other handled file formats.
 //
@@ -681,7 +705,7 @@ typedef struct {
     //uint8_t                          bD000;                              // Block D000:FFFF mode.
 } t_mz700;
 
-// Structure to maintain all MZ-80B hardware control information in oder to emulate the machine as near as possible.
+// Structure to maintain all MZ-80B hardware control information in order to emulate the machine as near as possible.
 typedef struct {
     uint32_t                         config;                             // Compacted control register, 31:19 = reserved, 18 = Inhibit mode, 17 = Upper D000:FFFF is RAM (=1), 16 = Lower 0000:0FFF is RAM (=1), 15:8 = old memory mode, 7:0 = current memory mode.
 } t_mz80b;
@@ -696,13 +720,14 @@ typedef struct {
     uint8_t                          runCtrlLatch;                       // Latch value the Z80 is running with.
     uint8_t                          curCtrlLatch;                       // Latch value set during tranZPUter access of the Z80 bus.
     uint8_t                          holdZ80;                            // A flag to hold the Z80 bus when multiple transactions need to take place.
+    uint8_t                          emuMZactive;                        // An emulation is active in the FPGA.
     uint8_t                          videoRAM[2][2048];                  // Two video memory buffer frames, allows for storage of original frame in [0] and working frame in [1].
     uint8_t                          attributeRAM[2][2048];              // Two attribute memory buffer frames, allows for storage of original frame in [0] and working frame in [1].
 
     enum CTRL_MODE                   ctrlMode;                           // Mode of control, ie normal Z80 Running, controlling mainboard, controlling tranZPUter.
     enum BUS_DIRECTION               busDir;                             // Direction the bus has been configured for.
     enum MACHINE_TYPES               hostType;                           // The underlying host machine, 0 = Sharp MZ-80A, 1 = MZ-700, 2 = MZ-80B
-    enum MACHINE_TYPES               machineMode;                        // Machine compatibility, 0 = Sharp MZ-80A, 1 = MZ-700, 2 = MZ-80B
+    enum MACHINE_TYPES               machineMode;                        // Machine compatibility, 0 = Sharp MZ-80K, 1 = MZ-80C, 2 = MZ-1200, 3 = MZ-80A, 4 = MZ-700, 5 = MZ-800, 6 = MZ-80B, 7 = MZ-2000
     t_mz700                          mz700;                              // MZ700 emulation control to detect IO commands and adjust the memory map accordingly.
     t_mz80b                          mz80b;                              // MZ-80B emulation control to detect IO commands and adjust the memory map and I/O forwarding accordingly.
 
@@ -831,6 +856,8 @@ uint8_t                               copyFromZ80(uint8_t *, uint32_t, uint32_t,
 uint8_t                               copyToZ80(uint32_t, uint8_t *, uint32_t, enum TARGETS);
 uint8_t                               writeZ80Memory(uint32_t, uint8_t, enum TARGETS);
 uint8_t                               readZ80Memory(uint32_t);
+uint8_t                               writeZ80Array(uint32_t, uint8_t *, uint32_t, enum TARGETS);
+uint8_t                               readZ80Array(uint32_t, uint8_t *, uint32_t, enum TARGETS);
 uint8_t                               outZ80IO(uint32_t, uint8_t);
 uint8_t                               inZ80IO(uint32_t);
 uint8_t                               writeZ80IO(uint32_t, uint8_t, enum TARGETS);
@@ -873,6 +900,7 @@ uint8_t                               svcReadCPMDrive(void);
 uint8_t                               svcWriteCPMDrive(void);
 uint32_t                              getServiceAddr(void);
 void                                  processServiceRequest(void);
+void                                  TZPUservice(void);
 uint8_t                               loadBIOS(const char *biosFileName, uint8_t machineMode, uint32_t loadAddr);
 void                                  hardResetTranZPUter(void);
 void                                  loadTranZPUterDefaultROMS(uint8_t);
@@ -881,6 +909,9 @@ uint8_t                               testTZFSAutoBoot(void);
 void                                  setHost(void);
 void                                  setupTranZPUter(void);
 void                                  testRoutine(void);
+
+// Sharp MZ Series emulation methods.
+void                                  emuMZ(uint8_t);
 
 #if defined __APP__
 int                                   memoryDumpZ80(uint32_t, uint32_t, uint32_t, uint8_t, uint8_t, enum TARGETS);

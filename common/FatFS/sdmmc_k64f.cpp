@@ -171,6 +171,7 @@ DRESULT disk_read ( BYTE drv,            /* Physical drive nmuber (0) */
     // call the NXP method to read in a sector, loop for required number of sectors.
     do {
         status = SDHC_CardReadBlock(buff, sector);
+
         buff += 512;
         sector++;
     } while(status == 0 && --count);
@@ -188,7 +189,7 @@ DRESULT disk_write ( BYTE drv,            /* Physical drive nmuber (0) */
                      UINT count       )   /* Sector count (1..128) */
 {
     int   status;
-
+printf("Disk write:%02x,%08lx,%08lx,%d\n", drv, buff, sector, count);
     // Check the drive, if it hasnt been initialised then exit.
     if (disk_status(drv) & STA_NOINIT) return RES_NOTRDY;
  

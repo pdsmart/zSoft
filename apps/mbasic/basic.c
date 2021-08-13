@@ -830,7 +830,7 @@ int doinput(int curline)
     {
         case FLTID:
             do {
-                readline((uint8_t *)buff, sizeof(buff), NULL);
+                readline((uint8_t *)buff, sizeof(buff), 0, NULL, NULL);
                 if(buff[0] == CTRL_C)
                 {
                     return(-1);
@@ -847,7 +847,7 @@ int doinput(int curline)
             }
 
             // Readline will return entered data, null terminated, upto endof limit given.
-            readline((uint8_t *)buff, sizeof(buff), NULL);
+            readline((uint8_t *)buff, sizeof(buff), 0, NULL, NULL);
             if(buff[0] == CTRL_C)
             {
                 return(-1);

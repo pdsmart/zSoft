@@ -163,8 +163,8 @@
 // 
 
 // Base addresses and sizes within the FPGA/Video Controller.
-#define VIDEO_BASE_ADDR              0xC80000
-#define Z80_BUS_BASE_ADDR            0xD00000
+#define VIDEO_BASE_ADDR              0xD00000                            // Base address of the Video Controller.
+#define Z80_BUS_BASE_ADDR            0xE00000                            // Base address of the Z80 FSM
 #define VIDEO_VRAM_BASE_ADDR         VIDEO_BASE_ADDR + 0x01D000          // Base address of the character video RAM using direct addressing.
 #define VIDEO_VRAM_SIZE              0x800                               // Size of the video RAM.
 #define VIDEO_ARAM_BASE_ADDR         VIDEO_BASE_ADDR + 0x01D800          // Base address of the character attribute RAM using direct addressing.
@@ -266,11 +266,11 @@
 #define VCADDR_32BIT_SCLDSP          VC_32BIT_BASE_ADDR + (4*0xE200)     // Hardware scroll, a read to each location adds 8 to the start of the video access address therefore creating hardware scroll. 00 - reset to power up
 #define VCADDR_32BIT_SCLBASE         VC_32BIT_BASE_ADDR + (4*0xE2)       // High byte scroll base.     
 
-// Memory mapped I/O on the mainboard. These addresses are processed by the Z80BUS FSM which converts a 32bit ZPU cycle into several 8bi Z80 cycles.
+// Memory mapped I/O on the mainboard. These addresses are processed by the Z80BUS FSM which converts a 32bit ZPU cycle into several 8bit Z80 cycles.
 //
-#define MB_8BIT_BASE_ADDR            Z80_BUS_BASE_ADDR + 0x100000
-#define MB_32BIT_BASE_ADDR           Z80_BUS_BASE_ADDR + 0x180000
-#define MB_32BIT_IO_ADDR             Z80_BUS_BASE_ADDR + 0x140000
+#define MB_8BIT_BASE_ADDR            Z80_BUS_BASE_ADDR + 0x000000
+#define MB_32BIT_BASE_ADDR           Z80_BUS_BASE_ADDR + 0x080000
+#define MB_32BIT_IO_ADDR             Z80_BUS_BASE_ADDR + 0x040000
 
 // 8 Bit access addresses - used for writing and reading on a 32bit boundary with lower address lines set to 00. Writing is 1 byte only.
 #define MBADDR_8BIT_KEYPA            MB_8BIT_BASE_ADDR + (4*0xE000)      // Mainboard 8255 Port A

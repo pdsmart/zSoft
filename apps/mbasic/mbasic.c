@@ -212,7 +212,7 @@ int cmdProcessor()
 
         // Get command.
         //
-        readline((uint8_t *)buf, sizeof(buf), HISTORY_FILE);
+        readline((uint8_t *)buf, sizeof(buf), 0, HISTORY_FILE, NULL);
         paramptr = buf;
 
         // Refresh the ordered basic script from the editor buffer prior to commands operating on it.

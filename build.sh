@@ -526,7 +526,7 @@ elif [ "${CPUTYPE}" = "__K64F__" ]; then
     # Calculate the heap, stack and RAM start address vars.
     OS_RAM_ENDADDR=0x20030000
     OS_RAM_MASK=0x3FFFF000
-    OS_RAM_OSMEM=0x005000
+    OS_RAM_OSMEM=0x010000
     subHex ${OS_RAM_ENDADDR} 8                    OS_STACK_ENDADDR
     subHex ${OS_RAM_ENDADDR} ${OS_STACK_SIZE}     OS_STACK_STARTADDR
     roundHex ${OS_STACK_STARTADDR} ${OS_RAM_MASK} OS_STACK_STARTADDR

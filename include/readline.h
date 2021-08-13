@@ -43,7 +43,7 @@
     extern "C" {
 #endif
 
-uint8_t *readline (uint8_t *, int, const char *);
+uint8_t *readline (uint8_t *, int, int, const char *, void (*)());
 
 
 #ifdef __cplusplus

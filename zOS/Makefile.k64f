@@ -101,6 +101,8 @@ INCLUDE_DIR     = $(CURDIR)/../include
 LIB_DIR         = $(CURDIR)/../libraries/lib
 LIB_INCLUDE_DIR = $(CURDIR)/../libraries/include
 FATFS_DIR       = $(CURDIR)/../common/FatFS
+FONTS_DIR       = $(CURDIR)/../common/fonts
+BITMAPS_DIR     = $(CURDIR)/../common/bitmaps
 
 # names for the compiler programs
 BASE	        = $(abspath $(COMPILERPATH))/arm-none-eabi
@@ -201,7 +203,9 @@ CRT0_ASM_FILES := #$(STARTUP_DIR)/zos_k64f_crt0.s
 CRT0_C_FILES   := $(STARTUP_DIR)/mk20dx128.c
 COMMON_FILES   := $(COMMON_DIR)/utils.c $(COMMON_DIR)/k64f_soc.c $(COMMON_DIR)/interrupts.c $(COMMON_DIR)/ps2.c $(COMMON_DIR)/readline.c
 ifeq ($(__TRANZPUTER__),1)
-  COMMON_FILES += $(COMMON_DIR)/tranzputer.c
+  COMMON_FILES += $(COMMON_DIR)/tranzputer.c $(COMMON_DIR)/fonts.c $(COMMON_DIR)/bitmaps.c $(COMMON_DIR)/osd.c $(COMMON_DIR)/emumz.c
+  COMMON_FILES += $(wildcard $(FONTS_DIR)/*.c)
+  COMMON_FILES += $(wildcard $(BITMAPS_DIR)/*.c)
 endif
 FATFS_C_FILES  := $(FATFS_DIR)/ff.c
 ifeq ($(__TRANZPUTER__),1)
