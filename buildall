@@ -4,7 +4,12 @@
 # TARGET=MZ-700
 # TARGET=MZ-80A
 
+<<<<<<< HEAD
 ZPU_SHARPMZ_BUILD=1
+=======
+TARGET=MZ-80A
+ZPU_SHARPMZ_BUILD=0
+>>>>>>> 5a59ff2f96064433b95b8489dbe7e9b175b0accc
 #ZPU_SHARPMZ_APPADDR=0x100000
 #ZPU_SHARPMZ_APPSIZE=0x70000
 #ZPU_SHARPMZ_HEAPSIZE=0x8000
@@ -59,11 +64,28 @@ if [ "${ZPU_E115_BUILD}x" != "x" -a ${ZPU_E115_BUILD} = 1 ]; then
     cp -r build/SD/* SD/Dev/
 fi
 
+<<<<<<< HEAD
 echo "Building for K64F"
 ./build.sh -C K64F -O zos  -N 0x18000 -d -T
 if [ $? != 0 ]; then
 	echo "Error building K64F Distribution..."
 	exit 1
+=======
+if [ "${TARGET}x" != "x" -a "${TARGET}" = "MZ-80A" ]; then
+    echo "Building for K64F on MZ-80A"
+    ./build.sh -C K64F -O zos  -N 0x10000 -d -T
+    if [ $? != 0 ]; then
+    	echo "Error building K64F Distribution..."
+    	exit 1
+    fi
+else
+    echo "Building for K64F"
+    ./build.sh -C K64F -O zos  -N 0x18000 -d -T
+    if [ $? != 0 ]; then
+    	echo "Error building K64F Distribution..."
+    	exit 1
+    fi
+>>>>>>> 5a59ff2f96064433b95b8489dbe7e9b175b0accc
 fi
 cp -r build/SD/* SD/K64F/
 

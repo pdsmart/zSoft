@@ -73,13 +73,20 @@ zputa/*.i
 zputa/*.ii
 zputa/*.s
 zOS/main.save
+<<<<<<< HEAD
 /tzio/
 .dobuild
 SD/
+=======
+.dobuild
+SD/
+common/osd.sav.c
+>>>>>>> 5a59ff2f96064433b95b8489dbe7e9b175b0accc
 frdm/
 frdmk64f_usb_msd_host_bootloader_mcux.zip
 frdmk64f_usb_msd_host_bootloader_mcux/
 getopt_long.c
+<<<<<<< HEAD
 libraries/include/optparse.h
 minicom.cap
 startup/app_zos_zpu.tmpl2
@@ -87,4 +94,12 @@ zOS/main.bak
 common/osd.sav.c
 rrrr
 startup/app_zos_zpu.tmpl3
+=======
+minicom.cap
+rrrr
+startup/app_zos_zpu.tmpl2
+startup/app_zos_zpu.tmpl3
+tzio/
+zOS/main.bak
+>>>>>>> 5a59ff2f96064433b95b8489dbe7e9b175b0accc
 
