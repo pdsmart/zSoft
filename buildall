@@ -4,7 +4,16 @@
 # TARGET=MZ-700
 # TARGET=MZ-80A
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 ZPU_SHARPMZ_BUILD=1
+=======
+TARGET=MZ-80A
+ZPU_SHARPMZ_BUILD=0
+>>>>>>> upstream/v2.1-tranZPUter-SW-HW_v2.2
+=======
+ZPU_SHARPMZ_BUILD=1
+>>>>>>> a60e1fd076a2828ee3f5c336a177edcc238197c0
 #ZPU_SHARPMZ_APPADDR=0x100000
 #ZPU_SHARPMZ_APPSIZE=0x70000
 #ZPU_SHARPMZ_HEAPSIZE=0x8000
@@ -59,6 +68,10 @@ if [ "${ZPU_E115_BUILD}x" != "x" -a ${ZPU_E115_BUILD} = 1 ]; then
     cp -r build/SD/* SD/Dev/
 fi
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a60e1fd076a2828ee3f5c336a177edcc238197c0
 echo "Building for K64F"
 ./build.sh -C K64F -O zos  -N 0x10000 -d -T
 if [ $? != 0 ]; then
@@ -86,6 +99,27 @@ cp ${ROOT_DIR}/zSoft/zOS/main.bin ${ROOT_DIR}/zSoft/zOS/main.bak
 if [ $? != 0 ]; then
 	exit 1
 fi
+<<<<<<< HEAD
+=======
+if [ "${TARGET}x" != "x" -a "${TARGET}" = "MZ-80A" ]; then
+    echo "Building for K64F on MZ-80A"
+    ./build.sh -C K64F -O zos  -N 0x10000 -d -T
+    if [ $? != 0 ]; then
+    	echo "Error building K64F Distribution..."
+    	exit 1
+    fi
+else
+    echo "Building for K64F"
+    ./build.sh -C K64F -O zos  -N 0x18000 -d -T
+    if [ $? != 0 ]; then
+    	echo "Error building K64F Distribution..."
+    	exit 1
+    fi
+fi
+cp -r build/SD/* SD/K64F/
+>>>>>>> upstream/v2.1-tranZPUter-SW-HW_v2.2
+=======
+>>>>>>> a60e1fd076a2828ee3f5c336a177edcc238197c0
 
 # Ensure the TZFS target directories exist
 k64fsddir=${ROOT_DIR}/zSoft/SD/K64F
@@ -118,6 +152,40 @@ if [ $? != 0 ]; then
 	echo "CPM disks assembly failed..."
 	exit 1
 fi
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+)
+if [ $? != 0 ]; then
+	exit 1
+fi
+
+# Copy the files to the remote build server.
+cd ${ROOT_DIR}/zSoft
+rsync -avh * psmart@192.168.15.205:${ROOT_DIR}/zSoft/
+if [ $? != 0 ]; then
+	echo "Error syncing K64F Distribution..."
+	exit 1
+fi
+# Simple mechanism to prevent remote build and programming of the K64F.
+diff ${ROOT_DIR}/zSoft/zOS/main.bin ${ROOT_DIR}/zSoft/zOS/main.bak
+if [ $? -ne 0 ]; then
+    cd ${ROOT_DIR}/zSoft
+    echo "GO" >  ${ROOT_DIR}/zSoft/.dobuild
+    rsync -avh .dobuild psmart@192.168.15.205:${ROOT_DIR}/zSoft/
+    if [ $? != 0 ]; then
+        echo "Error syncing K64F Distribution..."
+        exit 1
+    fi
+fi
+cp ${ROOT_DIR}/zSoft/zOS/main.bin ${ROOT_DIR}/zSoft/zOS/main.bak
+)
+if [ $? != 0 ]; then
+	exit 1
+fi
+>>>>>>> upstream/v2.1-tranZPUter-SW-HW_v2.2
+=======
+>>>>>>> a60e1fd076a2828ee3f5c336a177edcc238197c0
 
 # Use copytosd.sh to transfer files to an SD card. Still need to copy the k64F files manually.
 # ---------------
@@ -136,7 +204,16 @@ fi
 #cp $tzfsdir/MZF/${TARGET}/*                 $k64fsddir/MZF/
 #cp $tzfsdir/BAS/*                           $k64fsddir/BAS/
 #cp $tzfsdir/CAS/*                           $k64fsddir/CAS/
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a60e1fd076a2828ee3f5c336a177edcc238197c0
 )
 if [ $? != 0 ]; then
 	exit 1
 fi
+<<<<<<< HEAD
+=======
+>>>>>>> upstream/v2.1-tranZPUter-SW-HW_v2.2
+=======
+>>>>>>> a60e1fd076a2828ee3f5c336a177edcc238197c0
