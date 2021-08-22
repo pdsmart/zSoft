@@ -5,11 +5,15 @@
 # TARGET=MZ-80A
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 ZPU_SHARPMZ_BUILD=1
 =======
 TARGET=MZ-80A
 ZPU_SHARPMZ_BUILD=0
 >>>>>>> upstream/v2.1-tranZPUter-SW-HW_v2.2
+=======
+ZPU_SHARPMZ_BUILD=1
+>>>>>>> a60e1fd076a2828ee3f5c336a177edcc238197c0
 #ZPU_SHARPMZ_APPADDR=0x100000
 #ZPU_SHARPMZ_APPSIZE=0x70000
 #ZPU_SHARPMZ_HEAPSIZE=0x8000
@@ -65,6 +69,9 @@ if [ "${ZPU_E115_BUILD}x" != "x" -a ${ZPU_E115_BUILD} = 1 ]; then
 fi
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a60e1fd076a2828ee3f5c336a177edcc238197c0
 echo "Building for K64F"
 ./build.sh -C K64F -O zos  -N 0x10000 -d -T
 if [ $? != 0 ]; then
@@ -92,6 +99,7 @@ cp ${ROOT_DIR}/zSoft/zOS/main.bin ${ROOT_DIR}/zSoft/zOS/main.bak
 if [ $? != 0 ]; then
 	exit 1
 fi
+<<<<<<< HEAD
 =======
 if [ "${TARGET}x" != "x" -a "${TARGET}" = "MZ-80A" ]; then
     echo "Building for K64F on MZ-80A"
@@ -110,6 +118,8 @@ else
 fi
 cp -r build/SD/* SD/K64F/
 >>>>>>> upstream/v2.1-tranZPUter-SW-HW_v2.2
+=======
+>>>>>>> a60e1fd076a2828ee3f5c336a177edcc238197c0
 
 # Ensure the TZFS target directories exist
 k64fsddir=${ROOT_DIR}/zSoft/SD/K64F
@@ -143,6 +153,7 @@ if [ $? != 0 ]; then
 	exit 1
 fi
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 )
 if [ $? != 0 ]; then
@@ -173,6 +184,8 @@ if [ $? != 0 ]; then
 	exit 1
 fi
 >>>>>>> upstream/v2.1-tranZPUter-SW-HW_v2.2
+=======
+>>>>>>> a60e1fd076a2828ee3f5c336a177edcc238197c0
 
 # Use copytosd.sh to transfer files to an SD card. Still need to copy the k64F files manually.
 # ---------------
@@ -192,9 +205,15 @@ fi
 #cp $tzfsdir/BAS/*                           $k64fsddir/BAS/
 #cp $tzfsdir/CAS/*                           $k64fsddir/CAS/
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a60e1fd076a2828ee3f5c336a177edcc238197c0
 )
 if [ $? != 0 ]; then
 	exit 1
 fi
+<<<<<<< HEAD
 =======
 >>>>>>> upstream/v2.1-tranZPUter-SW-HW_v2.2
+=======
+>>>>>>> a60e1fd076a2828ee3f5c336a177edcc238197c0
