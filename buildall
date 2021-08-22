@@ -22,9 +22,9 @@ ZPU_E115_HEAPSIZE=0x4000
 ZPU_E115_STACKSIZE=0x3D80
 
 # NB: When setting this variable, see lower section creating the SD card image which uses a hard coded value and will need updating.
-ROOT_DIR=/dvlp/Projects/dev/github/
+ROOT_DIR=/dvlp/Projects/dev/github/stage
 # NB: This clean out is intentionally hard coded as -fr is dangerous, if a variable failed to be set if could see your source base wiped out.
-rm -fr /dvlp/Projects/dev/github/zSoft/SD/K64F/*
+rm -fr /dvlp/Projects/dev/github/stage/zSoft/SD/K64F/*
 
 (
 # Ensure the zOS target directories exist.
