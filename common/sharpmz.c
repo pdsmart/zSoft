@@ -952,14 +952,14 @@ void mzClearLine(int row, int colStart, int colEnd, uint8_t updPos)
 uint8_t mzSetVGABorder(uint8_t vborder)
 {
     // Locals.
-    uint8_t mode = (uint8_t)*(volatile uint32_t *)(VCADDR_32BIT_VMBORDER) & VMBORDER_MASK;
+    uint8_t mode = (uint8_t)*(volatile uint32_t *)(VCADDR_32BIT_VMVGATTR) & VMBORDER_MASK;
    
     // Sanity check parameters.
     if(vborder != VMBORDER_BLACK && vborder != VMBORDER_BLUE && vborder != VMBORDER_RED && vborder != VMBORDER_PURPLE && vborder != VMBORDER_GREEN && vborder != VMBORDER_CYAN && vborder != VMBORDER_YELLOW && vborder != VMBORDER_WHITE)
         return(1);
    
     // Set the VGA Border.
-    *(volatile uint8_t *)(VCADDR_8BIT_VMBORDER) = mode | vborder;
+    *(volatile uint8_t *)(VCADDR_8BIT_VMVGATTR) = mode | vborder;
 
     return(0);
 }
@@ -968,27 +968,27 @@ uint8_t mzSetVGABorder(uint8_t vborder)
 uint8_t mzSetVGAMode(uint8_t vgamode)
 {
     // Locals.
-    uint8_t mode = (uint8_t)*(volatile uint32_t *)(VCADDR_32BIT_VMCTRL) & VMMODE_VGA_MASK;
+    uint8_t mode = (uint8_t)*(volatile uint32_t *)(VCADDR_32BIT_VMVGAMODE) & VMMODE_VGA_MASK;
 
     // Sanity check parameters.
-    if(vgamode != VMMODE_VGA_OFF && vgamode != VMMODE_VGA_640x480 && vgamode != VMMODE_VGA_1024x768 && vgamode != VMMODE_VGA_800x600)
+    if(vgamode != VMMODE_VGA_OFF && vgamode != VMMODE_VGA_640x480 && vgamode != VMMODE_VGA_800x600)
         return(1);
     
     // Set the VGA mode.
-    *(volatile uint8_t *)(VCADDR_8BIT_VMCTRL) = mode | vgamode;
+    *(volatile uint8_t *)(VCADDR_8BIT_VMVGAMODE) = mode | vgamode;
 
     return(0);
 }
 
 // Method to set the screen mode, ie. machine video being emulated.
 //
-uint8_t mzSetMachineVideoMode(uint8_t hwmode)
+uint8_t mzSetMachineVideoMode(uint8_t vmode)
 {
     // Locals.
     uint8_t mode = (uint8_t)*(volatile uint32_t *)(VCADDR_32BIT_VMCTRL) & VMMODE_MASK;
 
     // Sanity check parameters.
-    if(hwmode != VMMODE_MZ80K && hwmode != VMMODE_MZ80C && hwmode != VMMODE_MZ1200 && hwmode != VMMODE_MZ80A && hwmode != VMMODE_MZ700 && hwmode != VMMODE_MZ800 && hwmode != VMMODE_MZ80B && hwmode != VMMODE_MZ2000) 
+    if(vmode != VMMODE_MZ80K && vmode != VMMODE_MZ80C && vmode != VMMODE_MZ1200 && vmode != VMMODE_MZ80A && vmode != VMMODE_MZ700 && vmode != VMMODE_MZ1500 && vmode != VMMODE_MZ800 && vmode != VMMODE_MZ80B && vmode != VMMODE_MZ2000 && vmode != VMMODE_MZ2200 && vmode != VMMODE_MZ2500) 
         return(1);
     
     // Set the hardware video mode.

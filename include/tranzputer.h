@@ -66,6 +66,7 @@
 #define TZMM_MZ700_3                 0x0d                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 0, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is inaccessible.
 #define TZMM_MZ700_4                 0x0e                                // MZ700 Mode - 0000:0FFF is on the tranZPUter board in block 6, 1000:CFFF is on the tranZPUter board in block 0, D000:FFFF is inaccessible.
 #define TZMM_MZ800                   0x0f                                // MZ800 Mode - Host is an MZ-800 and mode provides for MZ-700/MZ-800 decoding per original machine.
+#define TZMM_MZ2000                  0x10                                // MZ2000 Mode - Running on MZ2000 hardware, configuration set according to runtime configuration registers.
 #define TZMM_FPGA                    0x15                                // Open up access for the K64F to the FPGA resources such as memory. All other access to RAM or mainboard is blocked.
 #define TZMM_TZPUM                   0x16                                // Everything is on mainboard, no access to tranZPUter memory.
 #define TZMM_TZPU                    0x17                                // Everything is in tranZPUter domain, no access to underlying Sharp mainboard unless memory. K64F drives A18-A16 allowing full access to RAM.
@@ -86,12 +87,43 @@
 #define IO_TZ_CLKSELRD               0x66                                // Read the status of the clock select, ie. which clock is connected to the CPU.
 #define IO_TZ_SVCREQ                 0x68                                // Service request from the Z80 to be provided by the K64F.
 #define IO_TZ_SYSREQ                 0x6A                                // System request from the Z80 to be provided by the K64F.
+#define IO_TZ_CPLDCMD                0x6B                                // Version 2.1 CPLD command register.
+#define IO_TZ_CPLDSTATUS             0x6B                                // Version 2.1 CPLD status register.
 #define IO_TZ_CPUCFG                 0x6C                                // Version 2.2 CPU configuration register.
 #define IO_TZ_CPUSTATUS              0x6C                                // Version 2.2 CPU runtime status register.
 #define IO_TZ_CPUINFO                0x6D                                // Version 2.2 CPU information register.
 #define IO_TZ_CPLDCFG                0x6E                                // Version 2.1 CPLD configuration register.
-#define IO_TZ_CPLDSTATUS             0x6E                                // Version 2.1 CPLD status register.
 #define IO_TZ_CPLDINFO               0x6F                                // Version 2.1 CPLD version information register.
+#define IO_TZ_PALSLCTOFF             0xA3                                // set the palette slot Off position to be adjusted.
+#define IO_TZ_PALSLCTON              0xA4                                // set the palette slot On position to be adjusted.
+#define IO_TZ_PALSETRED              0xA5                                // set the red palette value according to the PALETTE_PARAM_SEL address.
+#define IO_TZ_PALSETGREEN            0xA6                                // set the green palette value according to the PALETTE_PARAM_SEL address.
+#define IO_TZ_PALSETBLUE             0xA7                                // set the blue palette value according to the PALETTE_PARAM_SEL address.
+#define IO_TZ_OSDMNU_SZX             0xA8                                // Get OSD Menu Horizontal Size (X).
+#define IO_TZ_OSDMNU_SZY             0xA9                                // Get OSD Menu Vertical Size (Y).
+#define IO_TZ_OSDHDR_SZX             0xAA                                // Get OSD Status Header Horizontal Size (X).
+#define IO_TZ_OSDHDR_SZY             0xAB                                // Get OSD Status Header Vertical Size (Y).
+#define IO_TZ_OSDFTR_SZX             0xAC                                // Get OSD Status Footer Horizontal Size (X).
+#define IO_TZ_OSDFTR_SZY             0xAD                                // Get OSD Status Footer Vertical Size (Y).   
+#define IO_TZ_PALETTE                0xB0                                // Sets the palette. The Video Module supports 4 bit per colour output but there is only enough RAM for 1 bit per colour so the pallette is used to change the colours output.
+                                                                         //    Bits [7:0] defines the pallete number. This indexes a lookup table which contains the required 4bit output per 1bit input.
+#define IO_TZ_GPUPARAM               0xB2                                // Set parameters. Store parameters in a long word to be used by the graphics command processor.
+                                                                         //    The parameter word is 128 bit and each write to the parameter word shifts left by 8 bits and adds the new byte at bits 7:0.
+#define IO_TZ_GPUCMD                 0xB3                                // Set the graphics processor unit commands.
+                                                                         //    Bits [5:0] - 0 = Reset parameters.
+                                                                         //                 1 = Clear to val. Start Location (16 bit), End Location (16 bit), Red Filter, Green Filter, Blue Filter
+#define IO_TZ_VMCTRL                 0xB8                                // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
+#define IO_TZ_VMGRMODE               0xB9                                // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
+#define IO_TZ_VMREDMASK              0xBA                                // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define IO_TZ_VMGREENMASK            0xBB                                // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define IO_TZ_VMBLUEMASK             0xBC                                // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define IO_TZ_VMPAGE                 0xBD                                // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
+#define IO_TZ_VMVGATTR               0xBE                                // Select VGA Border colour and attributes. Bit 2 = Red, 1 = Green, 0 = Blue, 4:3 = VGA Mode, 00 = Off, 01 = 640x480, 10 = 800x600, 11 = 50Hz Internal
+#define IO_TZ_VMVGAMODE              0xBF                                // Select VGA Output mode, ie. Internal, 640x480 etc. Bits [3:0] specify required mode. Undefined default to internal standard frequency.
+#define IO_TZ_GDGWF                  0xCC                                // MZ-800      write format register
+#define IO_TZ_GDGRF                  0xCD                                // MZ-800      read format register
+#define IO_TZ_GDCMD                  0xCE                                // MZ-800 CRTC Mode register
+#define IO_TZ_GDCMD                  0xCF                                // MZ-800 CRTC control register
 #define IO_TZ_MMIO0                  0xE0                                // MZ-700/MZ-800 Memory management selection ports.
 #define IO_TZ_MMIO1                  0xE1                                // ""
 #define IO_TZ_MMIO2                  0xE2                                // ""
@@ -100,14 +132,24 @@
 #define IO_TZ_MMIO5                  0xE5                                // ""
 #define IO_TZ_MMIO6                  0xE6                                // ""
 #define IO_TZ_MMIO7                  0xE7                                // MZ-700/MZ-800 Memory management selection ports.
+#define IO_TZ_PPIA                   0xE0                                // MZ80B/MZ2000 8255 PPI Port A
+#define IO_TZ_PPIB                   0xE1                                // MZ80B/MZ2000 8255 PPI Port B
+#define IO_TZ_PPIC                   0xE2                                // MZ80B/MZ2000 8255 PPI Port C
+#define IO_TZ_PPICTL                 0xE3                                // MZ80B/MZ2000 8255 PPI Control Register
+#define IO_TZ_PIT0                   0xE4                                // MZ80B/MZ2000 8253 PIT Timer 0
+#define IO_TZ_PIT1                   0xE5                                // MZ80B/MZ2000 8253 PIT Timer 1
+#define IO_TZ_PIT2                   0xE6                                // MZ80B/MZ2000 8253 PIT Timer 2
+#define IO_TZ_PITCTL                 0xE7                                // MZ80B/MZ2000 8253 PIT Control Register
+#define IO_TZ_PIOA                   0xE8                                // MZ80B/MZ2000 Z80 PIO Port A
+#define IO_TZ_PIOCTLA                0xE9                                // MZ80B/MZ2000 Z80 PIO Port A Control Register
+#define IO_TZ_PIOB                   0xEA                                // MZ80B/MZ2000 Z80 PIO Port B
+#define IO_TZ_PIOCTLB                0xEB                                // MZ80B/MZ2000 Z80 PIO Port B Control Register
 #define IO_TZ_SYSCTRL                0xF0                                // System board control register. [2:0] - 000 MZ80A Mode, 2MHz CPU/Bus, 001 MZ80B Mode, 4MHz CPU/Bus, 010 MZ700 Mode, 3.54MHz CPU/Bus.
 #define IO_TZ_GRAMMODE               0xF4                                // MZ80B Graphics mode.  Bit 0 = 0, Write to Graphics RAM I, Bit 0 = 1, Write to Graphics RAM II. Bit 1 = 1, blend Graphics RAM I output on display, Bit 2 = 1, blend Graphics RAM II output on display.
-#define IO_TZ_VMCTRL                 0xF8                                // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
-#define IO_TZ_VMGRMODE               0xF9                                // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
-#define IO_TZ_VMREDMASK              0xFA                                // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define IO_TZ_VMGREENMASK            0xFB                                // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define IO_TZ_VMBLUEMASK             0xFC                                // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define IO_TZ_VMPAGE                 0xFD                                // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
+//#define IO_TZ_GRAMOPT                0xF4                                // MZ80B/MZ2000 GRAM configuration option.
+#define IO_TZ_CRTGRPHPRIO            0xF5                                // MZ2000 Graphics priority register, character or a graphics colour has front display priority.
+#define IO_TZ_CRTGRPHSEL             0xF6                                // MZ2000 Graphics output select on CRT or external CRT
+#define IO_TZ_GRAMCOLRSEL            0xF7                                // MZ2000 Graphics RAM colour bank select.
 
 // Addresses on the tranZPUter board.
 //
@@ -142,40 +184,50 @@
 #define CPUMODE_IS_SOFT_MASK         0x03F                               // Mask to filter out the Soft CPU availability flags.
 
 // CPLD Configuration constants.
-#define MODE_MZ80K                   0x00                                // Hardware mode = MZ80K
-#define MODE_MZ80C                   0x01                                // Hardware mode = MZ80C
-#define MODE_MZ1200                  0x02                                // Hardware mode = MZ1200
-#define MODE_MZ80A                   0x03                                // Hardware mode = MZ80A
-#define MODE_MZ700                   0x04                                // Hardware mode = MZ700
-#define MODE_MZ800                   0x05                                // Hardware mode = MZ800
-#define MODE_MZ80B                   0x06                                // Hardware mode = MZ80B
-#define MODE_MZ2000                  0x07                                // Hardware mode = MZ2000
-#define MODE_VIDEO_MODULE_DISABLED   0x08                                // Hardware enable (bit 3 = 0) or disable of the Video Module.
+#define HWMODE_MZ80K                 0x00                                // Hardware mode = MZ80K
+#define HWMODE_MZ80C                 0x01                                // Hardware mode = MZ80C
+#define HWMODE_MZ1200                0x02                                // Hardware mode = MZ1200
+#define HWMODE_MZ80A                 0x03                                // Hardware mode = MZ80A
+#define HWMODE_MZ700                 0x04                                // Hardware mode = MZ700
+#define HWMODE_MZ800                 0x05                                // Hardware mode = MZ800
+#define HWMODE_MZ80B                 0x06                                // Hardware mode = MZ80B
+#define HWMODE_MZ2000                0x07                                // Hardware mode = MZ2000
+#define MODE_VIDEO_MODULE_ENABLED    0x08                                // Hardware enable (bit 3 = 1) or disable of the Video Module on the newer version, the one below will be removed.
+#define MODE_VIDEO_MODULE_DISABLED   0x00                                // Hardware enable (bit 3 = 0) or disable of the Video Module.
 #define MODE_PRESERVE_CONFIG         0x80                                // Preserve hardware configuration on RESET.
+
+// CPLD Command Instruction constants.
+#define CPLD_RESET_HOST              1                                   // CPLD level command to reset the host system.
+#define CPLD_HOLD_HOST_BUS           2                                   // CPLD command to hold the host bus.
+#define CPLD_RELEASE_HOST_BUS        3                                   // CPLD command to release the host bus.
 
 // Video Module control bits.
 #define SYSMODE_MZ80A                0x00                                // System board mode MZ80A, 2MHz CPU/Bus.
 #define SYSMODE_MZ80B                0x01                                // System board mode MZ80B, 4MHz CPU/Bus.
 #define SYSMODE_MZ700                0x02                                // System board mode MZ700, 3.54MHz CPU/Bus.
-#define VMMODE_MASK                  0xF8                                // Mask to mask out video mode.
-#define VMMODE_MZ80K                 MODE_MZ80K                          // Video mode = MZ80K
-#define VMMODE_MZ80C                 MODE_MZ80C                          // Video mode = MZ80C
-#define VMMODE_MZ1200                MODE_MZ1200                         // Video mode = MZ1200
-#define VMMODE_MZ80A                 MODE_MZ80A                          // Video mode = MZ80A
-#define VMMODE_MZ700                 MODE_MZ700                          // Video mode = MZ700
-#define VMMODE_MZ800                 MODE_MZ800                          // Video mode = MZ800
-#define VMMODE_MZ80B                 MODE_MZ80B                          // Video mode = MZ80B
-#define VMMODE_MZ2000                MODE_MZ2000                         // Video mode = MZ2000
-#define VMMODE_80CHAR                0x08                                // Enable 80 character display.
-#define VMMODE_80CHAR_MASK           0xF7                                // Mask to filter out display width control bit.
-#define VMMODE_COLOUR                0x10                                // Enable colour display.
-#define VMMODE_COLOUR_MASK           0xEF                                // Mask to filter out colour control bit.
-#define VMMODE_PCGRAM                0x20                                // Enable PCG RAM.
-#define VMMODE_VGA_MASK              0x3F                                // Mask to filter out the VGA mode bits.
-#define VMMODE_VGA_OFF               0x00                                // Set VGA mode off, external monitor is driven by standard internal signals.
-#define VMMODE_VGA_640x480           0x40                                // Set external monitor to VGA 640x480 @ 60Hz mode.
-#define VMMODE_VGA_1024x768          0x80                                // Set external monitor to VGA 1024x768 @ 60Hz mode.
-#define VMMODE_VGA_800x600           0xC0                                // Set external monitor to VGA 800x600 @ 60Hz mode.
+#define VMMODE_MASK                  0xF0                                // Mask to mask out video mode.
+#define VMMODE_MZ80K                 0x00                                // Video mode = MZ80K
+#define VMMODE_MZ80C                 0x01                                // Video mode = MZ80C
+#define VMMODE_MZ1200                0x02                                // Video mode = MZ1200
+#define VMMODE_MZ80A                 0x03                                // Video mode = MZ80A
+#define VMMODE_MZ700                 0x04                                // Video mode = MZ700
+#define VMMODE_MZ800                 0x05                                // Video mode = MZ800
+#define VMMODE_MZ1500                0x06                                // Video mode = MZ1500
+#define VMMODE_MZ80B                 0x07                                // Video mode = MZ80B
+#define VMMODE_MZ2000                0x08                                // Video mode = MZ2000
+#define VMMODE_MZ2200                0x09                                // Video mode = MZ2200
+#define VMMODE_MZ2500                0x0A                                // Video mode = MZ2500
+#define VMMODE_80CHAR                0x10                                // Enable 80 character display.
+#define VMMODE_80CHAR_MASK           0xEF                                // Mask to filter out display width control bit.
+#define VMMODE_COLOUR                0x20                                // Enable colour display.
+#define VMMODE_COLOUR_MASK           0xDF                                // Mask to filter out colour control bit.
+#define VMMODE_PCGRAM                0x40                                // Enable PCG RAM.
+#define VMMODE_VGA_MASK              0xF0                                // Mask to filter out the VGA output mode bits.
+#define VMMODE_VGA_OFF               0x00                                // Set VGA mode off, external monitor is driven by standard internal 60Hz signals.
+#define VMMODE_VGA_INT               0x00                                // Set VGA mode off, external monitor is driven by standard internal 60Hz signals.
+#define VMMODE_VGA_INT50             0x01                                // Set VGA mode off, external monitor is driven by standard internal 50Hz signals.
+#define VMMODE_VGA_640x480           0x02                                // Set external monitor to VGA 640x480 @ 60Hz mode.
+#define VMMODE_VGA_800x600           0x03                                // Set external monitor to VGA 800x600 @ 60Hz mode.
 
 // VGA mode border control constants.
 //
@@ -226,7 +278,11 @@
 #define MZ_CMT_ADDR                  0x010F0                             // Address of the CMT (tape) header record.
 #define MZ_CMT_DEFAULT_LOAD_ADDR     0x01200                             // The default load address for a CMT, anything below this is normally illegal.
 #define MZ_VID_RAM_ADDR              0x0D000                             // Start of Video RAM
+#define MZ_VID_CGROM_ADDR            0x220000                            // Start of the CG ROM memory.
+#define MZ_VID_CGRAM_ADDR            0x221000                            // Start of the CG RAM memory.
 #define MZ_VID_RAM_SIZE              2048                                // Size of Video RAM.
+#define MZ_VID_MAX_COL               40                                  // Maximum column for the host display
+#define MZ_VID_MAX_ROW               25                                  // Maximum row for the host display
 #define MZ_VID_DFLT_BYTE             0x00                                // Default character (SPACE) for video RAM.
 #define MZ_ATTR_RAM_ADDR             0xD800                              // On machines with the upgrade, the start of the Attribute RAM.
 #define MZ_ATTR_RAM_SIZE             2048                                // Size of the attribute RAM.
@@ -250,6 +306,7 @@
 #define MZ_ROM_1Z_013A_80C           "0:\\TZFS\\1z-013a-8.rom"           // Original Monitor ROM patched for the Sharp MZ700 patched for 80 column mode.
 #define MZ_ROM_1Z_013A_KM_40C        "0:\\TZFS\\1z-013a-km.rom"          // Original 40 character Monitor ROM for the Sharp MZ700 with keyboard remapped for the MZ80A.
 #define MZ_ROM_1Z_013A_KM_80C        "0:\\TZFS\\1z-013a-km-8.rom"        // Original Monitor ROM patched for the Sharp MZ700 with keyboard remapped for the MZ80A and patched for 80 column mode.
+#define MZ_ROM_1Z_013A_2000          "0:\\TZFS\\1z-013a-2000.rom"        // Original 40 character Monitor ROM for the Sharp MZ700 modified to run on an MZ-2000.
 #define MZ_ROM_9Z_504M_COMBINED      "0:\\TZFS\\mz800_ipl.rom"           // Original MZ-800 BIOS which comprises the 1Z_013B BIOS, 9Z_504M IPL, CGROM and IOCS.
 #define MZ_ROM_9Z_504M               "0:\\TZFS\\mz800_9z_504m.rom"       // Modified MZ-800 9Z_504M IPL to contain a select TZFS option.
 #define MZ_ROM_1Z_013B               "0:\\TZFS\\mz800_1z_013b.rom"       // Original MZ-800 1Z_013B MZ-700 compatible BIOS.
@@ -257,6 +314,8 @@
 #define MZ_ROM_800_IOCS              "0:\\TZFS\\mz800_iocs.rom"          // Original MZ-800 common IOCS bios.
 #define MZ_ROM_MZ80B_IPL             "0:\\TZFS\\mz80b_ipl.rom"           // Original IPL ROM for the Sharp MZ-80B.
 #define MZ_ROM_MZ2000_IPL            "0:\\TZFS\\mz2000_ipl.rom"          // Original IPL ROM for the Sharp MZ-2000.
+#define MZ_ROM_MZ2000_IPL_TZPU       "0:\\TZFS\\mz2000_ipl_tzpu.rom"     // Modified IPL ROM for the tranZPUter running on the Sharp MZ-2000.
+#define MZ_ROM_MZ2000_CGROM          "0:\\TZFS\\mz2000_cgrom.rom"        // MZ-2000 CGROM.
 #define MZ_ROM_TZFS                  "0:\\TZFS\\tzfs.rom"                // tranZPUter Filing System ROM.
 #define MZ_ROM_ZPU_ZOS               "0:\\ZOS\\zos.rom"                  // zOS for the ZPU running on the tranZPUter SW-700 board.
 
@@ -274,6 +333,8 @@
 #define TZSVC_CMD_STRUCT_ADDR_CPM    0x4F560                             // Address of the command structure within CP/M - exists in 64K Block 4.
 #define TZSVC_CMD_STRUCT_ADDR_MZ700  0x6FD80                             // Address of the command structure within MZ700 compatible programs - exists in 64K Block 6.
 #define TZSVC_CMD_STRUCT_ADDR_ZOS    0x11FD80 // 0x7FD80                             // Address of the command structure for zOS use, exists in shared memory rather than FPGA. Spans top of block 6 and all of block 7.
+#define TZSVC_CMD_STRUCT_ADDR_MZ2000_NST 0x6FD80                         // Address of the command structure within MZ2000 compatible programs during normal state - exists in 64K Block 1.
+#define TZSVC_CMD_STRUCT_ADDR_MZ2000_IPL 0x07D80                         // Address of the command structure within MZ2000 compatible programs during IPL state - exists in 64K Block 0.
 #define TZSVC_CMD_STRUCT_SIZE        0x280                               // Size of the inter z80/K64 service command memory.
 #define TZSVC_CMD_SIZE               (sizeof(t_svcControl)-TZSVC_SECTOR_SIZE)
 #define TZVC_MAX_CMPCT_DIRENT_BLOCK  TZSVC_SECTOR_SIZE/TZSVC_CMPHDR_SIZE // Maximum number of directory entries per sector.
@@ -299,6 +360,7 @@
 #define TZSVC_CMD_LOAD80BIPL         0x24                                // Service command requesting the MZ-80B IPL is loaded.
 #define TZSVC_CMD_LOAD800BIOS        0x25                                // Service command requesting that the MZ800 9Z-504M BIOS is loaded.
 #define TZSVC_CMD_LOAD2000IPL        0x26                                // Service command requesting the MZ-2000 IPL is loaded.
+#define TZSVC_CMD_LOADTZFS           0x2F                                // Service command requesting the loading of TZFS. This service is for machines which normally dont have a monitor BIOS. ie. MZ-80B/MZ-2000 and manually request TZFS.
 #define TZSVC_CMD_LOADBDOS           0x30                                // Service command to reload CPM BDOS+CCP.
 #define TZSVC_CMD_ADDSDDRIVE         0x31                                // Service command to attach a CPM disk to a drive number.
 #define TZSVC_CMD_READSDDRIVE        0x32                                // Service command to read an attached SD file as a CPM disk drive.
@@ -315,8 +377,11 @@
 #define TZSVC_CMD_EMU_SETMZ80A       0x56                                // ""                             ""                       ""                 MZ80A.
 #define TZSVC_CMD_EMU_SETMZ700       0x57                                // ""                             ""                       ""                 MZ700.
 #define TZSVC_CMD_EMU_SETMZ800       0x58                                // ""                             ""                       ""                 MZ800.
-#define TZSVC_CMD_EMU_SETMZ80B       0x59                                // ""                             ""                       ""                 MZ80B.
-#define TZSVC_CMD_EMU_SETMZ2000      0x5A                                // ""                             ""                       ""                 MZ2000.
+#define TZSVC_CMD_EMU_SETMZ1500      0x59                                // ""                             ""                       ""                 MZ1500.
+#define TZSVC_CMD_EMU_SETMZ80B       0x5A                                // ""                             ""                       ""                 MZ80B.
+#define TZSVC_CMD_EMU_SETMZ2000      0x5B                                // ""                             ""                       ""                 MZ2000.
+#define TZSVC_CMD_EMU_SETMZ2200      0x5C                                // ""                             ""                       ""                 MZ2200.
+#define TZSVC_CMD_EMU_SETMZ2500      0x5D                                // ""                             ""                       ""                 MZ2500.
 #define TZSVC_CMD_SD_DISKINIT        0x60                                // Service command to initialise and provide raw access to the underlying SD card.
 #define TZSVC_CMD_SD_READSECTOR      0x61                                // Service command to provide raw read access to the underlying SD card.
 #define TZSVC_CMD_SD_WRITESECTOR     0x62                                // Service command to provide raw write access to the underlying SD card.
@@ -602,17 +667,43 @@ enum VIDEO_FRAMES {
     WORKING                          = 1
 };
 
-// Possible machines the tranZPUter can be hosted on and can emulate.
+// Possible machine hardware types the tranZPUter is functioning within.
+//
+enum MACHINE_HW_TYPES {
+    HW_MZ80K                         = HWMODE_MZ80K,                     // Host hardware = MZ-80K.
+    HW_MZ80C                         = HWMODE_MZ80C,                     // Host hardware = MZ-80C.
+    HW_MZ1200                        = HWMODE_MZ1200,                    // Host hardware = MZ-1200.
+    HW_MZ80A                         = HWMODE_MZ80A,                     // Host hardware = MZ-80A.
+    HW_MZ700                         = HWMODE_MZ700,                     // Host hardware = MZ-700.
+    HW_MZ800                         = HWMODE_MZ800,                     // Host hardware = MZ-800.
+    HW_MZ80B                         = HWMODE_MZ80B,                     // Host hardware = MZ-80B.
+    HW_MZ2000                        = HWMODE_MZ2000,                    // Host hardware = MZ-2000.
+    HW_UNKNOWN                       = 0xFF                              // Host hardware unknown, fault or CPLD misconfiguration.
+};
+
+// Possible machine types the tranZPUter can select. These are on a 1:1 with the video controller types for Sharp MZ machines.
 //
 enum MACHINE_TYPES {
-    MZ80K                            = MODE_MZ80K,                       // Machine = MZ-80K.
-    MZ80C                            = MODE_MZ80C,                       // Machine = MZ-80C.
-    MZ1200                           = MODE_MZ1200,                      // Machine = MZ-1200.
-    MZ80A                            = MODE_MZ80A,                       // Machine = MZ-80A.
-    MZ700                            = MODE_MZ700,                       // Machine = MZ-700.
-    MZ800                            = MODE_MZ800,                       // Machine = MZ-800.
-    MZ80B                            = MODE_MZ80B,                       // Machine = MZ-80B.
-    MZ2000                           = MODE_MZ2000                       // Machine = MZ-2000.
+    MZ80K                            = VMMODE_MZ80K,                     // Machine = MZ-80K.
+    MZ80C                            = VMMODE_MZ80C,                     // Machine = MZ-80C.
+    MZ1200                           = VMMODE_MZ1200,                    // Machine = MZ-1200.
+    MZ80A                            = VMMODE_MZ80A,                     // Machine = MZ-80A.
+    MZ700                            = VMMODE_MZ700,                     // Machine = MZ-700.
+    MZ800                            = VMMODE_MZ800,                     // Machine = MZ-800.
+    MZ1500                           = VMMODE_MZ1500,                    // Machine = MZ-1500.
+    MZ80B                            = VMMODE_MZ80B,                     // Machine = MZ-80B.
+    MZ2000                           = VMMODE_MZ2000,                    // Machine = MZ-2000.
+    MZ2200                           = VMMODE_MZ2200,                    // Machine = MZ-2200.
+    MZ2500                           = VMMODE_MZ2500,                    // Machine = MZ-2500.
+    UNKNOWN                          = 0xFF                              // Machine unknown, fault in coding.
+};
+
+// Groups to which the machines belong. This is a lineage route of the Sharp machines.
+//
+enum MACHINE_GROUP {
+    GROUP_MZ80K                      = 0,                                // Machines in the MZ80K group, ie. MZ80K/C/1200/80A
+    GROUP_MZ700                      = 1,                                // Machines in the MZ700 group, ie. MZ700/800/1500
+    GROUP_MZ80B                      = 2                                 // Machines in the MZ80B group, ie. MZ80B/2000/2200/2500
 };
 
 // Get and Set flags within the CPLD config and status registers.
@@ -726,8 +817,12 @@ typedef struct {
 
     enum CTRL_MODE                   ctrlMode;                           // Mode of control, ie normal Z80 Running, controlling mainboard, controlling tranZPUter.
     enum BUS_DIRECTION               busDir;                             // Direction the bus has been configured for.
-    enum MACHINE_TYPES               hostType;                           // The underlying host machine, 0 = Sharp MZ-80A, 1 = MZ-700, 2 = MZ-80B
-    enum MACHINE_TYPES               machineMode;                        // Machine compatibility, 0 = Sharp MZ-80K, 1 = MZ-80C, 2 = MZ-1200, 3 = MZ-80A, 4 = MZ-700, 5 = MZ-800, 6 = MZ-80B, 7 = MZ-2000
+    enum MACHINE_HW_TYPES            hostType;                           // The underlying host machine, 0 = Sharp MZ-80A, 1 = MZ-700, 2 = MZ-80B
+//  enum MACHINE_TYPES               machineMode;                        // Machine compatibility, 0 = Sharp MZ-80K, 1 = MZ-80C, 2 = MZ-1200, 3 = MZ-80A, 4 = MZ-700, 5 = MZ-800, 6 = MZ-80B, 7 = MZ-2000
+    uint8_t                          iplMode;                            // Flag to indicate if the host is in IPL (boot) or run mode. Applicable on the MZ-2000/MZ-80B only.
+    uint8_t                          blockResetActions;                  // Flag to request reset actions are blocked on the next detected reset. This is useful on startup or when loading a monitor ROM set different to the default.
+    uint8_t                          cpldVersion;                        // CPLD configuration version. 1 = original tranZPUter SW, 2 = tranZPUter SW-700 v1
+    uint8_t                          softcpuInfo;                        // FPGA Soft CPU capabilities. 0 = None.
     t_mz700                          mz700;                              // MZ700 emulation control to detect IO commands and adjust the memory map accordingly.
     t_mz80b                          mz80b;                              // MZ-80B emulation control to detect IO commands and adjust the memory map and I/O forwarding accordingly.
 
@@ -818,6 +913,12 @@ typedef struct {
     uint8_t                          asciiCode;
 } t_asciiMap;
 
+// Mapping table from Ascii to Sharp MZ display code.
+//
+typedef struct {
+    uint8_t                          dispCode;
+} t_dispCodeMap;
+
 // Application execution constants.
 //
 
@@ -873,6 +974,8 @@ char                                  *getAttributeFrame(enum VIDEO_FRAMES);
 FRESULT                               loadZ80Memory(const char *, uint32_t, uint32_t, uint32_t, uint32_t *, enum TARGETS, uint8_t);
 FRESULT                               saveZ80Memory(const char *, uint32_t, uint32_t, t_svcDirEnt *, enum TARGETS);
 FRESULT                               loadMZFZ80Memory(const char *, uint32_t, uint32_t *, uint8_t, enum TARGETS, uint8_t);
+void                                  clsHost(void);
+void                                  printfHost(uint8_t, uint8_t, char *, ...);
 
 // Getter/Setter methods!
 uint8_t                               isZ80Reset(void);
@@ -901,13 +1004,14 @@ uint8_t                               svcWriteCPMDrive(void);
 uint32_t                              getServiceAddr(void);
 void                                  processServiceRequest(void);
 void                                  TZPUservice(void);
-uint8_t                               loadBIOS(const char *biosFileName, uint8_t machineMode, uint32_t loadAddr);
+uint8_t                               loadBIOS(const char *, uint32_t);
+FRESULT                               loadTZFS(char *, uint32_t);
 void                                  hardResetTranZPUter(void);
 void                                  loadTranZPUterDefaultROMS(uint8_t);
 void                                  tranZPUterControl(void);
 uint8_t                               testTZFSAutoBoot(void);
-void                                  setHost(void);
-void                                  setupTranZPUter(void);
+void                                  setHost(uint8_t);
+void                                  setupTranZPUter(uint8_t, char *, char *);
 void                                  testRoutine(void);
 
 // Sharp MZ Series emulation methods.

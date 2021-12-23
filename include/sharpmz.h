@@ -98,69 +98,88 @@
 // ------------------------
 //
 //   Address    A23 -A16
-// Y+0x080000   00001000 - Memory and I/O ports mapped into direct addressable memory location.
+// Y+0x000000   00001000 - Memory and I/O ports mapped into direct addressable memory location.
 //   
 //                         A15 - A8 A7 -  A0
 //                         I/O registers are mapped to the bottom 256 bytes mirroring the I/O address.
-// Y+0x0800D0              00000000 11010000 - 0xD0 - Set the parameter number to update.
-//                         00000000 11010001 - 0xD1 - Update the lower selected parameter byte.
-//                         00000000 11010010 - 0xD2 - Update the upper selected parameter byte.
-//                         00000000 11010011 - 0xD3 - set the palette slot Off position to be adjusted.
-//                         00000000 11010100 - 0xD4 - set the palette slot On position to be adjusted.
-//                         00000000 11010101 - 0xD5 - set the red palette value according to the PALETTE_PARAM_SEL address.
-//                         00000000 11010110 - 0xD6 - set the green palette value according to the PALETTE_PARAM_SEL address.
-// Y+0x0800D7              00000000 11010111 - 0xD7 - set the blue palette value according to the PALETTE_PARAM_SEL address.
+//
+// Y+0x0000A0              00000000 10100000 - 0xA0 - 
+//                         00000000 10100001 - 0xA1 - 
+//                         00000000 10100010 - 0xA2 - 
+//                         00000000 10100011 - 0xA3 - set the palette slot Off position to be adjusted.
+//                         00000000 10100100 - 0xA4 - set the palette slot On position to be adjusted.
+//                         00000000 10100101 - 0xA5 - set the red palette value according to the PALETTE_PARAM_SEL address.
+//                         00000000 10100110 - 0xA6 - set the green palette value according to the PALETTE_PARAM_SEL address.
+// Y+0x0000A7              00000000 10100111 - 0xA7 - set the blue palette value according to the PALETTE_PARAM_SEL address.
+//                         00000000 10101000 - 0xA8 - Get OSD Menu Horizontal Size (X).
+//                         00000000 10101001 - 0xA9 - Get OSD Menu Vertical Size (Y).
+//                         00000000 10101010 - 0xAA - Get OSD Status Header Horizontal Size (X).
+//                         00000000 10101011 - 0xAB - Get OSD Status Header Vertical Size (Y).
+//                         00000000 10101100 - 0xAC - Get OSD Status Footer Horizontal Size (X).
+//                         00000000 10101101 - 0xAD - Get OSD Status Footer Vertical Size (Y).
+// Y+0x0000B0              00000000 10110000 - 0xB0 - sets the palette.
+//                         00000000 10110001 - 0xB1 - 
+//                         00000000 10110010 - 0xB2 - set parameters.
+//                         00000000 10110011 - 0xB3 - set the graphics processor unit commands.
+//                         00000000 10111000 - 0xB8 - set the video mode. 
+//                         00000000 10111001 - 0xB9 - set the graphics mode.
+//                         00000000 10111010 - 0xBA - set the Red bit mask
+//                         00000000 10111011 - 0xBB - set the Green bit mask
+//                         00000000 10111100 - 0xBC - set the Blue bit mask
+// Y+0x0000BD              00000000 10111101 - 0xBD - set the Video memory page in block C000:FFFF 
+// Y+0x0000BE              00000000 10111110 - 0xBE - set the VGA border colour and attributes.
+// Y+0x0000BF              00000000 10111111 - 0xBF - set the VGA output mode.
 //   
-// Y+0x0800E0              00000000 11100000 - 0xE0 MZ80B PPI
+// Y+0x0000E0              00000000 11100000 - 0xE0 MZ80B PPI
 //                         00000000 11100100 - 0xE4 MZ80B PIT
-// Y+0x0800E8              00000000 11101000 - 0xE8 MZ80B PIO
+// Y+0x0000E8              00000000 11101000 - 0xE8 MZ80B PIO
 //   
-//                         00000000 11110000 - 
-//                         00000000 11110001 - 
-//                         00000000 11110010 - 
-// Y+0x0800F3              00000000 11110011 - 0xF3 set the VGA border colour.
-//                         00000000 11110100 - 0xF4 set the MZ80B video in/out mode.
-//                         00000000 11110101 - 0xF5 sets the palette.
-//                         00000000 11110110 - 0xF6 set parameters.
-//                         00000000 11110111 - 0xF7 set the graphics processor unit commands.
-//                         00000000 11111000 - 0xF6 set parameters.
-//                         00000000 11111001 - 0xF7 set the graphics processor unit commands.
-//                         00000000 11111010 - 0xF8 set the video mode. 
-//                         00000000 11111011 - 0xF9 set the graphics mode.
-//                         00000000 11111100 - 0xFA set the Red bit mask
-//                         00000000 11111101 - 0xFB set the Green bit mask
-//                         00000000 11111110 - 0xFC set the Blue bit mask
-// Y+0x0800FD              00000000 11111111 - 0xFD set the Video memory page in block C000:FFFF 
+//                         00000000 11110000 - 0xF0
+//                         00000000 11110001 - 0xF1
+//                         00000000 11110010 - 0xF2
+// Y+0x0000F3              00000000 11110011 - 0xF3 
+//                         00000000 11110100 - 0xF4 set the MZ80B video in/out mode or MZ2000 Colour CRT Background Colour Selection.
+//                         00000000 11110101 - 0xF5 MZ2000 Priority, Bit 3 = 0, Character comes to foreground, = 1, Graphics comes to foreground. 2:0 = Colour
+//                         00000000 11110110 - 0xF6 MZ2000 Bit 4 Graphics Display on CRT (H), 2:0 colour VRAM enable to Colour CRT / CRT (if enabled).
+//                         00000000 11110111 - 0xF7 MZ2000 Selection of VRAM bank in memory map when enabled, 0 = None, 1 = Blue, 2 = Red, 3 = Green
 //   
 //                         Memory registers are mapped to the E000 region as per base machines.
-// Y+0x08E010              11100000 00010010 - Program Character Generator RAM. E010 - Write cycle (Read cycle = reset memory swap).
+// Y+0x00E010              11100000 00010010 - Program Character Generator RAM. E010 - Write cycle (Read cycle = reset memory swap).
 //                         11100000 00010100 - Normal display select.
 //                         11100000 00010101 - Inverted display select.
 //                         11100010 00000000 - Scroll display register. E200 - E2FF
-// Y+0x08E2FF              11111111
+// Y+0x00E2FF              11111111
 //   
-// Y+0x090000   00001001 - Video/Attribute RAM. 64K Window.
-// Y+0x09D000              11010000 00000000 - Video RAM
-// Y+0x09D7FF              11010111 11111111
-// Y+0x09D800              11011000 00000000 - Attribute RAM
-// Y+0x09DFFF              11011111 11111111
+// Y+0x010000   00000001 - Video/Attribute RAM. 64K Window.
+// Y+0x01D000              11010000 00000000 - Video RAM
+// Y+0x01D7FF              11010111 11111111
+// Y+0x01D800              11011000 00000000 - Attribute RAM
+// Y+0x01DFFF              11011111 11111111
 //   
-// Y+0x0A0000   00001010 - Character Generator RAM 64K Window.
-// Y+0x0A0000              00000000 00000000 - CGROM
-// Y+0x0A0FFF              00001111 11111111 
-// Y+0x0A1000              00010000 00000000 - CGRAM
-// Y+0x0A1FFF              00011111 11111111
+// Y+0x020000   00000010 - Character Generator RAM 64K Window.
+// Y+0x020000              00000000 00000000 - CGROM
+// Y+0x020FFF              00001111 11111111 
+// Y+0x021000              00010000 00000000 - CGRAM
+// Y+0x021FFF              00011111 11111111
 //   
-// Y+0x0C0000   00001100 - 128K Red framebuffer.
+// Y+0x040000   00000100 - 128K Red framebuffer.
 //                         00000000 00000000 - Red pixel addressed framebuffer. Also MZ-80B GRAM I memory in lower 8K
-// Y+0x0C3FFF              00111111 11111111
-// Y+0x0D0000   00001101 - 128K Blue framebuffer.
+// Y+0x043FFF              00111111 11111111
+// Y+0x050000   00000101 - 128K Blue framebuffer.
 //                         00000000 00000000 - Blue pixel addressed framebuffer. Also MZ-80B GRAM II memory in lower 8K
-// Y+0x0D3FFF              00111111 11111111
-// Y+0x0E0000   00001110 - 128K Green framebuffer.
+// Y+0x053FFF              00111111 11111111
+// Y+0x060000   00000110 - 128K Green framebuffer.
 //                         00000000 00000000 - Green pixel addressed framebuffer.
-// Y+0x0E3FFF              00111111 11111111
+// Y+0x063FFF              00111111 11111111
 // 
+// Y+0x070000   00000111 - Blue Menu/Status framebuffer.
+// Y+0x071FFF              00011111 11111111
+// Y+0x080000   00001000 - Red Menu/Status framebuffer.
+// Y+0x081FFF              00011111 11111111
+// Y+0x090000   00001001 - Green Menu/Status framebuffer.
+// Y+0x091FFF              00011111 11111111
+// Y+0x0A0000   00001010 - Red/Green/Blue Menu/Status framebuffer write only.
+// Y+0x0A1FFF              00011111 11111111
 
 // Base addresses and sizes within the FPGA/Video Controller.
 #define VIDEO_BASE_ADDR              0xD00000                            // Base address of the Video Controller.
@@ -176,31 +195,34 @@
 #define VC_8BIT_BASE_ADDR            VIDEO_BASE_ADDR + 0x000000
 #define VC_32BIT_BASE_ADDR           VIDEO_BASE_ADDR + 0x000000
 // 8 Bit access addresses - used for writing, read can only be on a 32bit boundary with lower address lines set to 00. Writing can write upto 4 consecutive addresses if desired.
-#define VCADDR_8BIT_PALSLCTOFF       VC_8BIT_BASE_ADDR + 0xD3            // Set the palette slot Off position to be adjusted.
-#define VCADDR_8BIT_PALSLCTON        VC_8BIT_BASE_ADDR + 0xD4            // Set the palette slot On position to be adjusted.
-#define VCADDR_8BIT_PALSETRED        VC_8BIT_BASE_ADDR + 0xD5            // Set the red palette value according to the PALETTE_PARAM_SEL address.
-#define VCADDR_8BIT_PALSETGREEN      VC_8BIT_BASE_ADDR + 0xD6            // Set the green palette value according to the PALETTE_PARAM_SEL address.
-#define VCADDR_8BIT_PALSETBLUE       VC_8BIT_BASE_ADDR + 0xD7            // Set the blue palette value according to the PALETTE_PARAM_SEL address.
+#define VCADDR_8BIT_PALSLCTOFF       VC_8BIT_BASE_ADDR + 0xA3            // Set the palette slot Off position to be adjusted.
+#define VCADDR_8BIT_PALSLCTON        VC_8BIT_BASE_ADDR + 0xA4            // Set the palette slot On position to be adjusted.
+#define VCADDR_8BIT_PALSETRED        VC_8BIT_BASE_ADDR + 0xA5            // Set the red palette value according to the PALETTE_PARAM_SEL address.
+#define VCADDR_8BIT_PALSETGREEN      VC_8BIT_BASE_ADDR + 0xA6            // Set the green palette value according to the PALETTE_PARAM_SEL address.
+#define VCADDR_8BIT_PALSETBLUE       VC_8BIT_BASE_ADDR + 0xA7            // Set the blue palette value according to the PALETTE_PARAM_SEL address.
+#define VCADDR_8BIT_OSDMNU_SZX       VC_8BIT_BASE_ADDR + 0xA8            // Get OSD Menu Horizontal Size (X).
+#define VCADDR_8BIT_OSDMNU_SZY       VC_8BIT_BASE_ADDR + 0xA9            // Get OSD Menu Vertical Size (Y).
+#define VCADDR_8BIT_OSDHDR_SZX       VC_8BIT_BASE_ADDR + 0xAA            // Get OSD Status Header Horizontal Size (X).
+#define VCADDR_8BIT_OSDHDR_SZY       VC_8BIT_BASE_ADDR + 0xAB            // Get OSD Status Header Vertical Size (Y).
+#define VCADDR_8BIT_OSDFTR_SZX       VC_8BIT_BASE_ADDR + 0xAC            // Get OSD Status Footer Horizontal Size (X).
+#define VCADDR_8BIT_OSDFTR_SZY       VC_8BIT_BASE_ADDR + 0xAD            // Get OSD Status Footer Vertical Size (Y).   
+#define VCADDR_8BIT_VMPALETTE        VC_8BIT_BASE_ADDR + 0xB0            // Sets the palette. The Video Module supports 4 bit per colour output but there is only enough RAM for 1 bit per colour so the pallette is used to change the colours output.
+                                                                         //    Bits [7:0] defines the pallete number. This indexes a lookup table which contains the required 4bit output per 1bit input.
+#define VCADDR_8BIT_GPUPARAM         VC_8BIT_BASE_ADDR + 0xB2            // Set parameters. Store parameters in a long word to be used by the graphics command processor.
+                                                                         //    The parameter word is 128 bit and each write to the parameter word shifts left by 8 bits and adds the new byte at bits 7:0.
+#define VCADDR_8BIT_GPUCMD           VC_8BIT_BASE_ADDR + 0xB3            // Set the graphics processor unit commands.
+                                                                         //    Bits [5:0] - 0 = Reset parameters.
+                                                                         //                 1 = Clear to val. Start Location (16 bit), End Location (16 bit), Red Filter, Green Filter, Blue Filter
+#define VCADDR_8BIT_VMCTRL           VC_8BIT_BASE_ADDR + 0xB8            // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
+#define VCADDR_8BIT_VMGRMODE         VC_8BIT_BASE_ADDR + 0xB9            // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
+#define VCADDR_8BIT_VMREDMASK        VC_8BIT_BASE_ADDR + 0xBA            // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define VCADDR_8BIT_VMGREENMASK      VC_8BIT_BASE_ADDR + 0xBB            // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define VCADDR_8BIT_VMBLUEMASK       VC_8BIT_BASE_ADDR + 0xBC            // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define VCADDR_8BIT_VMPAGE           VC_8BIT_BASE_ADDR + 0xBD            // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
+#define VCADDR_8BIT_VMVGATTR         VC_8BIT_BASE_ADDR + 0xBE            // Select VGA Border colour and attributes. Bit 2 = Red, 1 = Green, 0 = Blue, 4:3 = VGA Mode, 00 = Off, 01 = 640x480, 10 = 800x600, 11 = 50Hz Internal
+#define VCADDR_8BIT_VMVGAMODE        VC_8BIT_BASE_ADDR + 0xBF            // Select VGA Output mode. [3:0] - required output resolution/frequency.
 #define VCADDR_8BIT_SYSCTRL          VC_8BIT_BASE_ADDR + 0xF0            // System board control register. [2:0] - 000 MZ80A Mode, 2MHz CPU/Bus, 001 MZ80B Mode, 4MHz CPU/Bus, 010 MZ700 Mode, 3.54MHz CPU/Bus.
-#define VCADDR_8BIT_VMBORDER         VC_8BIT_BASE_ADDR + 0xF3            // Select VGA Border colour attributes. Bit 2 = Red, 1 = Green, 0 = Blue.
 #define VCADDR_8BIT_GRAMMODE         VC_8BIT_BASE_ADDR + 0xF4            // MZ80B Graphics mode.  Bit 0 = 0, Write to Graphics RAM I, Bit 0 = 1, Write to Graphics RAM II. Bit 1 = 1, blend Graphics RAM I output on display, Bit 2 = 1, blend Graphics RAM II output on display.
-#define VCADDR_8BIT_VMPALETTE        VC_8BIT_BASE_ADDR + 0xF5            // Select Palette:
-                                                                         //    0xF5 sets the palette. The Video Module supports 4 bit per colour output but there is only enough RAM for 1 bit per colour so the pallette is used to change the colours output.
-                                                                         //      Bits [7:0] defines the pallete number. This indexes a lookup table which contains the required 4bit output per 1bit input.
-                                                                         // GPU:
-#define VCADDR_8BIT_GPUPARAM         VC_8BIT_BASE_ADDR + 0xF6            //    0xF6 set parameters. Store parameters in a long word to be used by the graphics command processor.
-                                                                         //      The parameter word is 128 bit and each write to the parameter word shifts left by 8 bits and adds the new byte at bits 7:0.
-#define VCADDR_8BIT_GPUCMD           VC_8BIT_BASE_ADDR + 0xF7            //    0xF7 set the graphics processor unit commands.
-#define VCADDR_8BIT_GPUSTATUS        VC_8BIT_BASE_ADDR + 0xF7            //         [7;1] - FSM state, [0] - 1 = busy, 0 = idle
-                                                                         //      Bits [5:0] - 0 = Reset parameters.
-                                                                         //                   1 = Clear to val. Start Location (16 bit), End Location (16 bit), Red Filter, Green Filter, Blue Filter
-                                                                         // 
-#define VCADDR_8BIT_VMCTRL           VC_8BIT_BASE_ADDR + 0xF8            // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
-#define VCADDR_8BIT_VMGRMODE         VC_8BIT_BASE_ADDR + 0xF9            // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
-#define VCADDR_8BIT_VMREDMASK        VC_8BIT_BASE_ADDR + 0xFA            // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define VCADDR_8BIT_VMGREENMASK      VC_8BIT_BASE_ADDR + 0xFB            // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define VCADDR_8BIT_VMBLUEMASK       VC_8BIT_BASE_ADDR + 0xFC            // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define VCADDR_8BIT_VMPAGE           VC_8BIT_BASE_ADDR + 0xFD            // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
 #define VCADDR_8BIT_KEYPA            VC_8BIT_BASE_ADDR + 0xE000          // VideoModule 8255 Port A
 #define VCADDR_8BIT_KEYPB            VC_8BIT_BASE_ADDR + 0xE001          // VideoModule 8255 Port B
 #define VCADDR_8BIT_KEYPC            VC_8BIT_BASE_ADDR + 0xE002          // VideoModule 8255 Port C
@@ -221,32 +243,34 @@
 #define VCADDR_8BIT_SCLBASE          VC_8BIT_BASE_ADDR + 0xE2            // High byte scroll base.
       
 // 32 Bit access addresses for 8bit registers - used for reading, address is shifted right by 2 and the resulting byte read into bits 7:0, 31:8 are zero.
-#define VCADDR_32BIT_PALSLCTOFF      VC_32BIT_BASE_ADDR + (4*0xD3)       // Set the palette slot Off position to be adjusted.
-#define VCADDR_32BIT_PALSLCTON       VC_32BIT_BASE_ADDR + (4*0xD4)       // Set the palette slot On position to be adjusted.
-#define VCADDR_32BIT_PALSETRED       VC_32BIT_BASE_ADDR + (4*0xD5)       // Set the red palette value according to the PALETTE_PARAM_SEL address.
-#define VCADDR_32BIT_PALSETGREEN     VC_32BIT_BASE_ADDR + (4*0xD6)       // Set the green palette value according to the PALETTE_PARAM_SEL address.
-#define VCADDR_32BIT_PALSETBLUE      VC_32BIT_BASE_ADDR + (4*0xD7)       // Set the blue palette value according to the PALETTE_PARAM_SEL address.
+#define VCADDR_32BIT_PALSLCTOFF      VC_32BIT_BASE_ADDR + (4*0xA3)       // Set the palette slot Off position to be adjusted.
+#define VCADDR_32BIT_PALSLCTON       VC_32BIT_BASE_ADDR + (4*0xA4)       // Set the palette slot On position to be adjusted.
+#define VCADDR_32BIT_PALSETRED       VC_32BIT_BASE_ADDR + (4*0xA5)       // Set the red palette value according to the PALETTE_PARAM_SEL address.
+#define VCADDR_32BIT_PALSETGREEN     VC_32BIT_BASE_ADDR + (4*0xA6)       // Set the green palette value according to the PALETTE_PARAM_SEL address.
+#define VCADDR_32BIT_PALSETBLUE      VC_32BIT_BASE_ADDR + (4*0xA7)       // Set the blue palette value according to the PALETTE_PARAM_SEL address.
+#define VCADDR_32BIT_OSDMNU_SZX      VC_32BIT_BASE_ADDR + (4*0xA8)       // Get OSD Menu Horizontal Size (X).
+#define VCADDR_32BIT_OSDMNU_SZY      VC_32BIT_BASE_ADDR + (4*0xA9)       // Get OSD Menu Vertical Size (Y).
+#define VCADDR_32BIT_OSDHDR_SZX      VC_32BIT_BASE_ADDR + (4*0xAA)       // Get OSD Status Header Horizontal Size (X).
+#define VCADDR_32BIT_OSDHDR_SZY      VC_32BIT_BASE_ADDR + (4*0xAB)       // Get OSD Status Header Vertical Size (Y).
+#define VCADDR_32BIT_OSDFTR_SZX      VC_32BIT_BASE_ADDR + (4*0xAC)       // Get OSD Status Footer Horizontal Size (X).
+#define VCADDR_32BIT_OSDFTR_SZY      VC_32BIT_BASE_ADDR + (4*0xAD)       // Get OSD Status Footer Vertical Size (Y).   
+#define VCADDR_32BIT_VMPALETTE       VC_32BIT_BASE_ADDR + (4*0xB0)       // Sets the palette. The Video Module supports 4 bit per colour output but there is only enough RAM for 1 bit per colour so the pallette is used to change the colours output.
+                                                                         //    Bits [7:0] defines the pallete number. This indexes a lookup table which contains the required 4bit output per 1bit input.
+#define VCADDR_32BIT_GPUPARAM        VC_32BIT_BASE_ADDR + (4*0xB2)       // Set parameters. Store parameters in a long word to be used by the graphics command processor.
+                                                                         //    The parameter word is 128 bit and each write to the parameter word shifts left by 8 bits and adds the new byte at bits 7:0.
+#define VCADDR_32BIT_GPUCMD          VC_32BIT_BASE_ADDR + (4*0xB3)       // Set the graphics processor unit commands.
+                                                                         //    Bits [5:0] - 0 = Reset parameters.
+                                                                         //                 1 = Clear to val. Start Location (16 bit), End Location (16 bit), Red Filter, Green Filter, Blue Filter
+#define VCADDR_32BIT_VMCTRL          VC_32BIT_BASE_ADDR + (4*0xB8)       // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
+#define VCADDR_32BIT_VMGRMODE        VC_32BIT_BASE_ADDR + (4*0xB9)       // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
+#define VCADDR_32BIT_VMREDMASK       VC_32BIT_BASE_ADDR + (4*0xBA)       // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define VCADDR_32BIT_VMGREENMASK     VC_32BIT_BASE_ADDR + (4*0xBB)       // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define VCADDR_32BIT_VMBLUEMASK      VC_32BIT_BASE_ADDR + (4*0xBC)       // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define VCADDR_32BIT_VMPAGE          VC_32BIT_BASE_ADDR + (4*0xBD)       // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
+#define VCADDR_32BIT_VMVGATTR        VC_32BIT_BASE_ADDR + (4*0xBE)       // Select VGA Border colour and attributes. Bit 2 = Red, 1 = Green, 0 = Blue, 4:3 = VGA Mode, 00 = Off, 01 = 640x480, 10 = 800x600, 11 = 50Hz Internal
+#define VCADDR_32BIT_VMVGAMODE       VC_32BIT_BASE_ADDR + (4*0xBF)       // Select VGA Output mode. [3:0] - required output resolution/frequency.
 #define VCADDR_32BIT_SYSCTRL         VC_32BIT_BASE_ADDR + (4*0xF0)       // System board control register. [2:0] - 000 MZ80A Mode, 2MHz CPU/Bus, 001 MZ80B Mode, 4MHz CPU/Bus, 010 MZ700 Mode, 3.54MHz CPU/Bus.
-#define VCADDR_32BIT_VMBORDER        VC_32BIT_BASE_ADDR + (4*0xF3)       // Select VGA Border colour attributes. Bit 2 = Red, 1 = Green, 0 = Blue.
 #define VCADDR_32BIT_GRAMMODE        VC_32BIT_BASE_ADDR + (4*0xF4)       // MZ80B Graphics mode.  Bit 0 = 0, Write to Graphics RAM I, Bit 0 = 1, Write to Graphics RAM II. Bit 1 = 1, blend Graphics RAM I output on display, Bit 2 = 1, blend Graphics RAM II output on display.
-#define VCADDR_32BIT_VMPALETTE       VC_32BIT_BASE_ADDR + (4*0xF5)       // Select Palette:
-                                                                         //    0xF5 sets the palette. The Video Module supports 4 bit per colour output but there is only enough RAM for 1 bit per colour so the pallette is used to change the colours output.
-                                                                         //      Bits [7:0] defines the pallete number. This indexes a lookup table which contains the required 4bit output per 1bit input.
-                                                                         // GPU:
-#define VCADDR_32BIT_GPUPARAM        VC_32BIT_BASE_ADDR + (4*0xF6)       //    0xF6 set parameters. Store parameters in a long word to be used by the graphics command processor.
-                                                                         //      The parameter word is 128 bit and each write to the parameter word shifts left by 8 bits and adds the new byte at bits 7:0.
-#define VCADDR_32BIT_GPUCMD          VC_32BIT_BASE_ADDR + (4*0xF7)       //    0xF7 set the graphics processor unit commands.
-#define VCADDR_32BIT_GPUSTATUS       VC_32BIT_BASE_ADDR + (4*0xF7)       //         [7;1] - FSM state, [0] - 1 = busy, 0 = idle
-                                                                         //      Bits [5:0] - 0 = Reset parameters.
-                                                                         //                   1 = Clear to val. Start Location (16 bit), End Location (16 bit), Red Filter, Green Filter, Blue Filter
-                                                                         // 
-#define VCADDR_32BIT_VMCTRL          VC_32BIT_BASE_ADDR + (4*0xF8)       // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
-                                                                         //                                [4] defines the colour mode, 0 = mono, 1 = colour - ignored on certain modes. [5] defines wether PCGRAM is enabled, 0 = disabled, 1 = enabled. [7:6] define the VGA mode.
-#define VCADDR_32BIT_VMGRMODE        VC_32BIT_BASE_ADDR + (4*0xF9)       // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
-#define VCADDR_32BIT_VMREDMASK       VC_32BIT_BASE_ADDR + (4*0xFA)       // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define VCADDR_32BIT_VMGREENMASK     VC_32BIT_BASE_ADDR + (4*0xFB)       // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define VCADDR_32BIT_VMBLUEMASK      VC_32BIT_BASE_ADDR + (4*0xFC)       // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define VCADDR_32BIT_VMPAGE          VC_32BIT_BASE_ADDR + (4*0xFD)       // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
 #define VCADDR_32BIT_KEYPA           VC_32BIT_BASE_ADDR + (4*0xE000)     // Video Module 8255 Port A
 #define VCADDR_32BIT_KEYPB           VC_32BIT_BASE_ADDR + (4*0xE001)     // Video Module 8255 Port B
 #define VCADDR_32BIT_KEYPC           VC_32BIT_BASE_ADDR + (4*0xE002)     // Video Module 8255 Port C
@@ -325,14 +349,24 @@
 #define MBADDR_8BIT_IOW_CPLDCFG      MB_32BIT_IO_ADDR + 0x6E             // Version 2.1 CPLD configuration register.
 #define MBADDR_8BIT_IOW_CPLDSTATUS   MB_32BIT_IO_ADDR + 0x6E             // Version 2.1 CPLD status register.
 #define MBADDR_8BIT_IOW_CPLDINFO     MB_32BIT_IO_ADDR + 0x6F             // Version 2.1 CPLD version information register.
+
+#define MBADDR_8BIT_IOW_VMPALETTE    VC_32BIT_IO_ADDR + 0xB0             // Sets the palette. The Video Module supports 4 bit per colour output but there is only enough RAM for 1 bit per colour so the pallette is used to change the colours output.
+                                                                         //    Bits [7:0] defines the pallete number. This indexes a lookup table which contains the required 4bit output per 1bit input.
+#define MBADDR_8BIT_IOW_GPUPARAM     VC_32BIT_IO_ADDR + 0xB2             // Set parameters. Store parameters in a long word to be used by the graphics command processor.
+                                                                         //    The parameter word is 128 bit and each write to the parameter word shifts left by 8 bits and adds the new byte at bits 7:0.
+#define MBADDR_8BIT_IOW_GPUCMD       VC_32BIT_IO_ADDR + 0xB3             // Set the graphics processor unit commands.
+                                                                         //    Bits [5:0] - 0 = Reset parameters.
+                                                                         //                 1 = Clear to val. Start Location (16 bit), End Location (16 bit), Red Filter, Green Filter, Blue Filter
+#define MBADDR_8BIT_IOW_VMCTRL       MB_32BIT_IO_ADDR + 0xB8             // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
+#define MBADDR_8BIT_IOW_VMGRMODE     MB_32BIT_IO_ADDR + 0xB9             // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
+#define MBADDR_8BIT_IOW_VMREDMASK    MB_32BIT_IO_ADDR + 0xBA             // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define MBADDR_8BIT_IOW_VMGREENMASK  MB_32BIT_IO_ADDR + 0xBB             // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define MBADDR_8BIT_IOW_VMBLUEMASK   MB_32BIT_IO_ADDR + 0xBC             // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define MBADDR_8BIT_IOW_VMPAGE       MB_32BIT_IO_ADDR + 0xBD             // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
+#define MBADDR_8BIT_IOW_VMVGATTR     MB_32BIT_IO_ADDR + 0xBE             // Select VGA Border colour and attributes. Bit 2 = Red, 1 = Green, 0 = Blue, 4:3 = VGA Mode, 00 = Off, 01 = 640x480, 10 = 800x600, 11 = 50Hz Internal
+#define MBADDR_8BIT_IOW_VMVGAMODE    MB_32BIT_IO_ADDR + 0xBF             // Select VGA Output mode. [3:0] - required output resolution/frequency.
 #define MBADDR_8BIT_IOW_SYSCTRL      MB_32BIT_IO_ADDR + 0xF0             // System board control register. [2:0] - 000 MZ80A Mode, 2MHz CPU/Bus, 001 MZ80B Mode, 4MHz CPU/Bus, 010 MZ700 Mode, 3.54MHz CPU/Bus.
 #define MBADDR_8BIT_IOW_GRAMMODE     MB_32BIT_IO_ADDR + 0xF4             // MZ80B Graphics mode.  Bit 0 = 0, Write to Graphics RAM I, Bit 0 = 1, Write to Graphics RAM II. Bit 1 = 1, blend Graphics RAM I output on display, Bit 2 = 1, blend Graphics RAM II output on display.
-#define MBADDR_8BIT_IOW_VMCTRL       MB_32BIT_IO_ADDR + 0xF8             // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
-#define MBADDR_8BIT_IOW_VMGRMODE     MB_32BIT_IO_ADDR + 0xF9             // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
-#define MBADDR_8BIT_IOW_VMREDMASK    MB_32BIT_IO_ADDR + 0xFA             // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define MBADDR_8BIT_IOW_VMGREENMASK  MB_32BIT_IO_ADDR + 0xFB             // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define MBADDR_8BIT_IOW_VMBLUEMASK   MB_32BIT_IO_ADDR + 0xFC             // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define MBADDR_8BIT_IOW_VMPAGE       MB_32BIT_IO_ADDR + 0xFD             // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
 
 #define MBADDR_32BIT_IOR_CTRLLATCH   MB_32BIT_IO_ADDR + (4*0x60)         // Control latch which specifies the Memory Model/mode.
 #define MBADDR_32BIT_IOR_SETXMHZ     MB_32BIT_IO_ADDR + (4*0x62)         // Switch to alternate CPU frequency provided by K64F.
@@ -346,17 +380,14 @@
 #define MBADDR_32BIT_IOR_CPLDCFG     MB_32BIT_IO_ADDR + (4*0x6E)         // Version 2.1 CPLD configuration register.
 #define MBADDR_32BIT_IOR_CPLDSTATUS  MB_32BIT_IO_ADDR + (4*0x6E)         // Version 2.1 CPLD status register.
 #define MBADDR_32BIT_IOR_CPLDINFO    MB_32BIT_IO_ADDR + (4*0x6F)         // Version 2.1 CPLD version information register.
+#define MBADDR_32BIT_IOR_VMCTRL      MB_32BIT_IO_ADDR + (4*0xB8)         // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
+#define MBADDR_32BIT_IOR_VMGRMODE    MB_32BIT_IO_ADDR + (4*0xB9)         // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
+#define MBADDR_32BIT_IOR_VMREDMASK   MB_32BIT_IO_ADDR + (4*0xBA)         // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define MBADDR_32BIT_IOR_VMGREENMASK MB_32BIT_IO_ADDR + (4*0xBB)         // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define MBADDR_32BIT_IOR_VMBLUEMASK  MB_32BIT_IO_ADDR + (4*0xBC)         // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define MBADDR_32BIT_IOR_VMPAGE      MB_32BIT_IO_ADDR + (4*0xBD)         // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
 #define MBADDR_32BIT_IOR_SYSCTRL     MB_32BIT_IO_ADDR + (4*0xF0)         // System board control register. [2:0] - 000 MZ80A Mode, 2MHz CPU/Bus, 001 MZ80B Mode, 4MHz CPU/Bus, 010 MZ700 Mode, 3.54MHz CPU/Bus.
 #define MBADDR_32BIT_IOR_GRAMMODE    MB_32BIT_IO_ADDR + (4*0xF4)         // MZ80B Graphics mode.  Bit 0 = 0, Write to Graphics RAM I, Bit 0 = 1, Write to Graphics RAM II. Bit 1 = 1, blend Graphics RAM I output on display, Bit 2 = 1, blend Graphics RAM II output on display.
-#define MBADDR_32BIT_IOR_VMCTRL      MB_32BIT_IO_ADDR + (4*0xF8)         // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
-#define MBADDR_32BIT_IOR_VMGRMODE    MB_32BIT_IO_ADDR + (4*0xF9)         // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
-#define MBADDR_32BIT_IOR_VMREDMASK   MB_32BIT_IO_ADDR + (4*0xFA)         // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define MBADDR_32BIT_IOR_VMGREENMASK MB_32BIT_IO_ADDR + (4*0xFB)         // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define MBADDR_32BIT_IOR_VMBLUEMASK  MB_32BIT_IO_ADDR + (4*0xFC)         // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define MBADDR_32BIT_IOR_VMPAGE      MB_32BIT_IO_ADDR + (4*0xFD)         // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
-
-
-
 
 // tranZPUter Memory Modes - select one of the 32 possible memory models using these constants.
 //
@@ -392,20 +423,69 @@
 #define IO_TZ_CLKSELRD               0x66                                // Read the status of the clock select, ie. which clock is connected to the CPU.
 #define IO_TZ_SVCREQ                 0x68                                // Service request from the Z80 to be provided by the K64F.
 #define IO_TZ_SYSREQ                 0x6A                                // System request from the Z80 to be provided by the K64F.
+#define IO_TZ_CPLDSTATUS             0x6B                                // Version 2.1 CPLD status register.
 #define IO_TZ_CPUCFG                 0x6C                                // Version 2.2 CPU configuration register.
 #define IO_TZ_CPUSTATUS              0x6C                                // Version 2.2 CPU runtime status register.
 #define IO_TZ_CPUINFO                0x6D                                // Version 2.2 CPU information register.
 #define IO_TZ_CPLDCFG                0x6E                                // Version 2.1 CPLD configuration register.
-#define IO_TZ_CPLDSTATUS             0x6E                                // Version 2.1 CPLD status register.
 #define IO_TZ_CPLDINFO               0x6F                                // Version 2.1 CPLD version information register.
+
+#define IO_TZ_PALSLCTOFF             0xA3                                // Set the palette slot (PALETTE_PARAM_SEL) Off position to be adjusted.
+#define IO_TZ_PALSLCTON              0xA4                                // Set the palette slot (PALETTE_PARAM_SEL) On position to be adjusted.
+#define IO_TZ_PALSETRED              0xA5                                // Set the red palette value according to the PALETTE_PARAM_SEL address.
+#define IO_TZ_PALSETGREEN            0xA6                                // Set the green palette value according to the PALETTE_PARAM_SEL address.
+#define IO_TZ_PALSETBLUE             0xA7                                // Set the blue palette value according to the PALETTE_PARAM_SEL address.
+#define IO_TZ_OSDMNU_SZX             0xA8                                // Get OSD Menu Horizontal Size (X).
+#define IO_TZ_OSDMNU_SZY             0xA9                                // Get OSD Menu Vertical Size (Y).
+#define IO_TZ_OSDHDR_SZX             0xAA                                // Get OSD Status Header Horizontal Size (X).
+#define IO_TZ_OSDHDR_SZY             0xAB                                // Get OSD Status Header Vertical Size (Y).
+#define IO_TZ_OSDFTR_SZX             0xAC                                // Get OSD Status Footer Horizontal Size (X).
+#define IO_TZ_OSDFTR_SZY             0xAD                                // Get OSD Status Footer Vertical Size (Y).   
+#define IO_TZ_PALETTE                0xB0                                // Sets the palette. The Video Module supports 4 bit per colour output but there is only enough RAM for 1 bit per colour so the pallette is used to change the colours output.
+                                                                         //    Bits [7:0] defines the pallete number. This indexes a lookup table which contains the required 4bit output per 1bit input.
+#define IO_TZ_GPUPARAM               0xB2                                // Set parameters. Store parameters in a long word to be used by the graphics command processor.
+                                                                         //    The parameter word is 128 bit and each write to the parameter word shifts left by 8 bits and adds the new byte at bits 7:0.
+#define IO_TZ_GPUCMD                 0xB3                                // Set the graphics processor unit commands.
+                                                                         //    Bits [5:0] - 0 = Reset parameters.
+                                                                         //                 1 = Clear to val. Start Location (16 bit), End Location (16 bit), Red Filter, Green Filter, Blue Filter
+#define IO_TZ_VMCTRL                 0xB8                                // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
+#define IO_TZ_VMGRMODE               0xB9                                // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
+#define IO_TZ_VMREDMASK              0xBA                                // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define IO_TZ_VMGREENMASK            0xBB                                // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define IO_TZ_VMBLUEMASK             0xBC                                // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
+#define IO_TZ_VMPAGE                 0xBD                                // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
+#define IO_TZ_VMVGATTR               0xBE                                // Select VGA Border colour and attributes. Bit 2 = Red, 1 = Green, 0 = Blue, 4:3 = VGA Mode, 00 = Off, 01 = 640x480, 10 = 800x600, 11 = 50Hz Internal
+#define IO_TZ_VMVGAMODE              0xBF                                // Select VGA Output mode. [3:0] - required output resolution/frequency.
+#define IO_TZ_GDGWF                  0xCC                                // MZ-800      write format register
+#define IO_TZ_GDGRF                  0xCD                                // MZ-800      read format register
+#define IO_TZ_GDCMD                  0xCE                                // MZ-800 CRTC Mode register
+#define IO_TZ_GDCMD                  0xCF                                // MZ-800 CRTC control register
+#define IO_TZ_MMIO0                  0xE0                                // MZ-700/MZ-800 Memory management selection ports.
+#define IO_TZ_MMIO1                  0xE1                                // ""
+#define IO_TZ_MMIO2                  0xE2                                // ""
+#define IO_TZ_MMIO3                  0xE3                                // ""
+#define IO_TZ_MMIO4                  0xE4                                // ""
+#define IO_TZ_MMIO5                  0xE5                                // ""
+#define IO_TZ_MMIO6                  0xE6                                // ""
+#define IO_TZ_MMIO7                  0xE7                                // MZ-700/MZ-800 Memory management selection ports.
+#define IO_TZ_PPIA                   0xE0                                // MZ80B/MZ2000 8255 PPI Port A
+#define IO_TZ_PPIB                   0xE1                                // MZ80B/MZ2000 8255 PPI Port B
+#define IO_TZ_PPIC                   0xE2                                // MZ80B/MZ2000 8255 PPI Port C
+#define IO_TZ_PPICTL                 0xE3                                // MZ80B/MZ2000 8255 PPI Control Register
+#define IO_TZ_PIT0                   0xE4                                // MZ80B/MZ2000 8253 PIT Timer 0
+#define IO_TZ_PIT1                   0xE5                                // MZ80B/MZ2000 8253 PIT Timer 1
+#define IO_TZ_PIT2                   0xE6                                // MZ80B/MZ2000 8253 PIT Timer 2
+#define IO_TZ_PITCTL                 0xE7                                // MZ80B/MZ2000 8253 PIT Control Register
+#define IO_TZ_PIOA                   0xE8                                // MZ80B/MZ2000 Z80 PIO Port A
+#define IO_TZ_PIOCTLA                0xE9                                // MZ80B/MZ2000 Z80 PIO Port A Control Register
+#define IO_TZ_PIOB                   0xEA                                // MZ80B/MZ2000 Z80 PIO Port B
+#define IO_TZ_PIOCTLB                0xEB                                // MZ80B/MZ2000 Z80 PIO Port B Control Register
 #define IO_TZ_SYSCTRL                0xF0                                // System board control register. [2:0] - 000 MZ80A Mode, 2MHz CPU/Bus, 001 MZ80B Mode, 4MHz CPU/Bus, 010 MZ700 Mode, 3.54MHz CPU/Bus.
 #define IO_TZ_GRAMMODE               0xF4                                // MZ80B Graphics mode.  Bit 0 = 0, Write to Graphics RAM I, Bit 0 = 1, Write to Graphics RAM II. Bit 1 = 1, blend Graphics RAM I output on display, Bit 2 = 1, blend Graphics RAM II output on display.
-#define IO_TZ_VMCTRL                 0xF8                                // Video Module control register. [2:0] - 000 (default) = MZ80A, 001 = MZ-700, 010 = MZ800, 011 = MZ80B, 100 = MZ80K, 101 = MZ80C, 110 = MZ1200, 111 = MZ2000. [3] = 0 - 40 col, 1 - 80 col.
-#define IO_TZ_VMGRMODE               0xF9                                // Video Module graphics mode. 7/6 = Operator (00=OR,01=AND,10=NAND,11=XOR), 5=GRAM Output Enable, 4 = VRAM Output Enable, 3/2 = Write mode (00=Page 1:Red, 01=Page 2:Green, 10=Page 3:Blue, 11=Indirect), 1/0=Read mode (00=Page 1:Red, 01=Page2:Green, 10=Page 3:Blue, 11=Not used).
-#define IO_TZ_VMREDMASK              0xFA                                // Video Module Red bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define IO_TZ_VMGREENMASK            0xFB                                // Video Module Green bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define IO_TZ_VMBLUEMASK             0xFC                                // Video Module Blue bit mask (1 bit = 1 pixel, 8 pixels per byte).
-#define IO_TZ_VMPAGE                 0xFD                                // Video Module memory page register. [1:0] switches in 1 16Kb page (3 pages) of graphics ram to C000 - FFFF. Bits [1:0] = page, 00 = off, 01 = Red, 10 = Green, 11 = Blue. This overrides all MZ700/MZ80B page switching functions. [7] 0 - normal, 1 - switches in CGROM for upload at D000:DFFF.
+//#define IO_TZ_GRAMOPT                0xF4                                // MZ80B/MZ2000 GRAM configuration option.
+#define IO_TZ_CRTGRPHPRIO            0xF5                                // MZ2000 Graphics priority register, character or a graphics colour has front display priority.
+#define IO_TZ_CRTGRPHSEL             0xF6                                // MZ2000 Graphics output select on CRT or external CRT
+#define IO_TZ_GRAMCOLRSEL            0xF7                                // MZ2000 Graphics RAM colour bank select./
 
 // IO register constants.
 //
@@ -438,18 +518,22 @@
 #define VMMODE_MZ80A                 0x03                                // Video mode = MZ80A
 #define VMMODE_MZ700                 0x04                                // Video mode = MZ700
 #define VMMODE_MZ800                 0x05                                // Video mode = MZ800
-#define VMMODE_MZ80B                 0x06                                // Video mode = MZ80B
-#define VMMODE_MZ2000                0x07                                // Video mode = MZ2000
-#define VMMODE_80CHAR                0x08                                // Enable 80 character display.
-#define VMMODE_80CHAR_MASK           0xF7                                // Mask to filter out display width control bit.
-#define VMMODE_COLOUR                0x10                                // Enable colour display.
-#define VMMODE_COLOUR_MASK           0xEF                                // Mask to filter out colour control bit.
-#define VMMODE_PCGRAM                0x20                                // Enable PCG RAM.
-#define VMMODE_VGA_MASK              0x3F                                // Mask to filter out the VGA mode bits.
-#define VMMODE_VGA_OFF               0x00                                // Set VGA mode off, external monitor is driven by standard internal signals.
-#define VMMODE_VGA_640x480           0x40                                // Set external monitor to VGA 640x480 @ 60Hz mode.
-#define VMMODE_VGA_1024x768          0x80                                // Set external monitor to VGA 1024x768 @ 60Hz mode.
-#define VMMODE_VGA_800x600           0xC0                                // Set external monitor to VGA 800x600 @ 60Hz mode.
+#define VMMODE_MZ1500                0x06                                // Video mode = MZ1500
+#define VMMODE_MZ80B                 0x07                                // Video mode = MZ80B
+#define VMMODE_MZ2000                0x08                                // Video mode = MZ2000
+#define VMMODE_MZ2200                0x09                                // Video mode = MZ2200
+#define VMMODE_MZ2500                0x0A                                // Video mode = MZ2500
+#define VMMODE_80CHAR                0x10                                // Enable 80 character display.
+#define VMMODE_80CHAR_MASK           0xEF                                // Mask to filter out display width control bit.
+#define VMMODE_COLOUR                0x20                                // Enable colour display.
+#define VMMODE_COLOUR_MASK           0xDF                                // Mask to filter out colour control bit.
+#define VMMODE_PCGRAM                0x40                                // Enable PCG RAM.
+#define VMMODE_VGA_MASK              0xF0                                // Mask to filter out the VGA output mode bits.
+#define VMMODE_VGA_OFF               0x00                                // Set VGA mode off, external monitor is driven by standard internal 60Hz signals.
+#define VMMODE_VGA_INT               0x00                                // Set VGA mode off, external monitor is driven by standard internal 60Hz signals.
+#define VMMODE_VGA_INT50             0x01                                // Set VGA mode off, external monitor is driven by standard internal 50Hz signals.
+#define VMMODE_VGA_640x480           0x02                                // Set external monitor to VGA 640x480 @ 60Hz mode.
+#define VMMODE_VGA_800x600           0x03                                // Set external monitor to VGA 800x600 @ 60Hz mode.
 
 // VGA mode border control constants.
 //

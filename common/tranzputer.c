@@ -62,6 +62,12 @@
 //                                   and threads.
 //                  v1.7 May 2021  - Changes to use 512K-1Mbyte Z80 Static RAM, build time configurable.
 //                                   Added memory test routines to validate tranZPUter memory.
+//                  v1.8 Oct 2021  - Major changes as the Sharp MZ Series FPGA Emulation is incorporated
+//                                   within the tranZPUter. CPLD's are now coded on a 1:1 with a host
+//                                   and support to allow CPLD emulation of a different host removed
+//                                   as this is catered for by the Sharp MZ Series. 
+//                                   MZ-2000 support added as the tranZPUter SW-700 now functions
+//                                   on the MZ-2000 host hardware.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //
@@ -112,8 +118,11 @@ extern "C" {
 #include "utils.h"
 #include <fonts.h>
 #include <bitmaps.h>
-#include <osd.h>
 #include <tranzputer.h>
+
+// Bring in public declarations from emuMZ module (pseudo class).
+#define EMUMZ_H
+#include <emumz.h>
 
 #ifndef __APP__        // Protected methods which should only reside in the kernel.
 
@@ -146,6 +155,137 @@ static t_asciiMap asciiMap[] = {
     { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, // 0XEF
     { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }, { 0x20 }  // 0XFF
 };
+static t_dispCodeMap dispCodeMap[] = {
+    { 0xCC }, //  NUL '\0' (null character)     
+    { 0xE0 }, //  SOH (start of heading)     
+    { 0xF2 }, //  STX (start of text)        
+    { 0xF3 }, //  ETX (end of text)          
+    { 0xCE }, //  EOT (end of transmission)  
+    { 0xCF }, //  ENQ (enquiry)              
+    { 0xF6 }, //  ACK (acknowledge)          
+    { 0xF7 }, //  BEL '\a' (bell)            
+    { 0xF8 }, //  BS  '\b' (backspace)       
+    { 0xF9 }, //  HT  '\t' (horizontal tab)  
+    { 0xFA }, //  LF  '\n' (new line)        
+    { 0xFB }, //  VT  '\v' (vertical tab)    
+    { 0xFC }, //  FF  '\f' (form feed)       
+    { 0xFD }, //  CR  '\r' (carriage ret)    
+    { 0xFE }, //  SO  (shift out)            
+    { 0xFF }, //  SI  (shift in)                
+    { 0xE1 }, //  DLE (data link escape)        
+    { 0xC1 }, //  DC1 (device control 1)     
+    { 0xC2 }, //  DC2 (device control 2)     
+    { 0xC3 }, //  DC3 (device control 3)     
+    { 0xC4 }, //  DC4 (device control 4)     
+    { 0xC5 }, //  NAK (negative ack.)        
+    { 0xC6 }, //  SYN (synchronous idle)     
+    { 0xE2 }, //  ETB (end of trans. blk)    
+    { 0xE3 }, //  CAN (cancel)               
+    { 0xE4 }, //  EM  (end of medium)        
+    { 0xE5 }, //  SUB (substitute)           
+    { 0xE6 }, //  ESC (escape)               
+    { 0xEB }, //  FS  (file separator)       
+    { 0xEE }, //  GS  (group separator)      
+    { 0xEF }, //  RS  (record separator)     
+    { 0xF4 }, //  US  (unit separator)       
+    { 0x00 }, //  SPACE                         
+    { 0x61 }, //  !                             
+    { 0x62 }, //  "                          
+    { 0x63 }, //  #                          
+    { 0x64 }, //  $                          
+    { 0x65 }, //  %                          
+    { 0x66 }, //  &                          
+    { 0x67 }, //  '                          
+    { 0x68 }, //  (                          
+    { 0x69 }, //  )                          
+    { 0x6B }, //  *                          
+    { 0x6A }, //  +                          
+    { 0x2F }, //  ,                          
+    { 0x2A }, //  -                          
+    { 0x2E }, //  .                          
+    { 0x2D }, //  /                          
+    { 0x20 }, //  0                          
+    { 0x21 }, //  1                          
+    { 0x22 }, //  2                          
+    { 0x23 }, //  3                          
+    { 0x24 }, //  4                          
+    { 0x25 }, //  5                          
+    { 0x26 }, //  6                          
+    { 0x27 }, //  7                          
+    { 0x28 }, //  8                          
+    { 0x29 }, //  9                          
+    { 0x4F }, //  :                          
+    { 0x2C }, //  ;                          
+    { 0x51 }, //  <                          
+    { 0x2B }, //  =                          
+    { 0x57 }, //  >                          
+    { 0x49 }, //  ?                          
+    { 0x55 }, //  @
+    { 0x01 }, //  A
+    { 0x02 }, //  B
+    { 0x03 }, //  C
+    { 0x04 }, //  D
+    { 0x05 }, //  E
+    { 0x06 }, //  F
+    { 0x07 }, //  G
+    { 0x08 }, //  H
+    { 0x09 }, //  I
+    { 0x0A }, //  J
+    { 0x0B }, //  K
+    { 0x0C }, //  L
+    { 0x0D }, //  M
+    { 0x0E }, //  N
+    { 0x0F }, //  O
+    { 0x10 }, //  P
+    { 0x11 }, //  Q
+    { 0x12 }, //  R
+    { 0x13 }, //  S
+    { 0x14 }, //  T
+    { 0x15 }, //  U
+    { 0x16 }, //  V
+    { 0x17 }, //  W
+    { 0x18 }, //  X
+    { 0x19 }, //  Y
+    { 0x1A }, //  Z
+    { 0x52 }, //  [
+    { 0x59 }, //  \  '\\'
+    { 0x54 }, //  ]
+    { 0xBE }, //  ^
+    { 0x3C }, //  _
+    { 0xC7 }, //  `
+    { 0x81 }, //  a
+    { 0x82 }, //  b
+    { 0x83 }, //  c
+    { 0x84 }, //  d
+    { 0x85 }, //  e
+    { 0x86 }, //  f
+    { 0x87 }, //  g
+    { 0x88 }, //  h
+    { 0x89 }, //  i
+    { 0x8A }, //  j
+    { 0x8B }, //  k
+    { 0x8C }, //  l
+    { 0x8D }, //  m
+    { 0x8E }, //  n
+    { 0x8F }, //  o
+    { 0x90 }, //  p
+    { 0x91 }, //  q
+    { 0x92 }, //  r
+    { 0x93 }, //  s
+    { 0x94 }, //  t
+    { 0x95 }, //  u
+    { 0x96 }, //  v
+    { 0x97 }, //  w
+    { 0x98 }, //  x
+    { 0x99 }, //  y
+    { 0x9A }, //  z
+    { 0xBC }, //  {
+    { 0x80 }, //  |
+    { 0x40 }, //  }
+    { 0xA5 }, //  ~
+    { 0xC0 }  //  DEL
+};
+
 
 // Dummy method for the interrupt Service Routines when disabled by current mode.
 //
@@ -269,7 +409,7 @@ static void setupIRQ(void)
     switch(z80Control.hostType)
     {
         // For the MZ700 we need to enable IORQ to process the OUT statements the Z80 generates for memory mode selection. 
-        case MZ700:
+        case HW_MZ700:
             // Install the dummy method to be called when PortE triggers.
             _VectorsRam[IRQ_PORTE + 16] = irqPortE;
 
@@ -294,7 +434,7 @@ static void setupIRQ(void)
             break;
           
         // The MZ800 we setup for RESET and SVCREQ handling, everything else ignored.
-        case MZ800:
+        case HW_MZ800:
             // Install the dummy method to be called when PortE triggers.
             _VectorsRam[IRQ_PORTE + 16] = irqPortE;
 
@@ -317,7 +457,7 @@ static void setupIRQ(void)
 
 
         // For the MZ80B we need to enable IORQ to process the OUT statements the Z80 generates for memory mode selection and I/O. 
-        case MZ80B:
+        case HW_MZ80B:
             // Install the dummy method to be called when PortE triggers.
             _VectorsRam[IRQ_PORTE + 16] = irqPortE_dummy;
       
@@ -338,10 +478,10 @@ static void setupIRQ(void)
             NVIC_SET_PRIORITY(IRQ_PORTE, 16);
             break;
            
-        // For the MZ2000 we need to enable IORQ to process the OUT statements the Z80 generates for memory mode selection and I/O. 
-        case MZ2000:
+        // The MZ2000 we setup for RESET and SVCREQ handling, everything else ignored.
+        case HW_MZ2000:
             // Install the dummy method to be called when PortE triggers.
-            _VectorsRam[IRQ_PORTE + 16] = irqPortE_dummy;
+            _VectorsRam[IRQ_PORTE + 16] = irqPortE;
       
             // Install the method to be called when PortD triggers.
             _VectorsRam[IRQ_PORTD + 16] = irqPortD;
@@ -361,7 +501,7 @@ static void setupIRQ(void)
             break;
 
         // If the tranZPUter is running as a Sharp MZ-80A then we dont need a complicated ISR, just enable the detection of IO requests on Port E.
-        case MZ80A:
+        case HW_MZ80A:
         default:
             // Install the method to be called when PortE triggers.
             _VectorsRam[IRQ_PORTE + 16] = irqPortE;
@@ -419,7 +559,7 @@ static void restoreIRQ(void)
     switch(z80Control.hostType)
     {
         // For the MZ700 we need to enable IORQ to process the OUT statements the Z80 generates for memory mode selection. 
-        case MZ700:
+        case HW_MZ700:
             // Setup the IRQ for Z80_IORQ.
             //installIRQ(Z80_IORQ, IRQ_MASK_FALLING);
            
@@ -431,7 +571,7 @@ static void restoreIRQ(void)
             break;
            
         // The MZ800 just needs to enable IORQ to process the OUT statements the Z80 generates for memory mode selection. 
-        case MZ800:
+        case HW_MZ800:
             // Setup the IRQ for CTL_SVCREQ.
             installIRQ(CTL_SVCREQ, IRQ_MASK_LOW);
 
@@ -440,7 +580,7 @@ static void restoreIRQ(void)
             break;
 
         // For the MZ80B we need to enable IORQ to process the OUT statements the Z80 generates for memory mode selection and I/O. 
-        case MZ80B:
+        case HW_MZ80B:
             // Setup the IRQ for CTL_SVCREQ.
             installIRQ(CTL_SVCREQ, IRQ_MASK_LOW);
 
@@ -448,8 +588,8 @@ static void restoreIRQ(void)
             installIRQ(Z80_RESET, IRQ_MASK_FALLING);
             break;
            
-        // For the MZ2000 we need to enable IORQ to process the OUT statements the Z80 generates for memory mode selection and I/O. 
-        case MZ2000:
+        // The MZ2000 just re-enable the service request and reset interrupts.
+        case HW_MZ2000:
             // Setup the IRQ for CTL_SVCREQ.
             installIRQ(CTL_SVCREQ, IRQ_MASK_LOW);
 
@@ -458,7 +598,7 @@ static void restoreIRQ(void)
             break;
 
         // If the tranZPUter is running as a Sharp MZ-80A then we dont need a complicated ISR, just enable the detection of IO requests on Port E.
-        case MZ80A:
+        case HW_MZ80A:
         default:
             // Setup the IRQ for CTL_SVCREQ.
             installIRQ(CTL_SVCREQ, IRQ_MASK_LOW);
@@ -579,15 +719,18 @@ void setupZ80Pins(uint8_t initK64F, volatile uint32_t *millisecondTick)
     }
 
     // Initialise control structure.
-    z80Control.svcControlAddr = getServiceAddr();
-    z80Control.refreshAddr    = 0x00;
-    z80Control.disableRefresh = 0;
-    z80Control.runCtrlLatch   = readCtrlLatch();
-    z80Control.holdZ80        = 0;
-    z80Control.ctrlMode       = Z80_RUN;
-    z80Control.busDir         = TRISTATE;
-    z80Control.hostType       = MZ80A;
-    z80Control.machineMode    = MZ80A;
+    z80Control.svcControlAddr    = getServiceAddr();
+    z80Control.refreshAddr       = 0x00;
+    z80Control.disableRefresh    = 0;
+    z80Control.runCtrlLatch      = readCtrlLatch();
+    z80Control.holdZ80           = 0;
+    z80Control.iplMode           = 1;
+    z80Control.blockResetActions = 0;
+    z80Control.ctrlMode          = Z80_RUN;
+    z80Control.busDir            = TRISTATE;
+    z80Control.hostType          = HW_MZ80A;
+//    z80Control.machineMode       = MZ80A;
+    z80Control.cpldVersion       = 1;
 
     // Final part of first call initialisation, now that the pins are configured, setup the interrupts.
     //
@@ -638,19 +781,37 @@ void resetZ80(uint8_t memoryMode)
     {
         // The first output is a dummy write which removes the original host configuration set when the CPLD cold starts. This is necessary to keep the machine original if
         // the K64F isnt present or autoboot is disabled. The second output ensures the memory management is set to the default state for an MZ-800.
-        writeZ80IO(IO_TZ_CPLDCFG, MODE_MZ800 | MODE_VIDEO_MODULE_DISABLED | MODE_PRESERVE_CONFIG, TRANZPUTER);
+        writeZ80IO(IO_TZ_CPLDCFG, HWMODE_MZ800 | MODE_VIDEO_MODULE_DISABLED | MODE_PRESERVE_CONFIG, TRANZPUTER);
         writeZ80IO(IO_TZ_MMIO4, 0, MAINBOARD);
     }
 
-    // Simply change the Z80_RESET pin to an output, assert low, reset high and reset to input to create the hardware reset event. On the original hardware the
-    // reset pulse width is 90uS, the ms timer is only accurate to 100uS so we apply a 100uS pulse.
+    // On MZ-2000 hosts the RESET is controlled by a gate array so we cannot assert our output. In order to reset we must use the 8255 output to force the gate array to
+    // reset as it controls many signal states as well as the system reset signal.
     //
-    __disable_irq();
-    pinOutputSet(Z80_RESET, LOW);
-    for(volatile uint32_t pulseWidth=0; pulseWidth < DEFAULT_RESET_PULSE_WIDTH; pulseWidth++);
-    pinHigh(Z80_RESET);
-    pinInput(Z80_RESET);
-    __enable_irq();
+    if(z80Control.hostType == HW_MZ2000)
+    {
+        //writeZ80IO(IO_TZ_PPICTL, 0x06, MAINBOARD);
+        writeZ80IO(IO_TZ_CPLDCMD, CPLD_RESET_HOST, MAINBOARD);
+    }
+    // Unknown boards do nothing as we dont know the underlying hardware configuration.
+    else if(z80Control.hostType == HW_UNKNOWN)
+    {
+    }
+    else
+    {
+        // Simply change the Z80_RESET pin to an output, assert low, reset high and reset to input to create the hardware reset event. On the original hardware the
+        // reset pulse width is 90uS, the ms timer is only accurate to 100uS so we apply a 100uS pulse.
+        //
+        if(z80Control.hostType != HW_MZ2000 && z80Control.hostType != HW_UNKNOWN)
+        {
+            __disable_irq();
+            pinOutputSet(Z80_RESET, LOW);
+            for(volatile uint32_t pulseWidth=0; pulseWidth < DEFAULT_RESET_PULSE_WIDTH; pulseWidth++);
+            pinHigh(Z80_RESET);
+            pinInput(Z80_RESET);
+            __enable_irq();
+        }
+    }
 
     // Set the memory mode to the one provided.
     //
@@ -898,7 +1059,9 @@ uint8_t writeZ80Memory(uint32_t addr, uint8_t data, enum TARGETS target)
     // will translate it into a correct write signal.
     if(target == FPGA)
     {
-        // Allow time for the address and data to settle then pulse the WR line low.
+        // Allow time for the address and data to settle then pulse the MREQ and WR line low.
+        for(volatile uint32_t pulseWidth = 0; pulseWidth < 3; pulseWidth++);
+        pinLow(Z80_MREQ);
         for(volatile uint32_t pulseWidth = 0; pulseWidth < 5; pulseWidth++);
         pinLow(Z80_WR);
         for(volatile uint32_t pulseWidth = 0; pulseWidth < 5; pulseWidth++);
@@ -937,12 +1100,12 @@ uint8_t writeZ80Memory(uint32_t addr, uint8_t data, enum TARGETS target)
             // With the tranZPUter SW v2 boards, need to increase the write pulse width, alternatively wait until a positive edge on the CPU clock.
             for(volatile uint32_t pulseWidth=0; pulseWidth < 3; pulseWidth++);
         }
-       
-        // Complete the write cycle.
-        //
-        pinHigh(Z80_WR);
-        pinHigh(Z80_MREQ);
     }
+    
+    // Complete the write cycle.
+    //
+    pinHigh(Z80_WR);
+    pinHigh(Z80_MREQ);
 
     return(0);
 }
@@ -1018,7 +1181,7 @@ uint8_t writeZ80Array(uint32_t addr, uint8_t *data, uint32_t size, enum TARGETS 
     // Locals.
     uint32_t   nxtAddr = addr;
     uint8_t    *ptr    = data;
-printf("WZA: %08lx, %08lx\n", addr, data); 
+//printf("WZA: %08lx, %08lx\n", addr, data); 
     // If the Z80 is in RUN mode, request the bus.
     // This mechanism allows for the Z80 BUS to remain under the tranZPUter control for multiple transactions.
     //
@@ -1146,7 +1309,16 @@ uint8_t outZ80IO(uint32_t addr, uint8_t data)
         pinLow(Z80_WR);
 
         // On a K64F running at 120MHz this delay gives a pulsewidth of 760nS.
-        for(volatile uint32_t pulseWidth=0; pulseWidth < 2; pulseWidth++);
+        switch(z80Control.hostType)
+        {
+            case HW_MZ2000:
+                for(volatile uint32_t pulseWidth=0; pulseWidth < 16; pulseWidth++);
+                break;
+
+            default:
+                for(volatile uint32_t pulseWidth=0; pulseWidth < 2; pulseWidth++);
+                break;
+        }
 
         // Another wait loop check as the Z80 can assert wait at the time of Write or anytime before it is deasserted.
         while((*ms - startTime) < 200 && pinGet(Z80_WAIT) == 0);
@@ -1190,7 +1362,16 @@ uint8_t inZ80IO(uint32_t addr)
     {
         // On a K64F running at 120MHz this delay gives a pulsewidth of 760nS. This gives time for the addressed device to present the data
         // on the data bus.
-        for(volatile uint32_t pulseWidth=0; pulseWidth < 2; pulseWidth++);
+        switch(z80Control.hostType)
+        {
+            case HW_MZ2000:
+                for(volatile uint32_t pulseWidth=0; pulseWidth < 16; pulseWidth++);
+                break;
+
+            default:
+                for(volatile uint32_t pulseWidth=0; pulseWidth < 2; pulseWidth++);
+                break;
+        }
 
         // A wait loop check as the Z80 can assert wait during the Read operation to request more time. Set a timeout in case of hardware lockup.
         while((*ms - startTime) < 100 && pinGet(Z80_WAIT) == 0);
@@ -2327,7 +2508,7 @@ FRESULT loadZ80Memory(const char *src, uint32_t fileOffset, uint32_t addr, uint3
     //
     if(!fr0)
         fr0 = f_lseek(&File, fileOffset);
-   
+printf("Loading file(%s,%08lx,%08lx)\n", src, addr, size);   
     // If no errors in opening the file, proceed with reading and loading into memory.
     if(!fr0)
     {
@@ -2371,12 +2552,12 @@ FRESULT loadZ80Memory(const char *src, uint32_t fileOffset, uint32_t addr, uint3
         {
             // If the host hardware is an MZ-700/MZ-800 and we are loading into main memory, issue memory management commands to page in all the DRAM.
             //
-            if(target == MAINBOARD && addr <= 0x1000 && (z80Control.hostType == MZ700 || z80Control.hostType == MZ800))
+            if(target == MAINBOARD && addr <= 0x1000 && (z80Control.hostType == HW_MZ700 || z80Control.hostType == HW_MZ800))
             {
                 // Then page in the lower DRAM bank.
                 outZ80IO(IO_TZ_MMIO0, 0);
             }
-            if(target == MAINBOARD && (addr >= 0xD000 || addr+size >= 0xD000) && (z80Control.hostType == MZ700 || z80Control.hostType == MZ800))
+            if(target == MAINBOARD && (addr >= 0xD000 || addr+size >= 0xD000) && (z80Control.hostType == HW_MZ700 || z80Control.hostType == HW_MZ800))
             {
                 // Then page in the upper DRAM bank.
                 outZ80IO(IO_TZ_MMIO1, 0);
@@ -2412,12 +2593,12 @@ FRESULT loadZ80Memory(const char *src, uint32_t fileOffset, uint32_t addr, uint3
           
             // Reset the memory management for MZ-700/MZ-800.
             //
-            if(target == MAINBOARD && addr <= 0x1000 && (z80Control.hostType == MZ700 || z80Control.hostType == MZ800))
+            if(target == MAINBOARD && addr <= 0x1000 && (z80Control.hostType == HW_MZ700 || z80Control.hostType == HW_MZ800))
             {
                 // Restore lower memory bank to BIOS.
                 outZ80IO(IO_TZ_MMIO2, 0);
             }
-            if(target == MAINBOARD && (addr >= 0xD000 || addr+size >= 0xD000) && (z80Control.hostType == MZ700 || z80Control.hostType == MZ800))
+            if(target == MAINBOARD && (addr >= 0xD000 || addr+size >= 0xD000) && (z80Control.hostType == HW_MZ700 || z80Control.hostType == HW_MZ800))
             {
                 // Restore upper memory bank to VRAM etc.
                 outZ80IO(IO_TZ_MMIO3, 0);
@@ -2464,6 +2645,7 @@ FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint32_t *bytesRead, ui
     FIL           File;
     unsigned int  readSize;
     uint32_t      addrOffset = SRAM_BANK0_ADDR;
+    uint32_t      cmtHdrAddr = MZ_CMT_ADDR;
     t_svcDirEnt   mzfHeader;
     FRESULT       fr0;
 
@@ -2490,18 +2672,25 @@ FRESULT loadMZFZ80Memory(const char *src, uint32_t addr, uint32_t *bytesRead, ui
 
         // Setup bank in which to load the header/data. Default is bank 0, different host hardware uses different banks.
         //
-        if(target == TRANZPUTER && z80Control.hostType == MZ800)
+        if(target == TRANZPUTER && z80Control.hostType == HW_MZ800)
         {
             addrOffset = SRAM_BANK6_ADDR;
         } 
+        else if(target == TRANZPUTER && z80Control.hostType == HW_MZ2000)
+        {
+            addrOffset = SRAM_BANK6_ADDR;
+        }
       
         // Save the header into the CMT area for reference, some applications expect it. If the load address is below 1200H this could be wiped out, the code below stores a copy
         // in the service record sector on exit for this purpose. The caller needs to check the service record and if the Load Address is below >= 1200H use the CMT header else
         // use the service sector.
         //
-        // NB: This assumes TZFS is running and made this call.
+        // NB: This assumes TZFS is running and made this call. Ignore for MZ2000 when in IPL mode as the header isnt needed.
         //
-        copyToZ80(addrOffset+MZ_CMT_ADDR, (uint8_t *)&mzfHeader, MZF_HEADER_SIZE, target);
+        if(z80Control.hostType != HW_MZ2000 || (z80Control.hostType == HW_MZ2000 && z80Control.iplMode == 0))
+        {
+            copyToZ80(addrOffset+cmtHdrAddr, (uint8_t *)&mzfHeader, MZF_HEADER_SIZE, target);
+        }
 
         if(hdrOnly == 0)
         {
@@ -2739,7 +2928,7 @@ int memoryDumpZ80(uint32_t memaddr, uint32_t memsize, uint32_t dispaddr, uint8_t
         
         // If the host hardware is an MZ-700/MZ-800 and memCtrl has been set then we need to issue memory management commands to page in all the DRAM.
         //
-        if(target == MAINBOARD && memCtrl == 1 && (z80Control.hostType == MZ700 || z80Control.hostType == MZ800))
+        if(target == MAINBOARD && memCtrl == 1 && (z80Control.hostType == HW_MZ700 || z80Control.hostType == HW_MZ800))
         {
             // First reset memory map.
             outZ80IO(IO_TZ_MMIO4, 0);
@@ -2821,7 +3010,7 @@ int memoryDumpZ80(uint32_t memaddr, uint32_t memsize, uint32_t dispaddr, uint8_t
        
         // Reset the memory management for MZ-700/MZ-800.
         //
-        if(target == MAINBOARD && memCtrl == 1 && (z80Control.hostType == MZ700 || z80Control.hostType == MZ800))
+        if(target == MAINBOARD && memCtrl == 1 && (z80Control.hostType == HW_MZ700 || z80Control.hostType == HW_MZ800))
         {
             // Bring back the monitor ROM.
             outZ80IO(IO_TZ_MMIO2, 0);
@@ -2841,6 +3030,88 @@ int memoryDumpZ80(uint32_t memaddr, uint32_t memsize, uint32_t dispaddr, uint8_t
 
     // Normal exit, return -1, escape exit return 0.
     return(keyIn == 0x1b ? 0 : -1);
+}
+
+// Method to clear the host video display. To cater for differences in architecture, the machine model is given and processed accordingly.
+//
+void clsHost(void)
+{
+    switch(z80Control.hostType)
+    {
+        case HW_MZ2000:
+            writeZ80IO(IO_TZ_PIOA, 0xD3, MAINBOARD);
+            fillZ80Memory(MZ_VID_RAM_ADDR, MZ_VID_RAM_SIZE, 0x00, MAINBOARD);
+            writeZ80IO(IO_TZ_PIOA, 0x13, MAINBOARD);
+            break;
+
+        case HW_MZ700:
+            fillZ80Memory(MZ_VID_RAM_ADDR, MZ_VID_RAM_SIZE, 0x00, MAINBOARD);
+            fillZ80Memory(MZ_ATTR_RAM_ADDR, MZ_ATTR_RAM_SIZE, VMATTR_FG_WHITE|VMATTR_BG_BLUE, MAINBOARD);
+            break;
+
+        case HW_MZ80A:
+        default:
+            fillZ80Memory(MZ_VID_RAM_ADDR, MZ_VID_RAM_SIZE, 0x00, MAINBOARD);
+            break;
+    }
+    return;
+}
+
+// Method to print to the host display.
+// 
+void printfHost(uint8_t x, uint8_t y, char *format, ...)
+{
+    // Locals.
+    //
+    va_list   args;
+    uint8_t   tmpbuf[1024];
+    uint32_t  tmpbuflen;
+    uint32_t  addr;
+
+    // Sanity check.
+    if(x > MZ_VID_MAX_COL || y > MZ_VID_MAX_ROW)
+        return;
+
+    // Setup variable arguments.
+    va_start(args, format);
+
+    // Expand the given string into a physical byte buffer.
+    vsprintf(tmpbuf, format, args);
+
+    // Store length as Sharp code uses 0x00 as SPACE character so strlen isnt useful when converting.
+    tmpbuflen = strlen(tmpbuf);
+
+    // Process any machine specific differences in display addressing.
+    switch(z80Control.hostType)
+    {
+        case HW_MZ2000:
+            addr = MZ_VID_RAM_ADDR + (y * MZ_VID_MAX_COL) + x;
+            writeZ80IO(IO_TZ_PIOA, 0xD3, MAINBOARD);
+            copyToZ80(addr, &tmpbuf, tmpbuflen, MAINBOARD);
+            writeZ80IO(IO_TZ_PIOA, 0x13, MAINBOARD);
+            break;
+
+        case HW_MZ80A:
+        case HW_MZ700:
+        case HW_MZ800:
+            // Translate ASCII to Sharp ASCII.
+            for(uint32_t idx=0; idx < tmpbuflen; idx++)
+            {
+                tmpbuf[idx] = dispCodeMap[tmpbuf[idx]].dispCode;
+            }
+            addr = MZ_VID_RAM_ADDR + (y * MZ_VID_MAX_COL) + x;
+            copyToZ80(addr, &tmpbuf, tmpbuflen, MAINBOARD);
+            break;
+
+        default:
+            addr = MZ_VID_RAM_ADDR + (y * MZ_VID_MAX_COL) + x;
+            copyToZ80(addr, &tmpbuf, tmpbuflen, MAINBOARD);
+            break;
+    }
+
+    // End variable argument processing.
+    va_end(args);
+    return;
 }
 
 ///////////////////////////////////////////////////////
@@ -2939,7 +3210,8 @@ void convertToFAT32FileNameFormat(char *dst)
 
 // Method to load a BIOS into the tranZPUter and configure for a particular host type.
 //
-uint8_t loadBIOS(const char *biosFileName, uint8_t machineMode, uint32_t loadAddr)
+//uint8_t loadBIOS(const char *biosFileName, uint8_t machineMode, uint32_t loadAddr)
+uint8_t loadBIOS(const char *biosFileName, uint32_t loadAddr)
 {
     // Locals.
     uint8_t result = FR_OK;
@@ -2954,7 +3226,7 @@ uint8_t loadBIOS(const char *biosFileName, uint8_t machineMode, uint32_t loadAdd
         setZ80CPUFrequency(0, 4);
 
         // Set the machine mode according to BIOS loaded.
-        z80Control.machineMode    = machineMode;
+       // z80Control.machineMode    = machineMode;
 
         // setup the IRQ's according to this machine.
         setupIRQ();
@@ -2969,18 +3241,62 @@ void hardResetTranZPUter(void)
 {
     // Locals.
     uint8_t  cpuConfig;
-
-    // Firstly, ascertain what CPU we are using, soft or hard.
+printf("Hard Z80 Reset\n");
+    // Firstly, ascertain what CPU we are using, soft or hard. If the read value is illegal default to Z80.
     //
-    cpuConfig = readZ80IO(IO_TZ_CPUCFG, TRANZPUTER) & CPUMODE_IS_SOFT_MASK;
-
-    // Load up the default ROMS.
-    loadTranZPUterDefaultROMS(cpuConfig);
+    cpuConfig =  readZ80IO(IO_TZ_CPUCFG, TRANZPUTER);
+    if(cpuConfig == 0xff) cpuConfig = CPUMODE_IS_Z80;
+    cpuConfig &= CPUMODE_IS_SOFT_MASK;
+  
+    // If this host is an MZ-2000 with distinct boot and run modes, query the hardware to find the current mode as a reset in run mode doesnt require a hard reset.
+    if(z80Control.hostType == HW_MZ2000)
+    {
+        z80Control.iplMode = readZ80IO(IO_TZ_CPLDSTATUS, TRANZPUTER) & 0x01;
+printf("IPL Mode:%d\n", z80Control.iplMode);
+    }
+  
+    // Load up the default ROMS in IPL mode (normal mode for all MZ's except MZ-80B/2000/2200/2500).
+    if(z80Control.iplMode && !z80Control.blockResetActions)
+        loadTranZPUterDefaultROMS(cpuConfig);
    
     // Setup the Interrupts for IORQ and MREQ.
     setupIRQ();
 
+    // Reset any block action request.
+    z80Control.blockResetActions = 0;
+
     return;
+}
+
+// Method to load TZFS with an optional BIOS.
+//
+//FRESULT loadTZFS(char *biosFile, uint8_t machineMode, uint32_t loadAddr)
+FRESULT loadTZFS(char *biosFile, uint32_t loadAddr)
+{
+    // Locals.
+    FRESULT    result = 0;
+
+    if(biosFile)
+    {
+        result = loadBIOS(biosFile, loadAddr);
+    }
+    if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0,          MZ_UROM_ADDR,        0x1800, 0, TRANZPUTER, 1) != FR_OK))
+    {
+        printf("Error: Failed to load bank 1 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
+    }
+    if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x1800, MZ_BANKRAM_ADDR+0x10000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
+    {
+        printf("Error: Failed to load page 2 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
+    }
+    if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x2800, MZ_BANKRAM_ADDR+0x20000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
+    {
+        printf("Error: Failed to load page 3 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
+    }
+    if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x3800, MZ_BANKRAM_ADDR+0x30000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
+    {
+        printf("Error: Failed to load page 4 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
+    }
+    return(result);
 }
 
 // Method to load the default ROMS into the tranZPUter RAM ready for start.
@@ -2991,11 +3307,10 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
 {
     // Locals.
     FRESULT    result = 0;
-    const char *biosFile;
 
     // Set CPU and hold soft CPU clock if configured.
     writeZ80IO(IO_TZ_CPUCFG, cpuConfig & CPUMODE_IS_SOFT_MASK, TRANZPUTER);
-
+printf("CPUCONFIG=%02x\n", cpuConfig);
     // Processing according to CPU. EVO needs its own zOS loading.
     switch(cpuConfig)
     {
@@ -3005,22 +3320,23 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
             // Now load the default BIOS into memory for the host type.
             switch(z80Control.hostType)
             {
-                case MZ700:
-                    result = loadBIOS(MZ_ROM_1Z_013A_40C, MZ700, MZ_MROM_ADDR);
+                case HW_MZ700:
+                    result = loadTZFS(MZ_ROM_1Z_013A_40C, MZ_MROM_ADDR);
                     break;
 
-                case MZ800:
+                case HW_MZ800:
                     // The MZ-800 uses a composite ROM containing the modified BIOS of the MZ-700 (1Z_013B), the IPL of the MZ-800 (9Z_504M), the CGROM for video text output
                     // and the BASIC IOCS, a common code area for BASIC,
                     //
                     // First we load the MZ-700 compatible BIOS in page 0 to support TZFS when activated.
-                    result = loadBIOS(MZ_ROM_1Z_013A_40C, MZ700, MZ_MROM_ADDR);
+                    result = loadTZFS(MZ_ROM_1Z_013A_40C, MZ_MROM_ADDR);
 
                     // Next we load the MZ-800 BIOS in page 7.
                     if(!result)
                     {
                         printf("Loading 1Z_013B\n");
-                        result = loadBIOS(MZ_ROM_1Z_013B,     MZ800, MZ_800_MROM_ADDR);
+                        //result = loadBIOS(MZ_ROM_1Z_013B,      MZ800, MZ_800_MROM_ADDR);
+                        result = loadBIOS(MZ_ROM_1Z_013B,      MZ_800_MROM_ADDR);
                     }
 
                     // Load up the CGROM into RAM.
@@ -3031,45 +3347,60 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
                     if(!result)
                     {
                         printf("Loading 9Z_504M\n");
-                        result = loadBIOS(MZ_ROM_9Z_504M,     MZ800, MZ_800_IPL_ADDR);
+                        //result = loadBIOS(MZ_ROM_9Z_504M,      MZ800,  MZ_800_IPL_ADDR);
+                        result = loadBIOS(MZ_ROM_9Z_504M,      MZ_800_IPL_ADDR);
                     }
                    
                     // Finally we load the common IOCS.
                     if(!result)
                     {
                         printf("Loading BASIC IOCS\n");
-                        result = loadBIOS(MZ_ROM_800_IOCS,    MZ800, MZ_800_IOCS_ADDR);
+                        //result = loadBIOS(MZ_ROM_800_IOCS,     MZ800,  MZ_800_IOCS_ADDR);
+                        result = loadBIOS(MZ_ROM_800_IOCS,     MZ_800_IOCS_ADDR);
                     }
                     break;
 
-                case MZ80B:
-                    result = loadBIOS(MZ_ROM_MZ80B_IPL,       MZ80B, MZ_MROM_ADDR);
+                case HW_MZ80B:
+                    //result = loadBIOS(MZ_ROM_MZ80B_IPL,        MZ80B,  MZ_MROM_ADDR);
+                    result = loadBIOS(MZ_ROM_MZ80B_IPL,        MZ_MROM_ADDR);
                     break;
 
-                case MZ2000:
-                    result = loadBIOS(MZ_ROM_MZ2000_IPL,      MZ2000, MZ_MROM_ADDR);
+                case HW_MZ2000:
+                    // Load up the IPL BIOS at least try even if the CGROM failed.
+                    printf("Loading IPL\n");
+                    //result = loadBIOS(MZ_ROM_MZ2000_IPL_TZPU,  MZ2000, MZ_MROM_ADDR);
+                    result = loadBIOS(MZ_ROM_MZ2000_IPL_TZPU,  MZ_MROM_ADDR);
+                    if(result != FR_OK)
+                    {
+                        printf("Error: Failed to load IPL ROM %s into tranZPUter memory.\n", MZ_ROM_MZ2000_IPL_TZPU);
+                    } else
+                    {
+                        // Load up the MZ2000 CGROM into the FPGA.
+                        printf("Loading CGROM\n");
+                       
+                        // Enable the FPGA.
+                        writeZ80IO(IO_TZ_CPLDCFG, 0x80 | MODE_VIDEO_MODULE_ENABLED | HWMODE_MZ2000, TRANZPUTER);
+
+                        // Update the CGROM
+                        result=loadZ80Memory((const char *)MZ_ROM_MZ2000_CGROM, 0, MZ_VID_CGROM_ADDR, 0x0800, 0, FPGA, 1);
+                        if(result != FR_OK)
+                        {
+                            printf("Error: Failed to load CGROM %s into FPGA video memory.\n", MZ_ROM_MZ2000_CGROM);
+                        }
+                        
+                        // Disable the FPGA.
+                        writeZ80IO(IO_TZ_CPLDCFG, 0x80 | HWMODE_MZ2000, TRANZPUTER);
+                      
+                        // Make sure the video mode in the FPGA is correct (defaults to MZ700).
+                        writeZ80IO(IO_TZ_VMCTRL, VMMODE_MZ2000, TRANZPUTER);
+                    }
                     break;
 
-                case MZ80A:
+                case HW_MZ80A:
+                case HW_UNKNOWN:
                 default:
-                    result = loadBIOS(MZ_ROM_SA1510_40C, MZ80A, MZ_MROM_ADDR);
+                    result = loadTZFS(MZ_ROM_SA1510_40C, MZ_MROM_ADDR);
                     break;
-            }
-            if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0,      MZ_UROM_ADDR,            0x1800, 0, TRANZPUTER, 1) != FR_OK))
-            {
-                printf("Error: Failed to load bank 1 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
-            }
-            if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x1800, MZ_BANKRAM_ADDR+0x10000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
-            {
-                printf("Error: Failed to load page 2 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
-            }
-            if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x2800, MZ_BANKRAM_ADDR+0x20000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
-            {
-                printf("Error: Failed to load page 3 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
-            }
-            if(!result && (result=loadZ80Memory((const char *)MZ_ROM_TZFS, 0x3800, MZ_BANKRAM_ADDR+0x30000, 0x1000, 0, TRANZPUTER, 1) != FR_OK))
-            {
-                printf("Error: Failed to load page 4 of %s into tranZPUter memory.\n", MZ_ROM_TZFS);
             }
             break;
 
@@ -3085,6 +3416,9 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
 
         case CPUMODE_IS_EMU_MZ:
             printf("Sharp MZ Series Emulation Active\n");
+
+            // Start the emulation.
+            EMZRun((uint8_t)(svcControl.cmd - TZSVC_CMD_EMU_SETMZ80K));
             break;
     }
 
@@ -3102,14 +3436,20 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
             // If autoboot flag set, force a restart to the ROM which will call User ROM startup code.
             if(osControl.tzAutoBoot)
             {
-                if(z80Control.hostType != MZ800)
-                {
-                    // Set the memory model to BOOT so we can bootstrap TZFS.
-                    resetZ80(TZMM_BOOT);
-                } else
+                if(z80Control.hostType == HW_MZ800)
                 {
                     // On the MZ-800, once all firmware loaded, set the memory mode to MZ-800 and reset to enable processing on the tranZPUter memory rather than host memory.
                     resetZ80(TZMM_MZ800);
+                }
+                // MZ-2000 stays in original mode, user will start TZFS via key press in modified IPL bios.
+                else if(z80Control.hostType == HW_MZ2000)
+                {
+                    resetZ80(TZMM_MZ2000);
+                }
+                else
+                {
+                    // Set the memory model to BOOT so we can bootstrap TZFS.
+                    resetZ80(TZMM_BOOT);
                 }
             } else
             {
@@ -3134,6 +3474,7 @@ void loadTranZPUterDefaultROMS(uint8_t cpuConfig)
             writeZ80IO(IO_TZ_CPUCFG, cpuConfig | CPUMODE_CLK_EN | CPUMODE_RESET_CPU, TRANZPUTER);
         } else
         {
+printf("HERE 10\n");
             // Set the memory model to BOOT so we can bootstrap TZFS.
             resetZ80(TZMM_ORIG);
         }
@@ -4329,10 +4670,14 @@ uint8_t svcSaveFile(enum FILE_TYPE type)
     {
         // Setup bank in which to load the header/data. Default is bank 0, different host hardware uses different banks.
         //
-        if(svcControl.memTarget == 0 && z80Control.hostType == MZ800)
+        if(svcControl.memTarget == 0 && z80Control.hostType == HW_MZ800)
         {
             addrOffset = SRAM_BANK6_ADDR;
         } 
+        else if(svcControl.memTarget == 0 && z80Control.hostType == HW_MZ2000)
+        {
+            addrOffset = SRAM_BANK6_ADDR;
+        }
       
         // Get the MZF header which contains the details of the file to save.
         copyFromZ80((uint8_t *)&mzfHeader, addrOffset + MZ_CMT_ADDR, MZF_HEADER_SIZE, TRANZPUTER);
@@ -4369,7 +4714,6 @@ uint8_t svcSaveFile(enum FILE_TYPE type)
     //                1 - Fail    : maps to TZSVC_STATUS_FILE_ERROR
     return(result == FR_OK ? TZSVC_STATUS_OK : TZSVC_STATUS_FILE_ERROR);
 }
-
 
 // Method to erase a file on the SD card.
 //
@@ -4662,12 +5006,26 @@ uint32_t getServiceAddr(void)
         // If in MZ700 mode then set the service address accordingly.
         if(memoryMode == TZMM_MZ700_0 || memoryMode == TZMM_MZ700_2 || memoryMode == TZMM_MZ700_3 || memoryMode == TZMM_MZ700_4)
             addr = TZSVC_CMD_STRUCT_ADDR_MZ700;
+
+        // If in MZ2000 mode then the service address differs according to boot state.
+        if(memoryMode == TZMM_MZ2000)
+        {
+            // Get the machine state and set the service address accordingly.
+            if(z80Control.iplMode)
+            {
+                addr = TZSVC_CMD_STRUCT_ADDR_MZ2000_IPL;
+            }
+            else
+            {
+                addr = TZSVC_CMD_STRUCT_ADDR_MZ2000_NST;
+            }
+        }
     } else
     {
         // zOS
         addr = TZSVC_CMD_STRUCT_ADDR_ZOS;
     }
-//printf("getServiceAddr:%02x,%02x,%02x,%01x,%08lx,%02x\n", z80Control.runCtrlLatch, z80Control.curCtrlLatch, memoryMode, cpuConfig, addr, svcControl.cmd);
+printf("getServiceAddr:%02x,%02x,%02x,%01x,%08lx,%02x\n", z80Control.runCtrlLatch, z80Control.curCtrlLatch, memoryMode, cpuConfig, addr, svcControl.cmd);
     return(addr);
 }
 
@@ -4695,6 +5053,12 @@ void processServiceRequest(void)
     else if(reqZ80Bus(DEFAULT_BUSREQ_TIMEOUT) == 0)
     {
         z80Control.holdZ80 = 1;
+
+        // If this host is an MZ-2000 with distinct boot and run modes, query the hardware to find the current mode.
+        if(z80Control.hostType == HW_MZ2000)
+        {
+            z80Control.iplMode = readZ80IO(IO_TZ_CPLDSTATUS, TRANZPUTER) & 0x01;
+        }
 
         // Update the service control record address according to memory mode.
         //
@@ -4784,10 +5148,11 @@ void processServiceRequest(void)
 
                 // Load the 40 column version of the default host bios into memory.
                 case TZSVC_CMD_LOAD40ABIOS:
-                    loadBIOS(MZ_ROM_SA1510_40C, MZ80A, MZ_MROM_ADDR);
+                    //loadBIOS(MZ_ROM_SA1510_40C, MZ80A, MZ_MROM_ADDR);
+                    loadBIOS(MZ_ROM_SA1510_40C, MZ_MROM_ADDR);
                    
                     // Set the frequency of the CPU if we are emulating the hardware.
-                    if(z80Control.hostType != MZ80A)
+                    if(z80Control.hostType != HW_MZ80A)
                     {
                         // Change frequency to match Sharp MZ-80A
                         setZ80CPUFrequency(MZ_80A_CPU_FREQ, 1);
@@ -4796,10 +5161,11 @@ void processServiceRequest(void)
                   
                 // Load the 80 column version of the default host bios into memory.
                 case TZSVC_CMD_LOAD80ABIOS:
-                    loadBIOS(MZ_ROM_SA1510_80C, MZ80A, MZ_MROM_ADDR);
+                    //loadBIOS(MZ_ROM_SA1510_80C, MZ80A, MZ_MROM_ADDR);
+                    loadBIOS(MZ_ROM_SA1510_80C, MZ_MROM_ADDR);
                    
                     // Set the frequency of the CPU if we are emulating the hardware.
-                    if(z80Control.hostType != MZ80A)
+                    if(z80Control.hostType != HW_MZ80A)
                     {
                         // Change frequency to match Sharp MZ-80A
                         setZ80CPUFrequency(MZ_80A_CPU_FREQ, 1);
@@ -4808,10 +5174,11 @@ void processServiceRequest(void)
                    
                 // Load the 40 column MZ700 1Z-013A bios into memory for compatibility switch.
                 case TZSVC_CMD_LOAD700BIOS40:
-                    loadBIOS(MZ_ROM_1Z_013A_40C, MZ700, MZ_MROM_ADDR);
+                    //loadBIOS(MZ_ROM_1Z_013A_40C, MZ700, MZ_MROM_ADDR);
+                    loadBIOS(MZ_ROM_1Z_013A_40C, MZ_MROM_ADDR);
 
                     // Set the frequency of the CPU if we are emulating the hardware.
-                    if(z80Control.hostType != MZ700)
+                    if(z80Control.hostType != HW_MZ700)
                     {
                         // Change frequency to match Sharp MZ-700
                         setZ80CPUFrequency(MZ_700_CPU_FREQ, 1);
@@ -4820,10 +5187,11 @@ void processServiceRequest(void)
 
                 // Load the 80 column MZ700 1Z-013A bios into memory for compatibility switch.
                 case TZSVC_CMD_LOAD700BIOS80:
-                    loadBIOS(MZ_ROM_1Z_013A_80C, MZ700, MZ_MROM_ADDR);
+                    //loadBIOS(MZ_ROM_1Z_013A_80C, MZ700, MZ_MROM_ADDR);
+                    loadBIOS(MZ_ROM_1Z_013A_80C, MZ_MROM_ADDR);
                   
                     // Set the frequency of the CPU if we are emulating the hardware.
-                    if(z80Control.hostType != MZ700)
+                    if(z80Control.hostType != HW_MZ700)
                     {
                         // Change frequency to match Sharp MZ-700
                         setZ80CPUFrequency(MZ_700_CPU_FREQ, 1);
@@ -4832,10 +5200,11 @@ void processServiceRequest(void)
                   
                 // Load the MZ800 9Z-504M bios into memory for compatibility switch.
                 case TZSVC_CMD_LOAD800BIOS:
-                    loadBIOS(MZ_ROM_9Z_504M,  MZ800, MZ_MROM_ADDR);
+                    //loadBIOS(MZ_ROM_9Z_504M,  MZ800, MZ_MROM_ADDR);
+                    loadBIOS(MZ_ROM_9Z_504M,  MZ_MROM_ADDR);
 
                     // Set the frequency of the CPU if we are emulating the hardware.
-                    if(z80Control.hostType != MZ800)
+                    if(z80Control.hostType != HW_MZ800)
                     {
                         // Change frequency to match Sharp MZ-800
                         setZ80CPUFrequency(MZ_800_CPU_FREQ, 1);
@@ -4844,10 +5213,11 @@ void processServiceRequest(void)
                    
                 // Load the MZ-80B IPL ROM into memory for compatibility switch.
                 case TZSVC_CMD_LOAD80BIPL:
-                    loadBIOS(MZ_ROM_MZ80B_IPL, MZ80B, MZ_MROM_ADDR);
+                    //loadBIOS(MZ_ROM_MZ80B_IPL, MZ80B, MZ_MROM_ADDR);
+                    loadBIOS(MZ_ROM_MZ80B_IPL, MZ_MROM_ADDR);
                   
                     // Set the frequency of the CPU if we are emulating the hardware.
-                    if(z80Control.hostType != MZ80B)
+                    if(z80Control.hostType != HW_MZ80B)
                     {
                         // Change frequency to match Sharp MZ-80B
                         setZ80CPUFrequency(MZ_80B_CPU_FREQ, 1);
@@ -4856,13 +5226,37 @@ void processServiceRequest(void)
                    
                 // Load the MZ-2000 IPL ROM into memory for compatibility switch.
                 case TZSVC_CMD_LOAD2000IPL:
-                    loadBIOS(MZ_ROM_MZ2000_IPL, MZ2000, MZ_MROM_ADDR);
+                    //loadBIOS(MZ_ROM_MZ2000_IPL, MZ2000, MZ_MROM_ADDR);
+                    loadBIOS(MZ_ROM_MZ2000_IPL, MZ_MROM_ADDR);
                   
                     // Set the frequency of the CPU if we are emulating the hardware.
-                    if(z80Control.hostType != MZ2000)
+                    if(z80Control.hostType != HW_MZ2000)
                     {
                         // Change frequency to match Sharp MZ-80B
                         setZ80CPUFrequency(MZ_2000_CPU_FREQ, 1);
+                    }
+                    break;
+
+                // Load TZFS upon request. This service is for the MZ-80B/MZ-2000 which dont have a monitor BIOS installed and TZFS isnt loaded upon reset but rather through user request.
+                case TZSVC_CMD_LOADTZFS:
+                    switch(z80Control.hostType)
+                    {
+                        case HW_MZ80B:
+                            break;
+
+                        case HW_MZ2000:
+                            // Load TZFS and a modified 1Z-013A MZ700 Monitor to provide an interactive TZFS session during IPL mode.
+                            if(loadTZFS(MZ_ROM_1Z_013A_2000, MZ_MROM_ADDR) == FR_OK)
+                            {
+                                // Request a cold IPL start with no ROM load, this will invoke the loaded TZFS as the BOOT IPL.
+                                z80Control.blockResetActions = 1;
+                                writeZ80IO(IO_TZ_PPICTL, 0x06, MAINBOARD);
+                            }
+                            break;
+
+                        // Default, ie. not a valid host, is to do nothing.
+                        default:
+                            break;
                     }
                     break;
 
@@ -4920,7 +5314,7 @@ void processServiceRequest(void)
                     writeZ80IO(IO_TZ_CPUCFG, CPUMODE_SET_Z80, TRANZPUTER);
 
                     // Ensure the video is returned to default.
-                    writeZ80IO(IO_TZ_CPLDCFG, VMMODE_MZ700, TRANZPUTER);
+                    writeZ80IO(IO_TZ_VMCTRL, VMMODE_MZ700, TRANZPUTER);
                    
                     // Set a reset event so that the ROMS are reloaded and the Z80 set.
                     z80Control.resetEvent = 1;
@@ -4955,18 +5349,17 @@ void processServiceRequest(void)
                 case TZSVC_CMD_EMU_SETMZ1200:
                 case TZSVC_CMD_EMU_SETMZ80A:
                 case TZSVC_CMD_EMU_SETMZ700:
+                case TZSVC_CMD_EMU_SETMZ1500:
                 case TZSVC_CMD_EMU_SETMZ800:
                 case TZSVC_CMD_EMU_SETMZ80B:
                 case TZSVC_CMD_EMU_SETMZ2000:
-                    // Initialise the on screen display.
-                    if(!EMZInit((uint8_t)(svcControl.cmd - TZSVC_CMD_EMU_SETMZ80K)))
+                case TZSVC_CMD_EMU_SETMZ2200:
+                case TZSVC_CMD_EMU_SETMZ2500:
+                    // Initialise the emulation and OSD.
+                    if(!EMZInit(z80Control.hostType))
                     {
                         // Switch to the emulation CPU (T80).
                         writeZ80IO(IO_TZ_CPUCFG, CPUMODE_SET_EMU_MZ, TRANZPUTER);
-
-                        // Should be safe so long as the enumerated types arent changed.
-                        z80Control.machineMode = (uint8_t)(svcControl.cmd - TZSVC_CMD_EMU_SETMZ80K);
-printf("Machine mode:%d\n", z80Control.machineMode);
 
                         // Enable the emulator service methods to handle User OSD Menu, tape/floppy loading etc.
                         z80Control.emuMZactive = 1;
@@ -5099,12 +5492,13 @@ uint8_t testTZFSAutoBoot(void)
 }
 
 // Method to identify the type of host the tranZPUter SW is running on. Originally it was only the MZ80A but the scope has expanded
-// to the MZ-700,  MZ-80B, MZ-800 and potentially a plethora of other machines in the future.
+// to the MZ-700,  MZ-80B, MZ-800, MZ-2000 and potentially a plethora of other machines in the future.
 //
-void setHost(void)
+void setHost(uint8_t printInfo)
 {
     // Locals.
     uint8_t   cpldInfo;
+    uint8_t   cpuInfo;
 
     // If the Z80 is in RUN mode, request the bus.
     // This mechanism allows for the load command to leave the BUS under the tranZPUter control for multiple transactions.
@@ -5133,6 +5527,10 @@ void setHost(void)
         // Copy the ID value from the CPLD information register so that we can identify the host type.
         //
         cpldInfo = inZ80IO(IO_TZ_CPLDINFO);
+
+        // Copy the ID value from the CPU information register to identify FPGA capabilities.
+        //
+        cpuInfo = inZ80IO(IO_TZ_CPUINFO);
       
         // Release the bus if it is not being held for further transations.
         //
@@ -5144,78 +5542,208 @@ void setHost(void)
         }
     } else
     {
-        printf("Failed to access tranZPUter bus to read CPLDINFO, defaulting to MZ80A\n");
-        cpldInfo = MZ80A;
+        if(printInfo) printf("Failed to access tranZPUter bus to read CPLDINFO, setting to UNKNOWN\n");
+        cpldInfo = 0xFF;
     }
 
     // Setup the control variable to indicate type of host. This will affect processing of interrupts, BIOS loads etc.
     //
-    switch(cpldInfo & 0x07)
+    switch(cpldInfo & 0x17)
     {
-        case MZ700:
-            z80Control.hostType       = MZ700;
-            z80Control.machineMode    = MZ700;
-            printf("Host Type: MZ-700\n");
+        case HW_MZ700:
+            if(!printInfo)
+            {
+                z80Control.hostType       = HW_MZ700;
+         //       z80Control.machineMode    = MZ700;
+            } else
+                printf("Host Type: MZ-700\n");
             break;
 
-        case MZ800:
-            z80Control.hostType       = MZ800;
-            z80Control.machineMode    = MZ800;
-            printf("Host Type: MZ-800\n");
+        case HW_MZ800:
+            if(!printInfo)
+            {
+                z80Control.hostType       = HW_MZ800;
+         //       z80Control.machineMode    = MZ800;
+            } else
+                printf("Host Type: MZ-800\n");
             break;
 
-        case MZ80B:
-            z80Control.hostType       = MZ80B;
-            z80Control.machineMode    = MZ80B;
-            printf("Host Type: MZ-80B\n");
+        case HW_MZ80B:
+            if(!printInfo)
+            {
+                z80Control.hostType       = HW_MZ80B;
+         //       z80Control.machineMode    = MZ80B;
+            } else
+                printf("Host Type: MZ-80B\n");
             break;
 
-        case MZ2000:
-            z80Control.hostType       = MZ2000;
-            z80Control.machineMode    = MZ2000;
-            printf("Host Type: MZ-2000\n");
+        case HW_MZ2000:
+            if(!printInfo)
+            {
+                z80Control.hostType       = HW_MZ2000;
+         //       z80Control.machineMode    = MZ2000;
+            } else
+                printf("Host Type: MZ-2000\n");
             break;
 
-        case MZ80A:
-        case MZ80K:
-        case MZ80C:
-        case MZ1200:
+        case HW_MZ80A:
+        case HW_MZ80K:
+        case HW_MZ80C:
+        case HW_MZ1200:
+            if(!printInfo)
+            {
+                z80Control.hostType       = HW_MZ80A;
+         //       z80Control.machineMode    = MZ80A;
+            } else
+                printf("Host Type: MZ-80A\n");
+            break;
+
         default:
-            z80Control.hostType       = MZ80A;
-            z80Control.machineMode    = MZ80A;
-            printf("Host Type: MZ-80A\n");
+            z80Control.hostType           = HW_UNKNOWN;
+         //   z80Control.machineMode        = UNKNOWN;
             break;
     }
+
+    // Extract the CPLD version for any programming nuances required in older versions.
+    z80Control.cpldVersion = (cpldInfo & CPLD_VERSION) >> 5;
 
     // Report on video hardware.
     //
     if(cpldInfo & VIDEO_FPGA)
     {
-        printf("FPGA video hardware detected.\n");
+        if(printInfo)
+            printf("FPGA video hardware detected.\n");
+    }
+
+    // Store and report on CPU hardware.
+    //
+    if(cpuInfo & CPUMODE_IS_SOFT_AVAIL)
+    {
+        z80Control.softcpuInfo = cpuInfo & CPUMODE_IS_SOFT_MASK;
+
+        if(printInfo)
+        {
+            if(z80Control.softcpuInfo == CPUMODE_IS_Z80)
+                printf("No soft CPU hardware, hard Z80 only.\n");
+            if(z80Control.softcpuInfo & CPUMODE_IS_T80)
+                printf("Soft T80 available.\n");
+            if(z80Control.softcpuInfo & CPUMODE_IS_ZPU_EVO)
+                printf("Soft ZPU available.\n");
+            if(z80Control.softcpuInfo & CPUMODE_IS_EMU_MZ)
+                printf("Sharp MZ Series FPGA Emulation available.\n");
+            if(z80Control.softcpuInfo & CPUMODE_IS_BBB)
+                printf("Unspecified soft BBB CPU available.\n");
+            if(z80Control.softcpuInfo & CPUMODE_IS_CCC)
+                printf("Unspecified soft CCC CPU available.\n");
+            if(z80Control.softcpuInfo & CPUMODE_IS_DDD)
+                printf("Unspecified soft DDD CPU available.\n");
+        }
     }
 
     // Report on CPLD version.
     //
-    printf("CPLD Version: %d\n", (cpldInfo & CPLD_VERSION) >> 5);
+    if(printInfo)
+        printf("CPLD Version: %d\n", z80Control.cpldVersion);
 
     return;
 }
 
 // Method to configure the hardware and events to operate the tranZPUter SW upgrade.
 //
-void setupTranZPUter(void)
+void setupTranZPUter(uint8_t stage, char *VERSION, char *VERSION_DATE)
 {
-    // Setup the pins to default mode and configure IRQ's.
-    setupZ80Pins(0, &systick_millis_count);
+    // Functionality can be split according to boot up stage of the processor using the 'stage' variable.
+    //
+    if(stage == 0)
+    {
+        // Setup the pins to default mode and configure IRQ's.
+        setupZ80Pins(0, &systick_millis_count);
+  
+        // Check to see which host the tranZPUter is installed in.
+        setHost(0);
 
-    // Check to see which monitor is installed to determine the host type.
-    setHost();
+        // Once the external Z80 interface has been enabled, make machine dependent interactions whilst we are initialising.
+        switch(z80Control.hostType)
+        {
+            case HW_MZ2000:
+                // Initialise the hardware and present a sign on message while the tranZPUter initialises.
+                writeZ80IO(IO_TZ_PPICTL,  0x82, MAINBOARD);
+                writeZ80IO(IO_TZ_PPIC,    0x58, MAINBOARD);
+                writeZ80IO(IO_TZ_PPIA,    0xF7, MAINBOARD);
+                writeZ80IO(IO_TZ_PPIA,    0xFF, MAINBOARD);
+                writeZ80IO(IO_TZ_PIOCTLA, 0x0F, MAINBOARD);
+                writeZ80IO(IO_TZ_PIOCTLB, 0xCF, MAINBOARD);
+                writeZ80IO(IO_TZ_PIOCTLB, 0xFF, MAINBOARD);
 
-    // Reset the interrupts so they take into account the current host rather than the default.
-    setupIRQ();
+                // Sign on message whilst we initialise tranZPUter hardware.
+                clsHost();
+                printfHost(4, 4, "tranZPUter SW-700 v1.3");
+                printfHost(4, 7, "CPLD fw: v%d", z80Control.cpldVersion);
+                printfHost(4, 7, "zOS:     %s (%s)", VERSION, VERSION_DATE);
+                if(z80Control.softcpuInfo & CPUMODE_IS_EMU_MZ)
+                    printfHost(4, 8, "emuMZ:   %s (%s)", EMZGetVersion(), EMZGetVersionDate());
+                break;
 
-    // Start off by clearing active memory banks, the AS6C4008 chip holds random values at power on.
-    fillZ80Memory(0x000000, TZ_MAX_Z80_MEM, 0x00, TRANZPUTER);
+            case HW_MZ700:
+                // Sign on message whilst we initialise tranZPUter hardware.
+                clsHost();
+                printfHost(4, 4, "tranZPUter SW-700 v1.3");
+                printfHost(4, 6, "CPLD fw: v%d", z80Control.cpldVersion);
+                printfHost(4, 7, "zOS:     %s (%s)", VERSION, VERSION_DATE);
+                if(z80Control.softcpuInfo & CPUMODE_IS_EMU_MZ)
+                    printfHost(4, 8, "emuMZ:   %s (%s)", EMZGetVersion(), EMZGetVersionDate());
+                break;
+
+            default:
+                break;
+        }
+
+        // Reset the interrupts so they take into account the current host rather than the default.
+        setupIRQ();
+  
+        // Start off by clearing active memory banks, the AS6C4008 chip holds random values at power on.
+        fillZ80Memory(0x000000, TZ_MAX_Z80_MEM, 0x00, TRANZPUTER);
+    }
+    else if(stage == 1)
+    {
+        // Release the bus to start loaded ROM.
+        writeZ80IO(IO_TZ_CPLDCMD, CPLD_RELEASE_HOST_BUS, MAINBOARD);
+    }
+    else if(stage == 8)
+    {
+        // Make any final machine specific configurations prior to setup end.
+        switch(z80Control.hostType)
+        {
+            case HW_MZ2000:
+             // writeZ80IO(IO_TZ_PPICTL, 0x06, MAINBOARD);
+                break;
+
+            default:
+                break;
+        }
+
+        // Print out host information.
+        setHost(1);
+    }
+    // No SD found, so run with original ROM.
+    else if(stage == 9)
+    {
+        // Set to original mode so the onboard ROM can be executed.
+        //
+        writeZ80IO(IO_TZ_CTRLLATCH, TZMM_ORIG, MAINBOARD);
+       
+        // Release the bus to start the code in the onboard ROM.
+        writeZ80IO(IO_TZ_CPLDCMD, CPLD_RELEASE_HOST_BUS, MAINBOARD);
+    }
+   
+    // Release Z80 if it is being held.
+    if(z80Control.holdZ80 != 0)
+    {
+        z80Control.holdZ80 = 0;
+        releaseZ80();
+    }
+
+    return;
 }
 
 // Test routine. Add code here to test an item within the kernel. Anything accessing hardware generally has to call the kernel as it doesnt have real access.
@@ -5381,4 +5909,4 @@ void displaySignals(void)
 
 #ifdef __cplusplus
 }
-  #endif
+#endif

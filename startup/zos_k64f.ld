@@ -39,7 +39,7 @@ ENTRY(_VectorsFlash)
 MEMORY
 {
 	FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 0x00080000
-	RAM  (rwx) : ORIGIN = 0x20006000, LENGTH = 0x0002A000
+	RAM  (rwx) : ORIGIN = 0x2000E000, LENGTH = 0x00022000
 }
 /*
 	FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 512K
@@ -124,14 +124,14 @@ SECTIONS
 	} > RAM
 
     __heap_section_start__ = .;
-    .heap 0x20016000:
+    .heap 0x2001E000:
     {
         . = ALIGN(8);
 		_ebss = .;
         /* __end__ = .; */
         /* PROVIDE(end = .); */
         __HeapBase = .;
-        . += 0x00018000;
+        . += 0x00010000;
         __HeapLimit = .;
     } > RAM
     __heap_section_end__ = .;

@@ -69,10 +69,22 @@ extern "C" {
 #include <tranzputer.h>
 #include <osd.h>
 
+// Debug macros
+#define debugf(a, ...)        if(osdWindow.debug) { printf("\033[1;31mOSD:   " a "\033[0m\n", ##__VA_ARGS__); }
+#define debugfx(a, ...)       if(osdWindow.debug) { printf("\033[1;32mOSD:   " a "\033[0m\n", ##__VA_ARGS__); }
+
 #ifndef __APP__        // Protected methods which should only reside in the kernel on zOS.
-static t_OSDWindow    osdWindow    = {.mode=MENU, .params={ {.attr=0,  .row=0,  .col=0,  .maxCol=0,  .maxRow=0,  .lineWrap=1,  .maxX=VC_STATUS_MAX_X_PIXELS, .maxY=VC_STATUS_MAX_Y_PIXELS},
-                                                            {.attr=0,  .row=0,  .col=0,  .maxCol=0,  .maxRow=0,  .lineWrap=1,  .maxX=VC_MENU_MAX_X_PIXELS, .maxY=VC_MENU_MAX_Y_PIXELS} },
+static t_OSDWindow    osdWindow    = {.mode=MENU, .params={ {.attr=0,  .row=0,  .col=0,  .maxCol=0,  .maxRow=0,  .lineWrap=1,  .maxX=VC_STATUS_MAX_X_PIXELS, .maxY=VC_STATUS_MAX_Y_PIXELS,
+                                                             .cursor={.flashing=0, .enabled=0}
+                                                            },
+                                                            {.attr=0,  .row=0,  .col=0,  .maxCol=0,  .maxRow=0,  .lineWrap=1,  .maxX=VC_MENU_MAX_X_PIXELS, .maxY=VC_MENU_MAX_Y_PIXELS,
+                                                             .cursor={.flashing=0, .enabled=0}
+                                                            } 
+                                                          },
                                       .debug=0, .inDebug=0, .display=NULL};
+
+// Real time millisecond counter, interrupt driven. Needs to be volatile in order to prevent the compiler optimising it away.
+uint32_t volatile            *msecs = &systick_millis_count;
 
 // Method to get internal public member values. This module ideally should be written in C++ but with the limitations of the GNU C Compiler for the ZPU (v3.4.2) and the performance penalty on
 // an embedded processor, it was decided to write it in C but the methodology and naming conventions (ie. OSDDrawLine = OSD.DrawLine, OSDInit = OSD::OSD constructor) are kept loosly 
@@ -234,7 +246,7 @@ void OSDChangePixelColour(uint16_t x, uint16_t y, enum COLOUR fg, enum COLOUR bg
 // Internal method to write a single character into the status/menu framebuffer. The X/Y location is specified in font units, also the orientation,
 // colour and required font.
 //
-void _OSDwrite(uint8_t x, uint8_t y, int8_t xoff, int8_t yoff, uint8_t xpad, uint8_t ypad, enum ORIENTATION orientation, uint8_t chr, enum COLOUR fg, enum COLOUR bg, fontStruct *font)
+void _OSDwrite(uint8_t x, uint8_t y, int8_t xoff, int8_t yoff, uint8_t xpad, uint8_t ypad, enum ORIENTATION orientation, uint8_t chr, uint16_t attr, enum COLOUR fg, enum COLOUR bg, fontStruct *font)
 {
     // Locals.
     uint16_t   startX;
@@ -254,8 +266,7 @@ void _OSDwrite(uint8_t x, uint8_t y, int8_t xoff, int8_t yoff, uint8_t xpad, uin
     // Check bounds of character.
     if(chr < font->start || chr > font->end)
     {
-      //  if(osdWindow.debug)
-            printf("Character out of bounds:%02x(%d,%d)\n", chr, font->start, font->end);
+        debugf("Character out of bounds:%02x(%d,%d)\n", chr, font->start, font->end);
         return;
     }
 
@@ -299,8 +310,7 @@ void _OSDwrite(uint8_t x, uint8_t y, int8_t xoff, int8_t yoff, uint8_t xpad, uin
     // Cant write if out of bounds.
     if(startX > osdWindow.params[osdWindow.mode].maxX || startY > osdWindow.params[osdWindow.mode].maxY || startX+width > osdWindow.params[osdWindow.mode].maxX || startY+height > osdWindow.params[osdWindow.mode].maxY)
     {
-       // if(osdWindow.debug)
-            printf("Position out of bounds:%d,%d(%d,%d)\n", startX, startY, x, y);
+        debugf("Position out of bounds:%d,%d(%d,%d). Max:%d,%d\n", startX, startY, x, y, osdWindow.params[osdWindow.mode].maxX, osdWindow.params[osdWindow.mode].maxY);
         return;
     }
 
@@ -334,12 +344,13 @@ void _OSDwrite(uint8_t x, uint8_t y, int8_t xoff, int8_t yoff, uint8_t xpad, uin
                         // Test to see if a foreground or background pixel is set and update the framebuffer accordingly.
                         if(vChrRow & 0x80 >> bitPos)
                         {
-                            if(fg & (1 << colourMode))
+                            if(((attr & HILIGHT_FG_ACTIVE) && ((attr&~HILIGHT_FG_ACTIVE) & (1 << colourMode))) || (!(attr & HILIGHT_FG_ACTIVE) && (fg & (1 << colourMode))))
                                 osdWindow.display[colourMode][addr] |= 0x80 >> bitOffset;
                             else
                                 osdWindow.display[colourMode][addr] &= ~(0x80 >> bitOffset);
                             if(osdWindow.debug && colourMode == 0) { printf("*"); }
-                        } else if(bg & (1 << colourMode)) 
+                        } 
+                        else if(((attr & HILIGHT_BG_ACTIVE) && ((attr&~HILIGHT_BG_ACTIVE) & (1 << colourMode))) || (!(attr & HILIGHT_BG_ACTIVE) && (bg & (1 << colourMode))))
                         {
                             osdWindow.display[colourMode][addr] |=   0x80 >> bitOffset;
                             if(osdWindow.debug && colourMode == 0) { printf(" "); }
@@ -379,13 +390,13 @@ void _OSDwrite(uint8_t x, uint8_t y, int8_t xoff, int8_t yoff, uint8_t xpad, uin
 
                         if(vChrRow & 0x80 >> bitPos)
                         {
-                            if(fg & (1 << colourMode))
+                            if(((attr & HILIGHT_FG_ACTIVE) && ((attr&~HILIGHT_FG_ACTIVE) & (1 << colourMode))) || (!(attr & HILIGHT_FG_ACTIVE) && (fg & (1 << colourMode))))
                                 osdWindow.display[colourMode][addr] |=   1 << bitOffset;
                             else
                                 osdWindow.display[colourMode][addr] &= ~(1 << bitOffset);
                             if(osdWindow.debug && colourMode == 0) { printf("*"); }
-                        }
-                        else if(bg & (1 << colourMode))
+                        } 
+                        else if(((attr & HILIGHT_BG_ACTIVE) && ((attr&~HILIGHT_BG_ACTIVE) & (1 << colourMode))) || (!(attr & HILIGHT_BG_ACTIVE) && (bg & (1 << colourMode))))
                         {
                             osdWindow.display[colourMode][addr] |=   1 << bitOffset;
                             if(osdWindow.debug && colourMode == 0) { printf(" "); }
@@ -428,13 +439,13 @@ void _OSDwrite(uint8_t x, uint8_t y, int8_t xoff, int8_t yoff, uint8_t xpad, uin
                         // Test to see if a pixel is set and update the framebuffer accordingly.
                         if(vChrRow & 1 << bitPos)
                         {
-                            if(fg & (1 << colourMode))
+                            if(((attr & HILIGHT_FG_ACTIVE) && ((attr&~HILIGHT_FG_ACTIVE) & (1 << colourMode))) || (!(attr & HILIGHT_FG_ACTIVE) && (fg & (1 << colourMode))))
                                 osdWindow.display[colourMode][addr] |= 0x80 >> bitOffset;
                             else
                                 osdWindow.display[colourMode][addr] &= ~(0x80 >> bitOffset);
                             if(osdWindow.debug && colourMode == 0) { printf("*"); }
-                        }
-                        else if(bg & (1 << colourMode))
+                        } 
+                        else if(((attr & HILIGHT_BG_ACTIVE) && ((attr&~HILIGHT_BG_ACTIVE) & (1 << colourMode))) || (!(attr & HILIGHT_BG_ACTIVE) && (bg & (1 << colourMode))))
                         {
                             osdWindow.display[colourMode][addr] |=   0x80 >> bitOffset;
                             if(osdWindow.debug && colourMode == 0) { printf(" "); }
@@ -475,13 +486,13 @@ void _OSDwrite(uint8_t x, uint8_t y, int8_t xoff, int8_t yoff, uint8_t xpad, uin
 
                         if(vChrRow & (1 << (row % 8)))
                         {
-                            if(fg & (1 << colourMode))
+                            if(((attr & HILIGHT_FG_ACTIVE) && ((attr&~HILIGHT_FG_ACTIVE) & (1 << colourMode))) || (!(attr & HILIGHT_FG_ACTIVE) && (fg & (1 << colourMode))))
                                 osdWindow.display[colourMode][addr] |= 0x80 >> bitOffset;
                             else
                                 osdWindow.display[colourMode][addr] &= ~(0x80 >> bitOffset);
                             if(osdWindow.debug && colourMode == 0) { printf("*"); }
-                        }
-                        else if(bg & (1 << colourMode))
+                        } 
+                        else if(((attr & HILIGHT_BG_ACTIVE) && ((attr&~HILIGHT_BG_ACTIVE) & (1 << colourMode))) || (!(attr & HILIGHT_BG_ACTIVE) && (bg & (1 << colourMode))))
                         {
                             osdWindow.display[colourMode][addr] |=   0x80 >> bitOffset;
                             if(osdWindow.debug && colourMode == 0) { printf(" "); }
@@ -517,8 +528,7 @@ void OSDWriteBitmap(uint16_t x, uint16_t y, enum BITMAPS bitmap, enum COLOUR fg,
     // Check parameters.
     if(x >= osdWindow.params[osdWindow.mode].maxX || y >= osdWindow.params[osdWindow.mode].maxY)
     {
-        if(osdWindow.debug)
-            printf("Bitmap coordinates out of range:(%d,%d)\n", x, y);
+        debugf("Bitmap coordinates out of range:(%d,%d)\n", x, y);
         return;
     }
    
@@ -579,14 +589,14 @@ void OSDWriteChar(uint8_t x, uint8_t y, uint8_t xoff, uint8_t yoff, uint8_t xpad
     // Locals.
     //
     
-    _OSDwrite(x, y, xoff, yoff, xpad, ypad, orientation, chr, fg, bg, OSDGetFont(font));
+    _OSDwrite(x, y, xoff, yoff, xpad, ypad, orientation, chr, NOATTR, fg, bg, OSDGetFont(font));
     return;
 }
 
 // Method to write a string to the required framebuffer. The X/Y co-ordinates are relative to the orientation, ie. start - NORMAL=0/0, DEG90 = maxX-font width/0, 
 // DEG180 = maxX-font width/maxY-font height, DEG270 = 0/maxY-font height.
 //
-void OSDWriteString(uint8_t x, uint8_t y, int8_t xoff, int8_t yoff, uint8_t xpad, uint8_t ypad, enum FONTS font, enum ORIENTATION orientation, char *str, enum COLOUR fg, enum COLOUR bg)
+void OSDWriteString(uint8_t x, uint8_t y, int8_t xoff, int8_t yoff, uint8_t xpad, uint8_t ypad, enum FONTS font, enum ORIENTATION orientation, char *str, uint16_t *attr, enum COLOUR fg, enum COLOUR bg)
 {
     // Locals.
     //
@@ -597,6 +607,8 @@ void OSDWriteString(uint8_t x, uint8_t y, int8_t xoff, int8_t yoff, uint8_t xpad
     uint8_t       maxY;
     uint8_t       xpos = x;
     uint8_t       ypos = y;
+    uint8_t       *ptr;
+    uint16_t      *aptr;
 
     // Obtain the font structure based on the provided type.
     fontptr = OSDGetFont(font);
@@ -635,9 +647,9 @@ void OSDWriteString(uint8_t x, uint8_t y, int8_t xoff, int8_t yoff, uint8_t xpad
     }
 
     // Output the string.
-    for(uint8_t *ptr=str; *ptr != 0x00; ptr++)
+    for(ptr=str,aptr=attr; *ptr != 0x00; ptr++, aptr++)
     {
-        _OSDwrite(xpos++, ypos, xoff, yoff, xpad, ypad, orientation, (*ptr), fg, bg, fontptr);
+        _OSDwrite(xpos++, ypos, xoff, yoff, xpad, ypad, orientation, (*ptr), (attr != NULL ? (*aptr) : NOATTR), fg, bg, fontptr);
                 
         if(xpos > maxX)
         {
@@ -651,6 +663,28 @@ void OSDWriteString(uint8_t x, uint8_t y, int8_t xoff, int8_t yoff, uint8_t xpad
         }
     }
     
+    return;
+}
+
+// Method to refresh the OSD size parameters from the hardware. This is required should the screen resolution change which may change
+// OSD size.
+void OSDUpdateScreenSize(void)
+{
+    // Locals.
+    uint8_t     result;
+    uint8_t     osdInData[8];
+
+    // Read the OSD Size parameters. These represent the X and Y size once multiplied by 8 (8 being the minimum size, ie. block size).
+    //
+    result=readZ80Array(VCADDR_8BIT_OSDMNU_SZX, osdInData, 6, FPGA);
+    if(!result)
+    {
+        osdWindow.params[STATUS].maxX = (uint16_t)(osdInData[2] * 8);
+        osdWindow.params[STATUS].maxY = (uint16_t)(osdInData[3] * 8) + (uint16_t)(osdInData[5] * 8);
+        osdWindow.params[MENU].maxX   = (uint16_t)(osdInData[0] * 8);
+        osdWindow.params[MENU].maxY   = (uint16_t)(osdInData[1] * 8);
+    }
+
     return;
 }
 
@@ -734,7 +768,7 @@ void OSDDrawLine(int16_t startX, int16_t startY, int16_t endX, int16_t endY, enu
     int        err = dx + dy, e2; /* error value e_xy */
     int16_t    x  = sx;
     int16_t    y  = sy;
-
+ 
     // Sanity check.
     if(sx < 0 || ex >= osdWindow.params[osdWindow.mode].maxX || sx > ex || ey < 0 || ey >= osdWindow.params[osdWindow.mode].maxY || sy > ey)
         return;
@@ -863,6 +897,101 @@ void OSDSetActiveWindow(enum WINDOWS window)
     return;
 }
 
+
+// Method to setup the data structures and enable flashing of a cursor at a given point, in a given font wth necessary attributes.
+// This mechanism is used for data entry where the next character typically appears at the flashing curspr.
+void OSDSetCursorFlash(uint8_t col, uint8_t row, uint8_t offsetCol, uint8_t offsetRow, enum FONTS font, uint8_t dispChar, enum COLOUR fg, enum COLOUR bg, uint16_t attr, unsigned long speed)
+{
+    // Disable any active cursor.
+    if(osdWindow.params[osdWindow.mode].cursor.enabled)
+        OSDClearCursorFlash();
+
+    // Store the given cursor data.
+    osdWindow.params[osdWindow.mode].cursor.row      = row;
+    osdWindow.params[osdWindow.mode].cursor.col      = col;
+    osdWindow.params[osdWindow.mode].cursor.ofrow    = offsetRow;
+    osdWindow.params[osdWindow.mode].cursor.ofcol    = offsetCol;
+    osdWindow.params[osdWindow.mode].cursor.font     = font;
+    osdWindow.params[osdWindow.mode].cursor.dispChar = dispChar;
+    osdWindow.params[osdWindow.mode].cursor.attr     = attr;
+    osdWindow.params[osdWindow.mode].cursor.fg       = fg;
+    osdWindow.params[osdWindow.mode].cursor.bg       = bg;
+    osdWindow.params[osdWindow.mode].cursor.speed    = speed;
+
+    // Enable the cursor.
+    osdWindow.params[osdWindow.mode].cursor.enabled  = 1;
+    osdWindow.params[osdWindow.mode].cursor.flashing = 0;
+
+    return;
+}
+
+// Method to clear any running cursor and restore the character under the cursor.
+//
+void OSDClearCursorFlash(void)
+{
+    // Locals.
+    char                  lineBuf[2];
+
+    // Verify there is an active cursor.
+    if(osdWindow.params[osdWindow.mode].cursor.enabled)
+    {
+        // Restore the character under the cursor to original value.
+        lineBuf[0] = osdWindow.params[osdWindow.mode].cursor.dispChar;
+        lineBuf[1] = 0x00;
+        OSDWriteString(osdWindow.params[osdWindow.mode].cursor.col, osdWindow.params[osdWindow.mode].cursor.row, osdWindow.params[osdWindow.mode].cursor.ofcol, osdWindow.params[osdWindow.mode].cursor.ofrow, 0, 0, osdWindow.params[osdWindow.mode].cursor.font, NORMAL, lineBuf, NULL, osdWindow.params[osdWindow.mode].cursor.fg, osdWindow.params[osdWindow.mode].cursor.bg);
+        OSDRefreshScreen();
+
+        // Disable the cursor flashing.
+        osdWindow.params[osdWindow.mode].cursor.enabled  = 0;
+        osdWindow.params[osdWindow.mode].cursor.flashing = 0;
+    }
+    return;
+}
+
+// Method to flash a cursor. This is based on a timer and using the hilight properties of text write, rewrites the character at the position where the cursor should
+// appear in the correct format. 
+void OSDCursorFlash(void)
+{
+    // Locals.
+    static unsigned long  time = 0;
+    char                  lineBuf[2];
+    uint16_t              attrBuf[2];
+    uint32_t              timeElapsed;
+
+    // Get elapsed time since last service poll.
+    timeElapsed = *msecs - time;    
+
+    // If the elapsed time is greater than the flash speed, toggle the flash state.
+    if(osdWindow.params[osdWindow.mode].cursor.enabled == 1 && timeElapsed > osdWindow.params[osdWindow.mode].cursor.speed)
+    {
+
+        lineBuf[0] = osdWindow.params[osdWindow.mode].cursor.dispChar;
+        lineBuf[1] = 0x00;
+        attrBuf[0] = osdWindow.params[osdWindow.mode].cursor.attr;
+        attrBuf[1] = 0x0000;
+        OSDWriteString(osdWindow.params[osdWindow.mode].cursor.col, osdWindow.params[osdWindow.mode].cursor.row, osdWindow.params[osdWindow.mode].cursor.ofcol, osdWindow.params[osdWindow.mode].cursor.ofrow, 0, 0, osdWindow.params[osdWindow.mode].cursor.font, NORMAL, lineBuf, osdWindow.params[osdWindow.mode].cursor.flashing == 0 ? NULL : attrBuf, osdWindow.params[osdWindow.mode].cursor.fg, osdWindow.params[osdWindow.mode].cursor.bg);
+        OSDRefreshScreen();
+
+        // Set to next flash state.
+        osdWindow.params[osdWindow.mode].cursor.flashing = osdWindow.params[osdWindow.mode].cursor.flashing == 0 ? 1 : 0;
+      
+        // Reset the timer.
+        time = *msecs;
+    }
+    return;
+}
+
+// Method to allow for OSD periodic updates as needed.
+//
+void OSDService(void)
+{
+    // Call the cursor flash routine to allow an interactive flashing cursor if enabled.
+    //
+    OSDCursorFlash();
+
+    return;
+}
+
 // Initialise the OSD subsystem. This method only needs to be called once, calling subsequent times will free and reallocate memory.
 //
 uint8_t OSDInit(enum WINDOWS window)
@@ -874,8 +1003,7 @@ uint8_t OSDInit(enum WINDOWS window)
     // Allocate heap for the OSD display buffers. The size is set to the maximum required buffer.
     if(osdWindow.display != NULL)
     {
-        if(osdWindow.debug)
-            printf("Freeing OSD display framebuffer:%08lx\n", osdWindow.display);
+        debugf("Freeing OSD display framebuffer:%08lx\n", osdWindow.display);
         free(osdWindow.display);
     } else
     {
@@ -888,8 +1016,7 @@ uint8_t OSDInit(enum WINDOWS window)
             result = 1;
         } else
         {
-            if(osdWindow.debug)
-                printf("OSD window framebuffer allocated: %dBytes@%08lx\n", VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE > VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE ? VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE : VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE, osdWindow.display);
+            debugf("OSD window framebuffer allocated: %dBytes@%08lx\n", VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE > VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE ? VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE : VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE, osdWindow.display);
         }
     }
    

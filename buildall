@@ -3,13 +3,9 @@
 # Not used: Target machine, used to select the right software for the SD card.
 # TARGET=MZ-700
 # TARGET=MZ-80A
+TARGET=MZ-2000
 
-<<<<<<< HEAD
-ZPU_SHARPMZ_BUILD=1
-=======
-TARGET=MZ-80A
 ZPU_SHARPMZ_BUILD=0
->>>>>>> 5a59ff2f96064433b95b8489dbe7e9b175b0accc
 #ZPU_SHARPMZ_APPADDR=0x100000
 #ZPU_SHARPMZ_APPSIZE=0x70000
 #ZPU_SHARPMZ_HEAPSIZE=0x8000
@@ -25,6 +21,8 @@ ZPU_E115_APPADDR=0x10000
 ZPU_E115_APPSIZE=0x8000
 ZPU_E115_HEAPSIZE=0x4000
 ZPU_E115_STACKSIZE=0x3D80
+
+echo "Build target: ${TARGET}"
 
 # NB: When setting this variable, see lower section creating the SD card image which uses a hard coded value and will need updating.
 ROOT_DIR=/dvlp/Projects/dev/github/
@@ -64,15 +62,15 @@ if [ "${ZPU_E115_BUILD}x" != "x" -a ${ZPU_E115_BUILD} = 1 ]; then
     cp -r build/SD/* SD/Dev/
 fi
 
-<<<<<<< HEAD
-echo "Building for K64F"
-./build.sh -C K64F -O zos  -N 0x18000 -d -T
-if [ $? != 0 ]; then
-	echo "Error building K64F Distribution..."
-	exit 1
-=======
 if [ "${TARGET}x" != "x" -a "${TARGET}" = "MZ-80A" ]; then
     echo "Building for K64F on MZ-80A"
+    ./build.sh -C K64F -O zos  -N 0x10000 -d -T
+    if [ $? != 0 ]; then
+    	echo "Error building K64F Distribution..."
+    	exit 1
+    fi
+elif [ "${TARGET}x" != "x" -a "${TARGET}" = "MZ-2000" ]; then
+    echo "Building for K64F on MZ-2000"
     ./build.sh -C K64F -O zos  -N 0x10000 -d -T
     if [ $? != 0 ]; then
     	echo "Error building K64F Distribution..."
@@ -85,7 +83,6 @@ else
     	echo "Error building K64F Distribution..."
     	exit 1
     fi
->>>>>>> 5a59ff2f96064433b95b8489dbe7e9b175b0accc
 fi
 cp -r build/SD/* SD/K64F/
 

@@ -35,6 +35,8 @@
 //                                   which are normally the first port of call for strange behaviour
 //                                   but it was seen that using them for running the tranzputer service
 //                                   wasnt really needed as this could be based on a readline idle call.
+//                  Oct 2021       - Extensions to support the MZ-2000 host and the Sharp MZ Series FPGA
+//                                   Emulation.
 //
 // Notes:           See Makefile to enable/disable conditional components
 //                  USELOADB              - The Byte write command is implemented in hw/sw so use it.
@@ -128,8 +130,8 @@
 #endif
 
 // Version info.
-#define VERSION      "v1.32"
-#define VERSION_DATE "25/07/2021"
+#define VERSION      "v1.40b"
+#define VERSION_DATE "28/10/2021"
 #define PROGRAM_NAME "zOS"
 
 // Utility functions.
@@ -301,6 +303,7 @@ void tranZPUterControl(void)
     //
     if(getZ80IO(&ioAddr) == 1)
     {
+//printf("Activity on IO:%02x\n", ioAddr);
         switch(ioAddr)
         {
             // Service request. Actual data about the request is stored in the Z80 memory, so read the request and process.
@@ -323,6 +326,41 @@ void tranZPUterControl(void)
 }
 #endif
 
+// Method to setup access to the SD card.
+//
+static uint8_t        diskInitialised = 0;
+static uint8_t        fsInitialised   = 0;
+#if defined(__SD_CARD__)
+int setupSDCard(void)
+{
+    // Local variables.
+    FRESULT           fr = FR_INVALID_DRIVE;
+    char              buf[120];
+
+    // Initialise the first disk if FS enabled as external commands depend on it.
+    //
+    fr = FR_NOT_ENABLED;
+    if(!disk_initialize(0, 1))
+    {
+        sprintf(buf, "0:");
+        fr = f_mount(&G.FatFs[0], buf, 0);
+    }
+
+    if(fr)
+    {
+        printf("Failed to initialise sd card 0, please init manually.\n");
+    } else
+    {
+        // Indicate disk and filesystem are accessible.
+        diskInitialised = 1;
+        fsInitialised   = 1;
+    }
+
+    // Indicate result, FR_OK = SD card setup and ready, all other values SD card not ready.
+    return(fr);
+}
+#endif
+
 // Interactive command processor. Allow user to input a command and execute accordingly.
 //
 int cmdProcessor(void)
@@ -339,8 +377,6 @@ int cmdProcessor(void)
     uint32_t          memAddr;
   #if defined(__SD_CARD__)
     char              *src1FileName;
-    uint8_t           diskInitialised = 0;
-    uint8_t           fsInitialised   = 0;
     uint8_t           trying          = 0;
     uint32_t          retCode         = 0xffffffff;
     FRESULT           fr;
@@ -354,38 +390,6 @@ int cmdProcessor(void)
 
     // Initialise any globals in the structure used to pass working variables to apps.
     G.Sector = 0;
-
-  #if defined __TRANZPUTER__
-    // Setup the tranZPUter hardware ready for action!
-    setupTranZPUter();
-  #endif
-
-    // Initialise the first disk if FS enabled as external commands depend on it.
-  #if defined(__SD_CARD__)
-    fr = FR_NOT_ENABLED;
-    if(!disk_initialize(0, 1))
-    {
-        sprintf(line, "0:");
-        fr = f_mount(&G.FatFs[0], line, 0);
-    }
-
-    if(fr)
-    {
-        printf("Failed to initialise sd card 0, please init manually.\n");
-    } else
-    {
-        diskInitialised = 1;
-        fsInitialised   = 1;
-
-      #if defined __TRANZPUTER__
-        // Setup memory on Z80 to default.
-        loadTranZPUterDefaultROMS(CPUMODE_SET_Z80);
-
-        // Cache initial directory.
-        svcCacheDir(TZSVC_DEFAULT_MZF_DIR, MZF, 1);
-      #endif
-    }
-  #endif
 
     while(1)
     {
@@ -917,7 +921,6 @@ int main(int argc, char **argv)
     //
   #if defined __K64F__
     Serial.begin(9600);
-    delay(2000);                   // Give time for the USB Serial Port to connect.
 
     // I/O is connected in the _read and_write methods withiin startup file mx20dx128.c.
     setbuf(stdout, NULL);
@@ -938,6 +941,11 @@ int main(int argc, char **argv)
 
   #endif
 
+  #if defined __TRANZPUTER__
+    // Setup the tranZPUter hardware ready for action!
+    setupTranZPUter(0, VERSION, VERSION_DATE);
+  #endif
+ 
     // Setup the configuration using the SoC configuration register if implemented otherwise the compiled internals.
     setupSoCConfig();
 
@@ -949,24 +957,50 @@ int main(int argc, char **argv)
     //TIMER_COUNTER(TIMER1) = 100000;         // Timer is prescaled to 100KHz
     //enableTimer();
 
-    // Indicate life...
-    //
-  #if !defined __SHARPMZ__
-    printf("Running...\n");
-  #endif
-
-  #if !defined __SHARPMZ__
-    printf("Enabling interrupts...\n");
-  #endif
+    // Enable interrupts.
     SetIntHandler(interrupt_handler);
+
   #if defined __ZPU__
     //EnableInterrupt(INTR_TIMER | INTR_PS2 | INTR_IOCTL_RD | INTR_IOCTL_WR | INTR_UART0_RX | INTR_UART0_TX | INTR_UART1_RX | INTR_UART1_TX);
     //EnableInterrupt(INTR_UART0_RX | INTR_UART1_RX); // | INTR_TIMER);
   #endif
 
-    // Intro screen
+  #if defined(__SD_CARD__)
+    setupSDCard();
+  #endif
+
+  #if defined __TRANZPUTER__
+    // If the SD card is present and ready, initialise the tranZPUter logic dependent upon file storage.
+    if(diskInitialised && fsInitialised)
+    {
+        // Setup memory on Z80 to default.
+        loadTranZPUterDefaultROMS(CPUMODE_SET_Z80);
+
+        // Cache initial directory.
+        svcCacheDir(TZSVC_DEFAULT_MZF_DIR, MZF, 1);
+      
+        //No SD card found so setup tranZPUter accordingly.
+        setupTranZPUter(1, NULL, NULL);
+    } else
+    {
+        // No SD card found so setup tranZPUter accordingly.
+        setupTranZPUter(9, NULL, NULL);
+    }
+  #endif
+
+  #if defined __K64F__
+    // Give time for the USB Serial Port to connect.
+    delay(2000);
+  #endif
+
+    // Signon with version information.
     printVersion(1);
 
+  #if defined __TRANZPUTER__
+    // Complete tranZPUter setup.
+    setupTranZPUter(8, NULL, NULL);
+  #endif
+  
     // Command processor. If it exits, then reset the CPU.
     cmdProcessor();
 
