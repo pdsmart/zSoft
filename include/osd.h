@@ -131,9 +131,14 @@
 #define MZ_EMU_ADDR_REG_AUDIO        MZ_EMU_BASE_ADDR + 5                // Address of the AUDIO configuration register.
 #define MZ_EMU_ADDR_REG_CMT          MZ_EMU_BASE_ADDR + 6                // Address of the CMT (tape drive) configuration register 1.
 #define MZ_EMU_ADDR_REG_CMT2         MZ_EMU_BASE_ADDR + 7                // Address of the CMT (tape drive) configuration register 2.
-#define MZ_EMU_ADDR_REG_USERROM      MZ_EMU_BASE_ADDR + 8                // Address of the USER ROM selection register (not currently used.).
-#define MZ_EMU_ADDR_REG_FDCROM       MZ_EMU_BASE_ADDR + 9                // Address of the Floppy Disk ROM selection register. 
-#define MZ_EMU_ADDR_REG_SETUP        MZ_EMU_BASE_ADDR + 13               // Address of the emulator current setup (configuration) register.
+#define MZ_EMU_ADDR_REG_CMT3         MZ_EMU_BASE_ADDR + 8                // Address of the CMT (tape drive) configuration register 3.
+#define MZ_EMU_ADDR_REG_FDD          MZ_EMU_BASE_ADDR + 9                // Address of the Floppy Disk Drive configuration register 1.
+#define MZ_EMU_ADDR_REG_FDD2         MZ_EMU_BASE_ADDR + 10               // Address of the Floppy Disk Drive configuration register 2.
+#define MZ_EMU_ADDR_REG_FDD3         MZ_EMU_BASE_ADDR + 11               // Address of the Floppy Disk Drive configuration register 3.
+#define MZ_EMU_ADDR_REG_FDD4         MZ_EMU_BASE_ADDR + 12               // Address of the Floppy Disk Drive configuration register 4.
+#define MZ_EMU_ADDR_REG_ROMS         MZ_EMU_BASE_ADDR + 13               // Address of the optional ROMS configuration register.
+#define MZ_EMU_ADDR_REG_SWITCHES     MZ_EMU_BASE_ADDR + 14               // Address of the Hardware configuration switches.
+#define MZ_EMU_ADDR_REG_CTRL         MZ_EMU_BASE_ADDR + 15               // Address of the Control reigster.
 #define MZ_EMU_INTR_ISR              0x00                                // Interupt service reason register, define what caused the interupt.
 #define MZ_EMU_KEYB_KEY_MATRIX       0x00                                // Key matrix array current scan.
 #define MZ_EMU_KEYB_KEY_MATRIX_LAST  0x10                                // Key matrix array previous scan.
@@ -154,9 +159,14 @@
 #define MZ_EMU_REG_AUDIO             5                                   // AUDIO configuration register.                    
 #define MZ_EMU_REG_CMT               6                                   // CMT (tape drive) configuration register 1.       
 #define MZ_EMU_REG_CMT2              7                                   // CMT (tape drive) configuration register 2.       
-#define MZ_EMU_REG_USERROM           8                                   // USER ROM selection register (not currently used.)
-#define MZ_EMU_REG_FDCROM            9                                   // Floppy Disk ROM selection register.              
-#define MZ_EMU_REG_SETUP             13                                  // Emulator current setup (configuration) register. 
+#define MZ_EMU_REG_CMT3              8                                   // CMT (tape drive) configuration register 2.       
+#define MZ_EMU_REG_FDD               9                                   // Floppy Disk Drive configuration register 1.
+#define MZ_EMU_REG_FDD2              10                                  // Floppy Disk Drive configuration register 2.
+#define MZ_EMU_REG_FDD3              11                                  // Floppy Disk Drive configuration register 3.
+#define MZ_EMU_REG_FDD4              12                                  // Floppy Disk Drive configuration register 4.
+#define MZ_EMU_REG_ROMS              13                                  // Options ROMS configuration
+#define MZ_EMU_REG_SWITCHES          14                                  // Hardware switches, MZ800 = 3:0
+#define MZ_EMU_REG_CTRL              15                                  // Emulation control register.
 #define MZ_EMU_MAX_REGISTERS         16                                  // Maximum number of registers on the emulator.
 #define MZ_EMU_KEYB_DISABLE_EMU      0x01                                // Disable keyboard scan codes being sent to the emulation.
 #define MZ_EMU_KEYB_ENABLE_INTR      0x02                                // Enable interrupt on every key press.

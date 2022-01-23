@@ -76,12 +76,12 @@ extern "C" {
 #define __EMUMZ_DEBUG__       1
 
 // Debug macros
-#define debugf(a, ...)        if(emuControl.debug) { printf("\033[1;31mEMUMZ: " a "\033[0m\n", ##__VA_ARGS__); }
-#define debugfx(a, ...)       if(emuControl.debug) { printf("\033[1;32mEMUMZ: " a "\033[0m\n", ##__VA_ARGS__); }
+#define debugf(a, ...)        if(emuControl.debug) { printf("\033[1;31m%s: " a "\033[0m\n", __func__, ##__VA_ARGS__); }
+#define debugfx(a, ...)       if(emuControl.debug) { printf("\033[1;32m%s: " a "\033[0m\n", __func__, ##__VA_ARGS__); }
 
 // Version data.
-#define EMUMZ_VERSION       1.4
-#define EMUMZ_VERSION_DATE  "22/12/2021"
+#define EMUMZ_VERSION       1.44
+#define EMUMZ_VERSION_DATE  "16/01/2022"
 
 //////////////////////////////////////////////////////////////
 // Sharp MZ Series Emulation Service Methods                //
@@ -117,10 +117,14 @@ const static t_emuControl          emuControlDefault = {
 const static t_emuConfig           emuConfigDefault = {
                                               .machineModel = MZ80K, .machineGroup = GROUP_MZ80K, .machineChanged = 1,
                                               .params[MZ80K] = {
-                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 15,    .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
                                                   .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
-                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeAutoSave = 1,    .tapeButtons = 3,   .fastTapeLoad = 0,  .tapeSavePath = "0:\\MZF",
-                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .autoStart = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ80K",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\sp1002.rom",        .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz80k_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
@@ -130,10 +134,14 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ80C] = {
-                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 15,    .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
                                                   .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
-                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeAutoSave = 1,    .tapeButtons = 3,   .fastTapeLoad = 0,  .tapeSavePath = "0:\\MZF",
-                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .autoStart = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ80C",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\sp1002.rom",        .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz80c_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
@@ -143,10 +151,14 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ1200] = {
-                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 15,    .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
                                                   .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
-                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeAutoSave = 1,    .tapeButtons = 3,   .fastTapeLoad = 0,  .tapeSavePath = "0:\\MZF",
-                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .autoStart = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ1200",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\sa1510.rom",        .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz80c_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
@@ -156,10 +168,14 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ80A] = {
-                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 15,    .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
                                                   .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
-                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeAutoSave = 1,    .tapeButtons = 3,   .fastTapeLoad = 0,  .tapeSavePath = "0:\\MZF",
-                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .autoStart = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ80A",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\sa1510.rom",        .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "0:\\TZFS\\sa1510-8.rom",      .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz80a_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
@@ -169,10 +185,14 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ700] = {
-                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 15,    .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_COLOUR,       .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_COLOUR,       .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
                                                   .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
-                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeAutoSave = 1,    .tapeButtons = 3,   .fastTapeLoad = 0,  .tapeSavePath = "0:\\MZF",
-                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .autoStart = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ700",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\1z-013a.rom",       .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "0:\\TZFS\\1z-013a-8.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz700_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00001000 },
@@ -182,10 +202,14 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ800] = {
-                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 15,    .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_COLOUR,       .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_COLOUR,       .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
                                                   .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
-                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeAutoSave = 1,    .tapeButtons = 3,   .fastTapeLoad = 0,  .tapeSavePath = "0:\\MZF",
-                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .autoStart = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ800",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\mz800_ipl.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00004000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz800_cgrom.rom",   .romEnabled = 0, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00001000 },
@@ -195,11 +219,15 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ1500] = {
-                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 15,    .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_COLOUR,       .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_COLOUR,       .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
                                                   .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
-                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeAutoSave = 1,    .tapeButtons = 3,   .fastTapeLoad = 0,  .tapeSavePath = "0:\\MZF",
-                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .autoStart = 0,
-                                                  .romMonitor40 = { .romFileName = "0:\\TZFS\\mz150_ipl.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00004000 },
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ1500",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .romMonitor40 = { .romFileName = "0:\\TZFS\\mz1500_ipl.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00004000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz1500_cgrom.rom",  .romEnabled = 0, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00001000 },
                                                   .romKeyMap    = { .romFileName = "0:\\TZFS\\700_1500_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000080 },
@@ -208,10 +236,14 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ80B] = {
-                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 15,    .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 2,                   .displayOutput = VMMODE_VGA_640x480, 
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 2,                   .displayOutput = VMMODE_VGA_640x480, 
                                                   .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
-                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeAutoSave = 1,    .tapeButtons = 3,   .fastTapeLoad = 0,  .tapeSavePath = "0:\\MZF",
-                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .autoStart = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ80B",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\mz80b_ipl.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00000800 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00000800 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz80b_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
@@ -221,10 +253,14 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ2000] = {
-                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 15,    .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 4,                   .displayOutput = VMMODE_VGA_640x480, 
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 4,                   .displayOutput = VMMODE_VGA_640x480, 
                                                   .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
-                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeAutoSave = 1,    .tapeButtons = 3,   .fastTapeLoad = 0,  .tapeSavePath = "0:\\MZF",
-                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .autoStart = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ2000",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\mz2000_ipl.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz2000_cgrom.rom",  .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
@@ -234,10 +270,14 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ2200] = {
-                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 15,    .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
                                                   .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
-                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeAutoSave = 1,    .tapeButtons = 3,   .fastTapeLoad = 0,  .tapeSavePath = "0:\\MZF",
-                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .autoStart = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ2200",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\mz2200-ipl.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz2200_cgrom.rom",  .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
@@ -247,10 +287,14 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ2500] = {
-                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 15,    .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_COLOUR,       .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_COLOUR,       .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
                                                   .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
-                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeAutoSave = 1,    .tapeButtons = 3,   .fastTapeLoad = 0,  .tapeSavePath = "0:\\MZF",
-                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .autoStart = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ2500",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\mz2500-ipl.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz2500_cgrom.rom",  .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
@@ -468,7 +512,7 @@ uint16_t EMZGetMenuColumnWidth(void)
 //
 short EMZGetMachineGroup(void)
 {
-    short machineGroup = 0;
+    short machineGroup = GROUP_MZ80K;
 
     // Set value according to machine model.
     //
@@ -701,6 +745,10 @@ void EMZNextAudioSource(enum ACTIONMODE mode)
     if(mode == ACTION_DEFAULT || mode == ACTION_TOGGLECHOICE)
     {
         emuConfig.params[emuConfig.machineModel].audioSource = (emuConfig.params[emuConfig.machineModel].audioSource+1 >= NUMELEM(SHARPMZ_AUDIO_SOURCE) ? 0 : emuConfig.params[emuConfig.machineModel].audioSource+1);
+       
+        // Write the updated value immediately so as to change the audio source.
+        emuConfig.emuRegisters[MZ_EMU_REG_AUDIO]    = emuConfig.params[emuConfig.machineModel].audioHardware << 7 | emuConfig.params[emuConfig.machineModel].audioMix << 5 | (emuConfig.params[emuConfig.machineModel].audioMute == 1 ? 0 : emuConfig.params[emuConfig.machineModel].audioVolume << 1) | emuConfig.params[emuConfig.machineModel].audioSource;
+        writeZ80Array(MZ_EMU_ADDR_REG_AUDIO, &emuConfig.emuRegisters[MZ_EMU_REG_AUDIO], 1, FPGA);
     }
     return;
 }
@@ -722,6 +770,10 @@ void EMZNextAudioHardware(enum ACTIONMODE mode)
     if(mode == ACTION_DEFAULT || mode == ACTION_TOGGLECHOICE)
     {
         emuConfig.params[emuConfig.machineModel].audioHardware = (emuConfig.params[emuConfig.machineModel].audioHardware+1 >= NUMELEM(SHARPMZ_AUDIO_HARDWARE) ? 0 : emuConfig.params[emuConfig.machineModel].audioHardware+1);
+       
+        // Write the updated value immediately so as to change the sound hardware.
+        emuConfig.emuRegisters[MZ_EMU_REG_AUDIO]    = emuConfig.params[emuConfig.machineModel].audioHardware << 7 | emuConfig.params[emuConfig.machineModel].audioMix << 5 | (emuConfig.params[emuConfig.machineModel].audioMute == 1 ? 0 : emuConfig.params[emuConfig.machineModel].audioVolume << 1) | emuConfig.params[emuConfig.machineModel].audioSource;
+        writeZ80Array(MZ_EMU_ADDR_REG_AUDIO, &emuConfig.emuRegisters[MZ_EMU_REG_AUDIO], 1, FPGA);
     }
   
     // Need to rewrite the menu as the choice will affect displayed items.
@@ -746,6 +798,10 @@ void EMZNextAudioVolume(enum ACTIONMODE mode)
     if(mode == ACTION_DEFAULT || mode == ACTION_TOGGLECHOICE)
     {
         emuConfig.params[emuConfig.machineModel].audioVolume = (emuConfig.params[emuConfig.machineModel].audioVolume+1 >= NUMELEM(SHARPMZ_AUDIO_VOLUME) ? 0 : emuConfig.params[emuConfig.machineModel].audioVolume+1);
+       
+        // Write the updated value immediately so as to adjust the sound volume.
+        emuConfig.emuRegisters[MZ_EMU_REG_AUDIO]    = emuConfig.params[emuConfig.machineModel].audioHardware << 7 | emuConfig.params[emuConfig.machineModel].audioMix << 5 | (emuConfig.params[emuConfig.machineModel].audioMute == 1 ? 0 : emuConfig.params[emuConfig.machineModel].audioVolume << 1) | emuConfig.params[emuConfig.machineModel].audioSource;
+        writeZ80Array(MZ_EMU_ADDR_REG_AUDIO, &emuConfig.emuRegisters[MZ_EMU_REG_AUDIO], 1, FPGA);
     }
     return;
 }
@@ -767,6 +823,10 @@ void EMZNextAudioMute(enum ACTIONMODE mode)
     if(mode == ACTION_DEFAULT || mode == ACTION_TOGGLECHOICE)
     {
         emuConfig.params[emuConfig.machineModel].audioMute = (emuConfig.params[emuConfig.machineModel].audioMute+1 >= NUMELEM(SHARPMZ_AUDIO_MUTE) ? 0 : emuConfig.params[emuConfig.machineModel].audioMute+1);
+        
+        // Write the updated value immediately so as to mute the sound.
+        emuConfig.emuRegisters[MZ_EMU_REG_AUDIO]    = emuConfig.params[emuConfig.machineModel].audioHardware << 7 | emuConfig.params[emuConfig.machineModel].audioMix << 5 | (emuConfig.params[emuConfig.machineModel].audioMute == 1 ? 0 : emuConfig.params[emuConfig.machineModel].audioVolume << 1) | emuConfig.params[emuConfig.machineModel].audioSource;
+        writeZ80Array(MZ_EMU_ADDR_REG_AUDIO, &emuConfig.emuRegisters[MZ_EMU_REG_AUDIO], 1, FPGA);
     }
     return;
 }
@@ -788,6 +848,10 @@ void EMZNextAudioMix(enum ACTIONMODE mode)
     if(mode == ACTION_DEFAULT || mode == ACTION_TOGGLECHOICE)
     {
         emuConfig.params[emuConfig.machineModel].audioMix = (emuConfig.params[emuConfig.machineModel].audioMix+1 >= NUMELEM(SHARPMZ_AUDIO_MIX) ? 0 : emuConfig.params[emuConfig.machineModel].audioMix+1);
+       
+        // Write the updated value immediately so as to change the channel mix.
+        emuConfig.emuRegisters[MZ_EMU_REG_AUDIO]    = emuConfig.params[emuConfig.machineModel].audioHardware << 7 | emuConfig.params[emuConfig.machineModel].audioMix << 5 | (emuConfig.params[emuConfig.machineModel].audioMute == 1 ? 0 : emuConfig.params[emuConfig.machineModel].audioVolume << 1) | emuConfig.params[emuConfig.machineModel].audioSource;
+        writeZ80Array(MZ_EMU_ADDR_REG_AUDIO, &emuConfig.emuRegisters[MZ_EMU_REG_AUDIO], 1, FPGA);
     }
     return;
 }
@@ -1091,27 +1155,6 @@ void EMZNextQueueTapeFileFilter(enum ACTIONMODE mode)
     return;
 }
 
-// Method to return a char string which represents the current selected tape auto save mode.
-const char *EMZGetTapeAutoSaveChoice(void)
-{
-    // Locals.
-    //
-    return(SHARPMZ_TAPE_AUTO_SAVE[emuConfig.params[emuConfig.machineModel].tapeAutoSave]);
-}
-
-// Method to change the Tape Auto Save mode, choice based on the actual selected machine.
-void EMZNextTapeAutoSave(enum ACTIONMODE mode)
-{
-    // Locals.
-    //
-
-    if(mode == ACTION_DEFAULT || mode == ACTION_TOGGLECHOICE)
-    {
-        emuConfig.params[emuConfig.machineModel].tapeAutoSave = (emuConfig.params[emuConfig.machineModel].tapeAutoSave+1 >= NUMELEM(SHARPMZ_TAPE_AUTO_SAVE) ? 0 : emuConfig.params[emuConfig.machineModel].tapeAutoSave+1);
-    }
-    return;
-}
-
 // Method to return a char string which represents the current selected tape save path.
 const char *EMZGetTapeSaveFilePathChoice(void)
 {
@@ -1215,6 +1258,403 @@ void EMZNextCMTAsciiMapping(enum ACTIONMODE mode)
         emuConfig.params[emuConfig.machineModel].cmtAsciiMapping = (emuConfig.params[emuConfig.machineModel].cmtAsciiMapping+1 >= NUMELEM(SHARPMZ_ASCII_MAPPING) ? 0 : emuConfig.params[emuConfig.machineModel].cmtAsciiMapping+1);
     }
     return;
+}
+
+// Method to return a char string which represents the current selected floppy disk drive hardware selection setting.
+const char *EMZGetFDDModeChoice(void)
+{
+    // Locals.
+    //
+    return(SHARPMZ_FDD_MODE[emuConfig.params[emuConfig.machineModel].fddEnabled]);
+}
+
+// Method to change the floppy disk drive hardware setting, choice based on the actual selected machine.
+void EMZNextFDDMode(enum ACTIONMODE mode)
+{
+    // Locals.
+    //
+
+    if(mode == ACTION_DEFAULT || mode == ACTION_TOGGLECHOICE)
+    {
+        emuConfig.params[emuConfig.machineModel].fddEnabled = (emuConfig.params[emuConfig.machineModel].fddEnabled+1 >= NUMELEM(SHARPMZ_FDD_MODE) ? 0 : emuConfig.params[emuConfig.machineModel].fddEnabled+1);
+    }
+    return;
+}
+
+// Method to enable or disable the FDD hardware within the FPGA.
+//
+void EMZChangeFDDMode(enum ACTIONMODE mode)
+{
+    if(mode == ACTION_TOGGLECHOICE)
+    {
+        // Need to change choice then rewrite the menu as the choice will affect displayed items.
+        EMZNextFDDMode(mode);
+        EMZSwitchToMenu(emuControl.activeMenu.menu[emuControl.activeMenu.menuIdx]);
+    }
+}
+
+    
+// Method to change the type of disk the WD1793 controller reports. Also used to aportion the disk image correctly.
+//
+void EMZNextFDDDriveType(enum ACTIONMODE mode, uint8_t drive)
+{
+    // Locals.
+    //
+
+    if(mode == ACTION_DEFAULT || mode == ACTION_TOGGLECHOICE)
+    {
+        do {
+            emuConfig.params[emuConfig.machineModel].fdd[drive].diskType = (emuConfig.params[emuConfig.machineModel].fdd[drive].diskType+1 >= NUMELEM(SHARPMZ_FDD_DISK_TYPE) ? 0 : emuConfig.params[emuConfig.machineModel].fdd[drive].diskType+1);
+        } while(SHARPMZ_FDD_DISK_TYPE[emuConfig.params[emuConfig.machineModel].fdd[drive].diskType] == NULL);
+    }
+    return;
+}
+void EMZNextFDDDriveType0(enum ACTIONMODE mode)
+{
+    EMZNextFDDDriveType(mode, 0);
+}
+void EMZNextFDDDriveType1(enum ACTIONMODE mode)
+{
+    EMZNextFDDDriveType(mode, 1);
+}
+void EMZNextFDDDriveType2(enum ACTIONMODE mode)
+{
+    EMZNextFDDDriveType(mode, 2);
+}
+void EMZNextFDDDriveType3(enum ACTIONMODE mode)
+{
+    EMZNextFDDDriveType(mode, 3);
+}
+
+// Method to return a string to indicate the current Disk Type setting.
+const char *EMZGetFDDDriveTypeChoice(uint8_t drive)
+{
+    // Locals.
+    //
+    return(SHARPMZ_FDD_DISK_TYPE[emuConfig.params[emuConfig.machineModel].fdd[drive].diskType]);
+}
+const char *EMZGetFDDDriveType0Choice(void)
+{
+    return(EMZGetFDDDriveTypeChoice(0));
+}
+const char *EMZGetFDDDriveType1Choice(void)
+{
+    return(EMZGetFDDDriveTypeChoice(1));
+}
+const char *EMZGetFDDDriveType2Choice(void)
+{
+    return(EMZGetFDDDriveTypeChoice(2));
+}
+const char *EMZGetFDDDriveType3Choice(void)
+{
+    return(EMZGetFDDDriveTypeChoice(3));
+}
+   
+// Method to change the image polarity. The underlying controller expects inverted data due to the original MB8866 controller IC using an inverted data bus
+// but it is hard without tools to work with or create new images. Thus an option exists to use a non-standard image which has non-inverted data and this 
+// option inverts it prior to sending to the controller.
+//
+void EMZNextFDDImagePolarity(enum ACTIONMODE mode, uint8_t drive)
+{
+    // Locals.
+    //
+
+    if(mode == ACTION_DEFAULT || mode == ACTION_TOGGLECHOICE)
+    {
+        emuConfig.params[emuConfig.machineModel].fdd[drive].polarity = (emuConfig.params[emuConfig.machineModel].fdd[drive].polarity+1 >= NUMELEM(SHARPMZ_FDD_IMAGE_POLARITY) ? 0 : emuConfig.params[emuConfig.machineModel].fdd[drive].polarity+1);
+    }
+    return;
+}
+void EMZNextFDDImagePolarity0(enum ACTIONMODE mode)
+{
+    EMZNextFDDImagePolarity(mode, 0);
+}
+void EMZNextFDDImagePolarity1(enum ACTIONMODE mode)
+{
+    EMZNextFDDImagePolarity(mode, 1);
+}
+void EMZNextFDDImagePolarity2(enum ACTIONMODE mode)
+{
+    EMZNextFDDImagePolarity(mode, 2);
+}
+void EMZNextFDDImagePolarity3(enum ACTIONMODE mode)
+{
+    EMZNextFDDImagePolarity(mode, 3);
+}
+
+// Method to return a string to indicate the current Disk Polarity setting.
+const char *EMZGetFDDImagePolarityChoice(uint8_t drive)
+{
+    // Locals.
+    //
+    return(SHARPMZ_FDD_IMAGE_POLARITY[emuConfig.params[emuConfig.machineModel].fdd[drive].polarity]);
+}
+const char *EMZGetFDDImagePolarity0Choice(void)
+{
+    return(EMZGetFDDImagePolarityChoice(0));
+}
+const char *EMZGetFDDImagePolarity1Choice(void)
+{
+    return(EMZGetFDDImagePolarityChoice(1));
+}
+const char *EMZGetFDDImagePolarity2Choice(void)
+{
+    return(EMZGetFDDImagePolarityChoice(2));
+}
+const char *EMZGetFDDImagePolarity3Choice(void)
+{
+    return(EMZGetFDDImagePolarityChoice(3));
+}
+
+// Nethod to change the floppy disk update mode to enable/disable writes.
+//
+void EMZNextFDDUpdateMode(enum ACTIONMODE mode, uint8_t drive)
+{
+    // Locals.
+    //
+
+    if(mode == ACTION_DEFAULT || mode == ACTION_TOGGLECHOICE)
+    {
+        emuConfig.params[emuConfig.machineModel].fdd[drive].updateMode = (emuConfig.params[emuConfig.machineModel].fdd[drive].updateMode+1 >= NUMELEM(SHARPMZ_FDD_UPDATE_MODE) ? 0 : emuConfig.params[emuConfig.machineModel].fdd[drive].updateMode+1);
+    }
+    return;
+}
+void EMZNextFDDUpdateMode0(enum ACTIONMODE mode)
+{
+    EMZNextFDDUpdateMode(mode, 0);
+}
+void EMZNextFDDUpdateMode1(enum ACTIONMODE mode)
+{
+    EMZNextFDDUpdateMode(mode, 1);
+}
+void EMZNextFDDUpdateMode2(enum ACTIONMODE mode)
+{
+    EMZNextFDDUpdateMode(mode, 2);
+}
+void EMZNextFDDUpdateMode3(enum ACTIONMODE mode)
+{
+    EMZNextFDDUpdateMode(mode, 3);
+}
+
+// Method to return a string to indicate the current Disk Update Mode setting.
+const char *EMZGetFDDUpdateModeChoice(uint8_t drive)
+{
+    // Locals.
+    //
+    return(SHARPMZ_FDD_UPDATE_MODE[emuConfig.params[emuConfig.machineModel].fdd[drive].updateMode]);
+}
+const char *EMZGetFDDUpdateMode0Choice(void)
+{
+    return(EMZGetFDDUpdateModeChoice(0));
+}
+const char *EMZGetFDDUpdateMode1Choice(void)
+{
+    return(EMZGetFDDUpdateModeChoice(1));
+}
+const char *EMZGetFDDUpdateMode2Choice(void)
+{
+    return(EMZGetFDDUpdateModeChoice(2));
+}
+const char *EMZGetFDDUpdateMode3Choice(void)
+{
+    return(EMZGetFDDUpdateModeChoice(3));
+}
+
+// Method to select the disk image to be used for a Floppy Disk Drive. 
+//
+void EMZFDDSetDriveImage(enum ACTIONMODE mode, uint8_t drive)
+{
+    if(mode == ACTION_DEFAULT || mode == ACTION_SELECT)
+    {
+        EMZSetupDirList("Select File", emuControl.activeDir.dir[emuControl.activeDir.dirIdx], FONT_7X8);
+        strcpy(emuControl.fileList.fileFilter, EMZGetFDDDriveFileFilterChoice());
+        emuControl.fileList.selectDir = 0;
+        EMZReadDirectory(emuControl.activeDir.dir[emuControl.activeDir.dirIdx], emuControl.fileList.fileFilter);
+        EMZRefreshFileList();
+
+        // Switch to the File List Dialog mode setting the return Callback which will be activated after a file has been chosen.
+        //
+        emuControl.activeDialog = DIALOG_FILELIST;
+        switch(drive)
+        {
+            case 1:
+                emuControl.fileList.returnCallback = EMZFDDDriveImage1Set;
+                break;
+            case 2:
+                emuControl.fileList.returnCallback = EMZFDDDriveImage2Set;
+                break;
+            case 3:
+                emuControl.fileList.returnCallback = EMZFDDDriveImage3Set;
+                break;
+            case 0:
+            default:
+                emuControl.fileList.returnCallback = EMZFDDDriveImage0Set;
+                break;
+        }
+    }
+}
+void EMZFDDSetDriveImage0(enum ACTIONMODE mode)
+{
+    EMZFDDSetDriveImage(mode, 0);
+}
+void EMZFDDSetDriveImage1(enum ACTIONMODE mode)
+{
+    EMZFDDSetDriveImage(mode, 1);
+}
+void EMZFDDSetDriveImage2(enum ACTIONMODE mode)
+{
+    EMZFDDSetDriveImage(mode, 2);
+}
+void EMZFDDSetDriveImage3(enum ACTIONMODE mode)
+{
+    EMZFDDSetDriveImage(mode, 3);
+}
+
+// Method to store the selected file name. This method is called as a callback when the user selects a disk image file.
+void EMZFDDDriveImageSet(char *param, uint8_t driveNo)
+{
+    // Locals.
+    short    imgType;
+
+    // If a filename has been provided, check it and store details.
+    if(strlen(param) < MAX_FILENAME_LEN)
+    {
+        // Validate file selected.
+        if((imgType = EMZCheckFDDImage(param)) != -1)
+        {
+            // If the image is valid, store the information and set mounted flag.
+            if(EMZSetFDDImageParams(param, driveNo, (enum IMAGETYPES)imgType) != -1)
+            {
+                emuConfig.params[emuConfig.machineModel].fdd[driveNo].mounted = 1;
+                emuConfig.params[emuConfig.machineModel].fdd[driveNo].imgType = (enum IMAGETYPES)imgType;
+            }
+        } else
+        {
+            // Raise error message here.
+        }
+    }
+}
+void EMZFDDDriveImage0Set(char *param)
+{
+    EMZFDDDriveImageSet(param, 0);
+}
+void EMZFDDDriveImage1Set(char *param)
+{
+    EMZFDDDriveImageSet(param, 1);
+}
+void EMZFDDDriveImage2Set(char *param)
+{
+    EMZFDDDriveImageSet(param, 2);
+}
+void EMZFDDDriveImage3Set(char *param)
+{
+    EMZFDDDriveImageSet(param, 3);
+}
+
+// Method to return a char string which represents the current floppy image file filter.
+const char *EMZGetFDDDriveFileFilterChoice(void)
+{
+    // Locals.
+    //
+    return(SHARPMZ_FDD_FILE_FILTERS[emuConfig.params[emuConfig.machineModel].fddImageFilter]);
+}
+
+// Method to return a char string which represents the current floppy image file filter.
+const char *EMZGetFDDDriveFileChoice(uint8_t drive)
+{
+    // Locals.
+    //
+    return(emuConfig.params[emuConfig.machineModel].fdd[drive].fileName);
+}
+const char *EMZGetFDDDrive0FileChoice(void)
+{
+    return(EMZGetFDDDriveFileChoice(0));
+}
+const char *EMZGetFDDDrive1FileChoice(void)
+{
+    return(EMZGetFDDDriveFileChoice(1));
+}
+const char *EMZGetFDDDrive2FileChoice(void)
+{
+    return(EMZGetFDDDriveFileChoice(2));
+}
+const char *EMZGetFDDDrive3FileChoice(void)
+{
+    return(EMZGetFDDDriveFileChoice(3));
+}
+
+// Method to change the floppy image selection filter, choice based on the actual selected machine.
+void EMZNextDriveImageFilter(enum ACTIONMODE mode)
+{
+    // Locals.
+    //
+
+    if(mode == ACTION_DEFAULT || mode == ACTION_TOGGLECHOICE)
+    {
+        emuConfig.params[emuConfig.machineModel].fddImageFilter = (emuConfig.params[emuConfig.machineModel].fddImageFilter+1 >= NUMELEM(SHARPMZ_FDD_FILE_FILTERS) ? 0 : emuConfig.params[emuConfig.machineModel].fddImageFilter+1);
+    }
+    return;
+}
+
+// Method to eject/unmount the current floppy image.
+void EMZMountDrive(enum ACTIONMODE mode, uint8_t drive, uint8_t mount)
+{
+    // Locals.
+    //
+
+    if(mode == ACTION_DEFAULT || mode == ACTION_TOGGLECHOICE)
+    {
+        // Only mount the disk image if a file has been selected.
+        emuConfig.params[emuConfig.machineModel].fdd[drive].mounted = mount == 1  && strlen(emuConfig.params[emuConfig.machineModel].fdd[drive].fileName) > 0 ? 1 : 0;
+    }
+    return;
+}
+void EMZNextMountDrive0(enum ACTIONMODE mode)
+{
+    EMZMountDrive(mode, 0, emuConfig.params[emuConfig.machineModel].fdd[0].mounted == 0 ? 1 : 0);
+}
+void EMZNextMountDrive1(enum ACTIONMODE mode)
+{
+    EMZMountDrive(mode, 1, emuConfig.params[emuConfig.machineModel].fdd[1].mounted == 0 ? 1 : 0);
+}
+void EMZNextMountDrive2(enum ACTIONMODE mode)
+{
+    EMZMountDrive(mode, 2, emuConfig.params[emuConfig.machineModel].fdd[2].mounted == 0 ? 1 : 0);
+}
+void EMZNextMountDrive3(enum ACTIONMODE mode)
+{
+    EMZMountDrive(mode, 3, emuConfig.params[emuConfig.machineModel].fdd[3].mounted == 0 ? 1 : 0);
+}
+
+const char *EMZGetFDDMountChoice(uint8_t drive)
+{
+    // Locals.
+    //
+    return(SHARPMZ_FDD_MOUNT[emuConfig.params[emuConfig.machineModel].fdd[drive].mounted]);
+}
+const char *EMZGetFDDMount0Choice(void)
+{
+    // Locals.
+    //
+    return(EMZGetFDDMountChoice(0));
+}
+const char *EMZGetFDDMount1Choice(void)
+{
+    // Locals.
+    //
+    return(EMZGetFDDMountChoice(1));
+}
+const char *EMZGetFDDMount2Choice(void)
+{
+    // Locals.
+    //
+    return(EMZGetFDDMountChoice(2));
+}
+const char *EMZGetFDDMount3Choice(void)
+{
+    // Locals.
+    //
+    return(EMZGetFDDMountChoice(3));
 }
 
 // Method to return a char string which represents the current selected 40x25 Monitor ROM setting.
@@ -1445,10 +1885,9 @@ void EMZAddToMenu(uint8_t row, uint8_t active, char *text, char hotKey, enum MEN
         emuControl.menu.data[row]->text[0] = 0x00;
     }
     // Store hotkey if given and found.
-    if(hotKey != 0x00 && idx < textLen)
+    if(hotKey != 0x00 && (idx < textLen || state == MENUSTATE_HIDDEN))
     {
-        // Store as upper case, even though lower case hot keys can be given, it is expected that 
-        // the menu system doesnt contain 2 of the same upper/lower characters as hotkey.
+        // Store the hotkey case independent.
         emuControl.menu.data[row]->hotKey = hotKey;
     } else
     {
@@ -1482,7 +1921,7 @@ void EMZGetMenuBoundaries(int16_t *firstMenuRow, int16_t *lastMenuRow, int16_t *
         {
             if(*firstMenuRow == -1) { *firstMenuRow = idx; }
             *lastMenuRow  = idx;
-            if(emuControl.menu.data[idx]->state != MENUSTATE_HIDDEN) { *visibleRows += 1; }
+            if(emuControl.menu.data[idx]->state != MENUSTATE_HIDDEN && emuControl.menu.data[idx]->state != MENUSTATE_INACTIVE) { *visibleRows += 1; }
             if(emuControl.menu.data[idx]->state == MENUSTATE_ACTIVE && *firstActiveRow == -1) { *firstActiveRow = idx; }
             if(emuControl.menu.data[idx]->state == MENUSTATE_ACTIVE) { *lastActiveRow = idx; }
         }
@@ -1551,7 +1990,7 @@ int16_t EMZDrawMenu(int16_t activeRow, uint8_t direction, enum MENUMODE mode)
         // Skip inactive or hidden rows.
         if(emuControl.menu.data[menuRow] == NULL)
             continue;
-        if(emuControl.menu.data[menuRow]->state == MENUSTATE_HIDDEN)
+        if(emuControl.menu.data[menuRow]->state == MENUSTATE_HIDDEN || emuControl.menu.data[menuRow]->state == MENUSTATE_INACTIVE)
             continue;
         if(dspRow >= maxRow)
             continue;
@@ -1735,26 +2174,31 @@ void EMZSetupDirList(char *sideTitle, char *menuTitle, enum FONTS font)
 void EMZProcessMenuKey(uint8_t data, uint8_t ctrl)
 {
     // Locals.
-    uint16_t menuRow = MAX_MENU_ROWS;
-printf("ProcessMenuKey:%02x,%02x\n", data,ctrl);
+    uint16_t menuRow   = MAX_MENU_ROWS;
+    int16_t  activeRow = emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx];
+
     // Does the key match a hotkey? If it does, modify active row and action.
     for(menuRow=0; menuRow < MAX_MENU_ROWS; menuRow++)
     {
-        // Skip inactive or hidden rows.
+        // Skip inactive rows.
         if(emuControl.menu.data[menuRow] == NULL)
             continue;
-        if(emuControl.menu.data[menuRow]->state != MENUSTATE_ACTIVE)
+        if(emuControl.menu.data[menuRow]->state != MENUSTATE_ACTIVE && emuControl.menu.data[menuRow]->state != MENUSTATE_HIDDEN)
             continue;
         // Key match?
         if(toupper(emuControl.menu.data[menuRow]->hotKey) == toupper(data))
             break;
     }
-
+  
     // If key matched with a hotkey then modify action according to row type.
     if(menuRow != MAX_MENU_ROWS)
     {
-        // Update the active row to the matched hotkey row.
-        emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx] = menuRow;
+        // If the row isnt hidden, update the active row to the matched hotkey row.
+        if(emuControl.menu.data[menuRow]->state != MENUSTATE_HIDDEN)
+            emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx] = menuRow;
+
+        // Set the active row to the menu row, the active row is to invoke the callback functions.
+        activeRow = menuRow;
 
         // Update the action.
         if(emuControl.menu.data[menuRow]->type & MENUTYPE_ACTION)
@@ -1797,10 +2241,10 @@ printf("ProcessMenuKey:%02x,%02x\n", data,ctrl);
 
         // Toggle choice
         case ' ':
-            if(emuControl.menu.data[emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx]] != NULL && emuControl.menu.data[emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx]]->type & MENUTYPE_CHOICE && emuControl.menu.data[emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx]]->menuCallback != NULL)
+            if(emuControl.menu.data[activeRow] != NULL && emuControl.menu.data[activeRow]->type & MENUTYPE_CHOICE && emuControl.menu.data[activeRow]->menuCallback != NULL)
             {
-                emuControl.menu.data[emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx]]->menuCallback(ACTION_TOGGLECHOICE);
-                if(emuControl.menu.data[emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx]]->cbAction == MENUCB_REFRESH)
+                emuControl.menu.data[activeRow]->menuCallback(ACTION_TOGGLECHOICE);
+                if(emuControl.menu.data[activeRow]->cbAction == MENUCB_REFRESH)
                 {
                     EMZDrawMenu(emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx], 0, MENU_WRAP);
                     OSDRefreshScreen();
@@ -1811,16 +2255,18 @@ printf("ProcessMenuKey:%02x,%02x\n", data,ctrl);
         // Carriage Return - action or select sub menu.
         case 0x0D:
         case 0xA3:
-            if(emuControl.menu.data[emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx]] != NULL && emuControl.menu.data[emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx]]->type & MENUTYPE_SUBMENU && emuControl.menu.data[emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx]]->menuCallback != NULL)
+            // Sub Menu select.
+            if(emuControl.menu.data[activeRow] != NULL && emuControl.menu.data[activeRow]->type & MENUTYPE_SUBMENU && emuControl.menu.data[activeRow]->menuCallback != NULL)
             {
                 emuControl.activeMenu.menuIdx = emuControl.activeMenu.menuIdx >= MAX_MENU_DEPTH - 1 ? MAX_MENU_DEPTH - 1 : emuControl.activeMenu.menuIdx+1;
                 emuControl.menu.data[emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx-1]]->menuCallback(ACTION_SELECT);
             } else
-            if(data == 0x0D && emuControl.menu.data[emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx]] != NULL)
+            // Action select.
+            if(data == 0x0D && emuControl.menu.data[activeRow] != NULL)
             {
-                if(emuControl.menu.data[emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx]]->menuCallback != NULL)
-                    emuControl.menu.data[emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx]]->menuCallback(ACTION_SELECT);
-                if(emuControl.menu.data[emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx]]->cbAction == MENUCB_REFRESH)
+                if(emuControl.menu.data[activeRow]->menuCallback != NULL)
+                    emuControl.menu.data[activeRow]->menuCallback(ACTION_SELECT);
+                if(emuControl.menu.data[activeRow]->cbAction == MENUCB_REFRESH)
                 {
                     EMZDrawMenu(emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx], 0, MENU_WRAP);
                     OSDRefreshScreen();
@@ -1885,7 +2331,9 @@ uint8_t EMZReadDirectory(const char *path, const char *filter)
             // Filter out files not relevant to the caller based on the provided filter.
             const char *ext = strrchr(fno.fname, '.');
             const char *filterExt = strrchr(filter, '.');
+printf("ext=%s, filterExt=%s, filter=%s, file=%s\n", ext, filterExt, filter, fno.fname);
 //FIX ME: Doesnt process wildcard filename           
+// ext=.dsk, filterExt=.*, filter=*.*, file=z80bcpm.dsk
             //   Is a File                Is not a Wildcard      Filter doesnt match the extension
             if(!(fno.fattrib & AM_DIR) && !(filterExt != NULL && strcmp(filterExt, "\*") == 0) && (ext == NULL || strcasecmp(++ext, (filterExt == NULL ? filter : ++filterExt)) != 0))
                 continue;
@@ -2378,7 +2826,7 @@ void EMZTapeQueuePushFile(char *fileName)
 
 // Method to read the oldest tape filename entered and return it.
 //
-char *EMZTapeQueuePopFile(void)
+char *EMZTapeQueuePopFile(uint8_t popFile)
 {
     // Pop the bottom most item and shift queue down.
     //
@@ -2386,46 +2834,55 @@ char *EMZTapeQueuePopFile(void)
     if(emuControl.tapeQueue.elements > 0)
     {
         strcpy(emuControl.tapeQueue.fileName, emuControl.tapeQueue.queue[0]);
-        free(emuControl.tapeQueue.queue[0]);
-        emuControl.tapeQueue.elements--;
-        for(int i= 1; i < MAX_TAPE_QUEUE; i++)
+
+        // Pop file off queue?
+        if(popFile)
         {
-            emuControl.tapeQueue.queue[i-1] = emuControl.tapeQueue.queue[i];
+            free(emuControl.tapeQueue.queue[0]);
+            emuControl.tapeQueue.elements--;
+            for(int i= 1; i < MAX_TAPE_QUEUE; i++)
+            {
+                emuControl.tapeQueue.queue[i-1] = emuControl.tapeQueue.queue[i];
+            }
+            emuControl.tapeQueue.queue[MAX_TAPE_QUEUE-1] = NULL;
         }
-        emuControl.tapeQueue.queue[MAX_TAPE_QUEUE-1] = NULL;
     }
 
     // Return filename.
     return(emuControl.tapeQueue.fileName[0] == 0 ? 0 : emuControl.tapeQueue.fileName);
 }
 
-
 // Method to virtualise a tape and shift the position up and down the queue according to actions given.
 // direction: 0 = rotate left (Rew), 1 = rotate right (Fwd)
+// update: 0 = dont update tape position, 1 = update tape position
 //
-char *EMZTapeQueueAPSSSearch(char direction)
+char *EMZTapeQueueAPSSSearch(char direction, uint8_t update)
 {
     emuControl.tapeQueue.fileName[0] = 0;
     if(emuControl.tapeQueue.elements > 0)
     {
         if(direction == 0)
         {
+printf("tapePos REW enter:%d,Max:%d\n", emuControl.tapeQueue.tapePos, emuControl.tapeQueue.elements);
             // Position is ahead of last, then shift down and return file.
             //
             if(emuControl.tapeQueue.tapePos > 0)
             {
-                emuControl.tapeQueue.tapePos--;
-                strcpy(emuControl.tapeQueue.fileName, emuControl.tapeQueue.queue[emuControl.tapeQueue.tapePos]);
+                strcpy(emuControl.tapeQueue.fileName, emuControl.tapeQueue.queue[emuControl.tapeQueue.tapePos-1]);
+                if(update) emuControl.tapeQueue.tapePos--;
+printf("tapePos REW exit:%d,Max:%d\n", emuControl.tapeQueue.tapePos, emuControl.tapeQueue.elements);
             }
 
         } else
         {
+printf("tapePos FFWD enter:%d,Max:%d\n", emuControl.tapeQueue.tapePos, emuControl.tapeQueue.elements);
             // Position is below max, then return current and forward.
             //
             if(emuControl.tapeQueue.tapePos < MAX_TAPE_QUEUE && emuControl.tapeQueue.tapePos < emuControl.tapeQueue.elements)
             {
                 strcpy(emuControl.tapeQueue.fileName, emuControl.tapeQueue.queue[emuControl.tapeQueue.tapePos]);
-                emuControl.tapeQueue.tapePos++;
+                if(update) emuControl.tapeQueue.tapePos++;
+printf("tapePos FFWD exit:%d,Max:%d\n", emuControl.tapeQueue.tapePos, emuControl.tapeQueue.elements);
             }
         }
     }
@@ -2530,6 +2987,32 @@ void EMZQueueTapeSet(char *param)
     EMZTapeQueuePushFile(param);
 }
 
+// Method to set the active queue entry to the next entry.
+void EMZQueueNext(enum ACTIONMODE mode)
+{
+    if(mode == ACTION_DEFAULT || mode == ACTION_SELECT)
+    {
+        // Fast forward to next tape entry.
+        EMZTapeQueueAPSSSearch(1, 1);
+
+        // Need to redraw the menu as read only text has changed.
+        EMZSwitchToMenu(emuControl.activeMenu.menu[emuControl.activeMenu.menuIdx]);
+    }
+}
+
+// Method to set the active queue entry to the previous entry.
+void EMZQueuePrev(enum ACTIONMODE mode)
+{
+    if(mode == ACTION_DEFAULT || mode == ACTION_SELECT)
+    {
+        // Fast forward to next tape entry.
+        EMZTapeQueueAPSSSearch(0, 1);
+
+        // Need to redraw the menu as read only text has changed.
+        EMZSwitchToMenu(emuControl.activeMenu.menu[emuControl.activeMenu.menuIdx]);
+    }
+}
+
 // Simple wrapper method to clear the tape queue.
 void EMZQueueClear(enum ACTIONMODE mode)
 {
@@ -2573,6 +3056,7 @@ void EMZTapeSaveSet(char *param)
     emuControl.fileList.selectDir = 0;
 }
 
+// Method to reset the emulation logic by issuing an MCTRL command.
 void EMZReset(void)
 {
     // Initiate a machine RESET via the control registers.
@@ -2683,7 +3167,6 @@ short EMZLoadTapeToRAM(const char *tapeFile, unsigned char dstCMT)
         debugf("EMZLoadTapeToRAM(open) File:%s, error: %d.\n", loadName, fileDesc);
         return(result);
 	} 
-
 
     // Read in the tape header, this indicates crucial data such as data type, size, exec address, load address etc.
     //
@@ -2833,12 +3316,11 @@ short EMZSaveTapeFromCMT(const char *tapeFile)
         } else
         {
             dataSize = emuControl.tapeHeader.fileSize;
-            readAddress = MZ_EMU_CMT_DATA_ADDR + emuControl.tapeHeader.loadAddress;
+            readAddress = MZ_EMU_CMT_DATA_ADDR;
             debugf("mb=%d, tapesize=%04x\n", mb, emuControl.tapeHeader.fileSize);
         }
         for (; dataSize > 0; dataSize -= actualWriteSize)
         {
-            debugf("mb=%d, dataSize=%04x, writeSize=%04x\n", mb, dataSize, writeSize);
             if(mb == 0)
             {
                 writeSize = MZF_HEADER_SIZE;
@@ -2846,6 +3328,7 @@ short EMZSaveTapeFromCMT(const char *tapeFile)
             {
                 writeSize = dataSize > 512 ? 512 : dataSize;
             }
+            debugf("mb=%d, dataSize=%04x, writeSize=%04x\n", mb, dataSize, writeSize);
 
             // Read the next chunk from the CMT RAM.
             readZ80Array(readAddress, &sectorBuffer, writeSize, FPGA);
@@ -2873,11 +3356,12 @@ short EMZSaveTapeFromCMT(const char *tapeFile)
                 // If a relative path has been given we need to expand it into an absolute path.
                 if(fileName[0] != '/' && fileName[0] != '\\' && (fileName[0] < 0x30 || fileName[0] > 0x32))
                 {
-                    sprintf(saveName, "%s\%s", TOPLEVEL_DIR, tapeFile);
+                    sprintf(saveName, "%s\\%s", emuConfig.params[emuConfig.machineModel].tapeSavePath, fileName);
                 } else
                 {
-                    strcpy(saveName, tapeFile);
+                    strcpy(saveName, fileName);
                 }
+                debugf("File to write:%s\n", saveName);
    
                 // Attempt to open the file for writing.
                 result = f_open(&fileDesc, saveName, FA_CREATE_ALWAYS | FA_WRITE);
@@ -3226,7 +3710,7 @@ void EMZTapeStorageMenu(enum ACTIONMODE mode)
     EMZAddToMenu(row++,  0, "CMT Hardware",               'C',  MENUTYPE_CHOICE,                    MENUSTATE_ACTIVE, EMZChangeCMTMode,       MENUCB_REFRESH,          EMZGetCMTModeChoice,   NULL );
     EMZAddToMenu(row++,  0, "Load tape to RAM",           'L',  MENUTYPE_ACTION | MENUTYPE_CHOICE,  MENUSTATE_ACTIVE, EMZLoadDirectToRAM,     MENUCB_DONOTHING,        EMZGetLoadDirectFileFilterChoice,   NULL );
     EMZAddToMenu(row++,  0, "",                           0x00, MENUTYPE_BLANK,                     MENUSTATE_BLANK , NULL,                   MENUCB_DONOTHING,        NULL,   NULL );
-    EMZAddToMenu(row++,  0, "Queue Tape",                 'Q',  MENUTYPE_ACTION | MENUTYPE_CHOICE,  !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_ACTIVE : MENUSTATE_HIDDEN, EMZQueueTape,           MENUCB_DONOTHING,        EMZGetQueueTapeFileFilterChoice,   NULL );
+    EMZAddToMenu(row++,  0, "Queue Tape",                 'Q',  MENUTYPE_ACTION | MENUTYPE_CHOICE,  !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZQueueTape,           MENUCB_DONOTHING,        EMZGetQueueTapeFileFilterChoice,   NULL );
 
     // List out the current tape queue.
     if(!emuConfig.params[emuConfig.machineModel].cmtMode)
@@ -3235,8 +3719,8 @@ void EMZTapeStorageMenu(enum ACTIONMODE mode)
         while((fileName = EMZNextTapeQueueFilename(0)) != NULL)
         {
             // Place an indicator on the active queue file.
-            if((EMZGetMachineGroup() == 2 && emuControl.tapeQueue.tapePos == fileCount) ||
-               (EMZGetMachineGroup() != 2 && fileCount == 0))
+            if((EMZGetMachineGroup() == GROUP_MZ80B && emuControl.tapeQueue.tapePos == fileCount) ||
+               (EMZGetMachineGroup() != GROUP_MZ80B && fileCount == 0))
                 sprintf(lineBuf, " >%d %.50s", fileCount++, fileName);
             else
                 sprintf(lineBuf, "  %d %.50s", fileCount++, fileName);
@@ -3244,13 +3728,19 @@ void EMZTapeStorageMenu(enum ACTIONMODE mode)
         }    
     }
 
-    EMZAddToMenu(row++,  0, "Clear Queue",                'e',  MENUTYPE_ACTION,                    !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_ACTIVE : MENUSTATE_HIDDEN, EMZQueueClear,          MENUCB_DONOTHING,        NULL,   NULL );
-    EMZAddToMenu(row++,  0, "Save Tape Directory",        'T',  MENUTYPE_ACTION | MENUTYPE_CHOICE,  !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_ACTIVE : MENUSTATE_HIDDEN, EMZTapeSave,            MENUCB_DONOTHING,        EMZGetTapeSaveFilePathChoice,   NULL );
-    EMZAddToMenu(row++,  0, "Auto Save Tape",             'A',  MENUTYPE_CHOICE,                    !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_ACTIVE : MENUSTATE_HIDDEN, EMZNextTapeAutoSave,    MENUCB_REFRESH,          EMZGetTapeAutoSaveChoice,   NULL );
-    EMZAddToMenu(row++,  0, "",                           0x00, MENUTYPE_BLANK,                                                                                            MENUSTATE_BLANK , NULL,                   MENUCB_DONOTHING,        NULL,   NULL );
-    EMZAddToMenu(row++,  0, "File Name Map Ascii",        'F',  MENUTYPE_ACTION | MENUTYPE_CHOICE,  !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_ACTIVE : MENUSTATE_HIDDEN, EMZNextCMTAsciiMapping, MENUCB_REFRESH,          EMZGetCMTAsciiMappingChoice,   NULL );
-    EMZAddToMenu(row++,  0, "Tape Buttons",               'B',  MENUTYPE_CHOICE,                    !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_ACTIVE : MENUSTATE_HIDDEN, EMZNextTapeButtons,     MENUCB_REFRESH,          EMZGetTapeButtonsChoice,   NULL );
-    EMZAddToMenu(row++,  0, "Fast Tape Load",             'd',  MENUTYPE_CHOICE,                    !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_ACTIVE : MENUSTATE_HIDDEN, EMZNextFastTapeLoad,    MENUCB_REFRESH,          EMZGetFastTapeLoadChoice,   NULL );
+    // Hidden function entries to set the active queue position.
+    EMZAddToMenu(row++,  0, "",                           '+',  MENUTYPE_ACTION,                    !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_HIDDEN : MENUSTATE_INACTIVE, EMZQueueNext,           MENUCB_DONOTHING,        NULL,                         NULL );
+    EMZAddToMenu(row++,  0, "",                           '-',  MENUTYPE_ACTION,                    !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_HIDDEN : MENUSTATE_INACTIVE, EMZQueuePrev,           MENUCB_DONOTHING,        NULL,                         NULL );
+    //
+    EMZAddToMenu(row++,  0, "Clear Queue",                'e',  MENUTYPE_ACTION,                    !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZQueueClear,          MENUCB_DONOTHING,        NULL,                         NULL );
+    EMZAddToMenu(row++,  0, "File Name Map Ascii",        'F',  MENUTYPE_ACTION | MENUTYPE_CHOICE,  !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextCMTAsciiMapping, MENUCB_REFRESH,          EMZGetCMTAsciiMappingChoice,  NULL );
+    EMZAddToMenu(row++,  0, "Save Tape Directory",        'T',  MENUTYPE_ACTION | MENUTYPE_CHOICE,  !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZTapeSave,            MENUCB_DONOTHING,        EMZGetTapeSaveFilePathChoice, NULL );
+    EMZAddToMenu(row++,  0, "Fast Tape Load",             'd',  MENUTYPE_CHOICE,                    !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextFastTapeLoad,    MENUCB_REFRESH,          EMZGetFastTapeLoadChoice,     NULL );
+    if(EMZGetMachineGroup() != GROUP_MZ80B)
+    {
+    //    EMZAddToMenu(row++,  0, "",                           0x00, MENUTYPE_BLANK,                                                                                            MENUSTATE_BLANK,    NULL,                   MENUCB_DONOTHING,        NULL,                         NULL );
+        EMZAddToMenu(row++,  0, "Tape Buttons",           'B',  MENUTYPE_CHOICE,                    !emuConfig.params[emuConfig.machineModel].cmtMode ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextTapeButtons,     MENUCB_REFRESH,          EMZGetTapeButtonsChoice,      NULL );
+    }
     // When called as a select callback then the menus are moving forward so start the active row at the top.
     if(mode == ACTION_SELECT) emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx] = 0;
     EMZRefreshMenu();
@@ -3269,6 +3759,33 @@ void EMZFloppyStorageMenu(enum ACTIONMODE mode)
     emuControl.activeDialog = DIALOG_MENU;
 
     EMZSetupMenu(EMZGetMachineTitle(), "Floppy Storage Menu", FONT_7X8);
+    EMZAddToMenu(row++,  0, "FDD Hardware",               'F',  MENUTYPE_CHOICE,                    MENUSTATE_ACTIVE, EMZChangeFDDMode,       MENUCB_REFRESH,          EMZGetFDDModeChoice,   NULL );
+    EMZAddToMenu(row++,  0, "File Selection Filter",      'S',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextDriveImageFilter,  MENUCB_REFRESH,          EMZGetFDDDriveFileFilterChoice,    NULL );
+
+    EMZAddToMenu(row++,  0, "Disk 0",                     '0',  MENUTYPE_ACTION | MENUTYPE_CHOICE,  emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZFDDSetDriveImage0,     MENUCB_DONOTHING,        EMZGetFDDDrive0FileChoice,         NULL );
+    EMZAddToMenu(row++,  0, "  Type",                     'T',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextFDDDriveType0,     MENUCB_REFRESH,          EMZGetFDDDriveType0Choice,         NULL );
+    EMZAddToMenu(row++,  0, "  Image Polarity",           'P',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextFDDImagePolarity0, MENUCB_REFRESH,          EMZGetFDDImagePolarity0Choice,     NULL );
+    EMZAddToMenu(row++,  0, "  Update Mode",              'U',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextFDDUpdateMode0,    MENUCB_REFRESH,          EMZGetFDDUpdateMode0Choice,        NULL );
+    EMZAddToMenu(row++,  0, "  Mount/Eject",              'E',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextMountDrive0,       MENUCB_REFRESH,          EMZGetFDDMount0Choice,             NULL );
+
+    EMZAddToMenu(row++,  0, "Disk 1",                     '1',  MENUTYPE_ACTION | MENUTYPE_CHOICE,  emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZFDDSetDriveImage1,     MENUCB_DONOTHING,        EMZGetFDDDrive1FileChoice,         NULL );
+    EMZAddToMenu(row++,  0, "  Type",                     'y',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextFDDDriveType1,     MENUCB_REFRESH,          EMZGetFDDDriveType1Choice,         NULL );
+    EMZAddToMenu(row++,  0, "  Image Polarity",           'i',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextFDDImagePolarity1, MENUCB_REFRESH,          EMZGetFDDImagePolarity1Choice,     NULL );
+    EMZAddToMenu(row++,  0, "  Update Mode",              'd',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextFDDUpdateMode1,    MENUCB_REFRESH,          EMZGetFDDUpdateMode1Choice,        NULL );
+    EMZAddToMenu(row++,  0, "  Mount/Eject",              'j',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextMountDrive1,       MENUCB_REFRESH,          EMZGetFDDMount1Choice,             NULL );
+
+    EMZAddToMenu(row++,  0, "Disk 2",                     '2',  MENUTYPE_ACTION | MENUTYPE_CHOICE,  emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZFDDSetDriveImage2,     MENUCB_DONOTHING,        EMZGetFDDDrive2FileChoice,         NULL );
+    EMZAddToMenu(row++,  0, "  Type",                     'p',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextFDDDriveType2,     MENUCB_REFRESH,          EMZGetFDDDriveType2Choice,         NULL );
+    EMZAddToMenu(row++,  0, "  Image Polarity",           'l',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextFDDImagePolarity2, MENUCB_REFRESH,          EMZGetFDDImagePolarity2Choice,     NULL );
+    EMZAddToMenu(row++,  0, "  Update Mode",              'M',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextFDDUpdateMode2,    MENUCB_REFRESH,          EMZGetFDDUpdateMode2Choice,        NULL );
+    EMZAddToMenu(row++,  0, "  Mount/Eject",              'c',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextMountDrive2,       MENUCB_REFRESH,          EMZGetFDDMount2Choice,             NULL );
+
+    EMZAddToMenu(row++,  0, "Disk 3",                     '3',  MENUTYPE_ACTION | MENUTYPE_CHOICE,  emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZFDDSetDriveImage3,     MENUCB_DONOTHING,        EMZGetFDDDrive3FileChoice,         NULL );
+    EMZAddToMenu(row++,  0, "  Type",                     'e',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextFDDDriveType3,     MENUCB_REFRESH,          EMZGetFDDDriveType3Choice,         NULL );
+    EMZAddToMenu(row++,  0, "  Image Polarity",           'a',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextFDDImagePolarity3, MENUCB_REFRESH,          EMZGetFDDImagePolarity3Choice,     NULL );
+    EMZAddToMenu(row++,  0, "  Update Mode",              'o',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextFDDUpdateMode3,    MENUCB_REFRESH,          EMZGetFDDUpdateMode3Choice,        NULL );
+    EMZAddToMenu(row++,  0, "  Mount/Eject",              't',  MENUTYPE_CHOICE,                    emuConfig.params[emuConfig.machineModel].fddEnabled ? MENUSTATE_ACTIVE : MENUSTATE_INACTIVE, EMZNextMountDrive3,       MENUCB_REFRESH,          EMZGetFDDMount3Choice,             NULL );
+
     // When called as a select callback then the menus are moving forward so start the active row at the top.
     if(mode == ACTION_SELECT) emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx] = 0;
     EMZRefreshMenu();
@@ -3291,12 +3808,12 @@ void EMZMachineMenu(enum ACTIONMODE mode)
     if(emuConfig.machineModel == MZ800)
     {
         EMZAddToMenu(row++,  0, "Mode",                   'o',  MENUTYPE_CHOICE,                    MENUSTATE_ACTIVE, EMZNextMZ800Mode,       MENUCB_REFRESH,          EMZGetMZ800ModeChoice,       NULL );
-        EMZAddToMenu(row++,  0, "Printer",                'r',  MENUTYPE_CHOICE,                    MENUSTATE_ACTIVE, EMZNextMZ800Printer,    MENUCB_REFRESH,          EMZGetMZ800PrinterChoice,    NULL );
-        EMZAddToMenu(row++,  0, "Tape In",                'a',  MENUTYPE_CHOICE,                    MENUSTATE_ACTIVE, EMZNextMZ800TapeIn,     MENUCB_REFRESH,          EMZGetMZ800TapeInChoice,     NULL );
+        EMZAddToMenu(row++,  0, "Printer",                'P',  MENUTYPE_CHOICE,                    MENUSTATE_ACTIVE, EMZNextMZ800Printer,    MENUCB_REFRESH,          EMZGetMZ800PrinterChoice,    NULL );
+        EMZAddToMenu(row++,  0, "Tape In",                'T',  MENUTYPE_CHOICE,                    MENUSTATE_ACTIVE, EMZNextMZ800TapeIn,     MENUCB_REFRESH,          EMZGetMZ800TapeInChoice,     NULL );
     }
     EMZAddToMenu(row++,  0, "",                           0x00, MENUTYPE_BLANK,                     MENUSTATE_BLANK , NULL,                   MENUCB_DONOTHING,        NULL,                        NULL );
     EMZAddToMenu(row++,  0, "Rom Management",             'R',  MENUTYPE_SUBMENU,                   MENUSTATE_ACTIVE, EMZRomManagementMenu,   MENUCB_REFRESH,          NULL,                        NULL );
-    EMZAddToMenu(row++,  0, "AutoStart Application",      'u',  MENUTYPE_SUBMENU,                   MENUSTATE_ACTIVE, EMZAutoStartApplicationMenu, MENUCB_REFRESH,     NULL,                        NULL );
+    EMZAddToMenu(row++,  0, "AutoStart Application",      'A',  MENUTYPE_SUBMENU,                   MENUSTATE_ACTIVE, EMZAutoStartApplicationMenu, MENUCB_REFRESH,     NULL,                        NULL );
     // When called as a select callback then the menus are moving forward so start the active row at the top.
     if(mode == ACTION_SELECT) emuControl.activeMenu.activeRow[emuControl.activeMenu.menuIdx] = 0;
     EMZRefreshMenu();
@@ -3786,7 +4303,7 @@ void EMZSwitchToMenu(int8_t menu)
             break;
 
         case MENU_FLOPPY_STORAGE:
-            EMZTapeStorageMenu(ACTION_DEFAULT);
+            EMZFloppyStorageMenu(ACTION_DEFAULT);
             break;
 
         case MENU_MACHINE:
@@ -3992,6 +4509,9 @@ void EMZSwitchToMachine(uint8_t machineModel, uint8_t forceROMLoad)
     //
     uint8_t   result = 0;
 
+    // Suspend the T80.
+    writeZ80IO(IO_TZ_CPUCFG, CPUMODE_SET_EMU_MZ, TRANZPUTER);
+
 printf("Machine model:%d, old:%d, change:%d, force:%d, memory:%d\n", machineModel, emuConfig.machineModel, emuConfig.machineChanged, forceROMLoad, emuConfig.params[machineModel].memSize);
     // Go through the active configuration, convert to register values and upload the register values into the FPGA.
     //
@@ -4020,6 +4540,18 @@ printf("DisplayOutput:%02x,%02x\n", emuConfig.params[machineModel].displayOutput
                                                   (emuConfig.params[machineModel].fastTapeLoad & 0x07);
     // No current changes to CMT register 2, just a place holder until needed.
     emuConfig.emuRegisters[MZ_EMU_REG_CMT2]     = emuConfig.emuRegisters[MZ_EMU_REG_CMT2];
+
+    // Floppy disk configuration register.
+    emuConfig.emuRegisters[MZ_EMU_REG_FDD]      = emuConfig.params[machineModel].fdd[3].mounted << 7 | emuConfig.params[machineModel].fdd[2].mounted << 6 | emuConfig.params[machineModel].fdd[1].mounted << 5 | emuConfig.params[machineModel].fdd[0].mounted << 4 | emuConfig.params[machineModel].fddEnabled;
+    emuConfig.emuRegisters[MZ_EMU_REG_FDD2]     = emuConfig.params[machineModel].fdd[1].diskType << 4 | emuConfig.params[machineModel].fdd[0].diskType;
+    emuConfig.emuRegisters[MZ_EMU_REG_FDD3]     = emuConfig.params[machineModel].fdd[3].diskType << 4 | emuConfig.params[machineModel].fdd[2].diskType;
+    emuConfig.emuRegisters[MZ_EMU_REG_FDD4]     = emuConfig.params[machineModel].fdd[3].updateMode << 7 | emuConfig.params[machineModel].fdd[3].polarity << 6 |
+                                                  emuConfig.params[machineModel].fdd[2].updateMode << 5 | emuConfig.params[machineModel].fdd[2].polarity << 4 |
+                                                  emuConfig.params[machineModel].fdd[1].updateMode << 3 | emuConfig.params[machineModel].fdd[1].polarity << 2 |
+                                                  emuConfig.params[machineModel].fdd[0].updateMode << 1 | emuConfig.params[machineModel].fdd[0].polarity;
+
+    // Option ROMS configuration register.
+    emuConfig.emuRegisters[MZ_EMU_REG_ROMS]     = emuConfig.params[machineModel].romFDC.romEnabled << 1 | emuConfig.params[machineModel].romUser.romEnabled;
 
     // Setup the hardware switches.
     if(machineModel == MZ800)
@@ -4065,9 +4597,17 @@ printf("%s load\n", MZMACHINES[machineModel]);
        
         // Write the updated registers into the emulator to configure it.
         writeZ80Array(MZ_EMU_ADDR_REG_MODEL, emuConfig.emuRegisters, MZ_EMU_MAX_REGISTERS, FPGA);
-
-        // Clear any reset command.
+      
+        // Clear any reset command in the internal register copy, the hardware automatically clears the reset flag.
         emuConfig.emuRegisters[MZ_EMU_REG_CTRL] &= 0xFE;
+       
+        // Clear the graphics and text screen - this is needed if switching between machines as some machines are not graphic aware and others clear text areas
+        // differently. This ensures a machine switch will be properly initialised.
+        fillZ80Memory(MZ_EMU_RED_FB_ADDR, MAX_FB_LEN, 0x00, FPGA);
+        fillZ80Memory(MZ_EMU_BLUE_FB_ADDR, MAX_FB_LEN, 0x00, FPGA);
+        fillZ80Memory(MZ_EMU_GREEN_FB_ADDR, MAX_FB_LEN, 0x00, FPGA);
+        fillZ80Memory(MZ_EMU_TEXT_VRAM_ADDR, MAX_TEXT_VRAM_LEN, 0x00, FPGA);
+        fillZ80Memory(MZ_EMU_ATTR_VRAM_ADDR, MAX_ATTR_VRAM_LEN, 0x71, FPGA);
     } else
     {
         // Write the updated registers into the emulator to configure it.
@@ -4077,6 +4617,20 @@ printf("%s load\n", MZMACHINES[machineModel]);
     printf("WriteReg: "); for(uint8_t idx=0; idx < 16; idx++) { printf("%02x,", emuConfig.emuRegisters[idx]); } printf("\n");
     readZ80Array(MZ_EMU_ADDR_REG_MODEL, emuConfig.emuRegisters, MZ_EMU_MAX_REGISTERS, FPGA);
     printf("ReadReg:  "); for(uint8_t idx=0; idx < 16; idx++) { printf("%02x,", emuConfig.emuRegisters[idx]); } printf("\n");
+    
+    // If the floppy module is enabled, set READY so that the disk controller can process commands.
+    //
+    if(emuConfig.params[machineModel].fddEnabled)
+    {
+        emuControl.fdd.ctrlReg |= FDD_CTRL_READY;
+        writeZ80Array(MZ_EMU_FDD_CTRL_ADDR+MZ_EMU_FDD_CTRL_REG, &emuControl.fdd.ctrlReg, 1, FPGA);
+
+        // Update disk loaded state (ie. close or flush any ejected disks).
+        EMZProcessFDDRequest(0, 0, 0, 0);
+    }
+
+    // Reenable the T80 as it needs to be running prior to reset.
+    writeZ80IO(IO_TZ_CPUCFG, CPUMODE_CLK_EN | CPUMODE_SET_EMU_MZ, TRANZPUTER);
     return;
 }
 
@@ -4084,7 +4638,7 @@ printf("%s load\n", MZMACHINES[machineModel]);
 // tape drive mechanisms.
 // This method is called by interrupt (cmt status change) and periodically (process tape queue).
 //
-void EMZProcessTapeQueue(void)
+void EMZProcessTapeQueue(uint8_t force)
 {
     // Locals.
     static unsigned long  time = 0;
@@ -4095,9 +4649,9 @@ void EMZProcessTapeQueue(void)
     timeElapsed = *ms - time;    
 
     // If the elapsed time is too short, ie. because a manual call and a scheduled call occur almost simultaneously, exit as it is not needed.
-    if(timeElapsed < 1000)
+    if(timeElapsed < 1000 && !force)
         return;
-   
+
     // MZ80B APSS functionality.
     //
     if(emuConfig.machineGroup == GROUP_MZ80B)
@@ -4115,7 +4669,7 @@ void EMZProcessTapeQueue(void)
         if(emuConfig.emuRegisters[MZ_EMU_REG_CMT2] & MZ_EMU_CMT2_APSS )
         {
             debugf("APSS Search %s (%02x:%02x).", emuConfig.emuRegisters[MZ_EMU_REG_CMT2] & MZ_EMU_CMT2_DIRECTION ? "Forward" : "Reverse", emuConfig.emuRegisters[MZ_EMU_REG_CMT2], MZ_EMU_CMT2_APSS );
-            EMZTapeQueueAPSSSearch(emuConfig.emuRegisters[MZ_EMU_REG_CMT2] & MZ_EMU_CMT2_DIRECTION ? 1 : 0);
+            EMZTapeQueueAPSSSearch(emuConfig.emuRegisters[MZ_EMU_REG_CMT2] & MZ_EMU_CMT2_DIRECTION ? 1 : 0, 1);
         }
 
         // If Play is active, the cache is empty and we are not recording, load into cache the next tape image.
@@ -4126,17 +4680,22 @@ void EMZProcessTapeQueue(void)
             //
             if(emuControl.tapeQueue.elements > 0)
             {
-                // Get the filename from the queue but dont pop it.
-                fileName = EMZTapeQueueAPSSSearch(1);
+                // Get the filename from the queue. On the MZ2000 we dont adjust the tape position as the logic will issue an APSS as required.
+                if(emuConfig.machineModel == MZ80B)
+                {
+                    fileName = EMZTapeQueueAPSSSearch(1, 1);
+                } else
+                { 
+                    fileName = EMZTapeQueueAPSSSearch(1, 0);
+                }
 
                 // If a file was found, upload it into the CMT buffer.
                 if(fileName != 0)
                 {
-                    debugf("APSS Play %s, Rotate Queue Forward.", fileName);
-                    debugf("Loading tape: %s\n", fileName);
+                    debugf("APSS Play, loading tape: %s\n", fileName);
                     EMZLoadTapeToRAM(fileName, 1);
 
-                    // Need to redraw the menu as the tape queue has changed.
+                    // Need to redraw the menu as the tape queue may have changed.
                     if(emuControl.activeMenu.menu[emuControl.activeMenu.menuIdx] == MENU_TAPE_STORAGE)
                     {
                         EMZSwitchToMenu(emuControl.activeMenu.menu[emuControl.activeMenu.menuIdx]);
@@ -4158,7 +4717,7 @@ void EMZProcessTapeQueue(void)
             if(emuControl.tapeQueue.elements > 0)
             {
                 // Get the filename from the queue.
-                fileName = EMZTapeQueuePopFile();
+                fileName = EMZTapeQueuePopFile(1);
                
                 // If a file was found, upload it into the CMT buffer.
                 if(fileName != 0)
@@ -4183,6 +4742,425 @@ void EMZProcessTapeQueue(void)
     time = *ms;
 }
 
+// Method to check a given file image to ensure it is valid. This method is normally called when the file is 
+// selected to save time during IRQ processing.
+//
+short EMZCheckFDDImage(char *fileName)
+{
+    // Locals.
+    FIL            fileDesc;
+    FRESULT        result;
+    uint8_t        imgType;
+    uint8_t        tmpBuf[35];
+    uint32_t       actualReadSize;
+
+    // Check extension.
+    //
+    const char *ext = strrchr(fileName, '.');
+
+    // Extended CPC Disk Image.
+    if(strcasecmp(++ext, "DSK") == 0)
+    {
+        imgType = IMAGETYPE_EDSK;
+    } else
+    // Raw unformatted binary image. Sector and track defined by user are used to locate FDC requested sector.
+    if(strcasecmp(ext, "IMG") == 0)
+    {
+        imgType = IMAGETYPE_IMG;
+    } else
+    {
+        debugf("Image:%s has no handler.", fileName);
+        return(-1);
+    }
+
+    // Open the image.
+    result = f_open(&fileDesc, fileName, FA_OPEN_EXISTING | FA_READ);
+    if(result)
+    {
+        debugf("Image cannot be opened:%d,%s", imgType, fileName);
+        return(-1);
+    }
+
+    // Check to see if this is a valid EDSK image.
+    if(imgType == IMAGETYPE_EDSK)
+    {
+        result = f_read(&fileDesc, tmpBuf, 34, &actualReadSize);
+        if(result)
+        {
+            debugf("Cannot read image description block:%d,%s", imgType, fileName);
+            f_close(&fileDesc);
+            return(-1);
+        }
+
+        // Terminate description block header and compare to validate it is an Extended CPC Disk.
+        tmpBuf[34] = 0x00;
+        if(strcmp((char*)tmpBuf, "EXTENDED CPC DSK File\r\nDisk-Info\r\n") != 0)
+        {
+            debugf("Disk image (%s) is not a valid EDSK file.", fileName);
+            f_close(&fileDesc);
+            return(-1);
+        }
+    } else
+    // Not much you can check on a binary image!
+    if(imgType == IMAGETYPE_IMG)
+    {
+        ;
+    } else
+    {
+        f_close(&fileDesc);
+        return(-1);
+    }    
+
+    // Close image to exit.
+    f_close(&fileDesc);
+
+    // All checks out, return image type as success flag to caller.
+    //
+    return(imgType);
+}
+
+// A method to retrieve the floppy definitions from the image and if valid, store in the configuration.
+short EMZSetFDDImageParams(char *fileName, uint8_t driveNo, enum IMAGETYPES imgType)
+{
+    // Locals.
+    //
+    FIL            fileDesc;
+    FRESULT        result;
+    uint8_t        tmpBuf[35];
+    uint8_t        idx;
+    uint8_t        noTracks;
+    uint8_t        noSides;
+    uint8_t        noSectors;
+    uint16_t       sectorSize;
+    uint32_t       offset;
+    uint32_t       actualReadSize;
+
+    // Open the image.
+    result = f_open(&fileDesc, fileName, FA_OPEN_EXISTING | FA_READ);
+    if(result)
+    {
+        debugf("Image cannot be opened:%d,%s", imgType, fileName);
+        return(-1);
+    }
+
+    // Check to see if this is a valid EDSK image.
+    if(imgType == IMAGETYPE_EDSK)
+    {
+        result = f_read(&fileDesc, tmpBuf, 34, &actualReadSize);
+        if(result)
+        {
+            debugf("Cannot read image description block:%d,%s", fileName);
+            f_close(&fileDesc);
+            return(-1);
+        }
+
+        result = f_lseek(&fileDesc, 0x30);
+        if(!result)
+            result = f_read(&fileDesc, &tmpBuf, 4, &actualReadSize);
+        if(result)
+        {
+            debugf("Failed to obtain Track/Side info:%s", fileName);
+            f_close(&fileDesc);
+            return(-1);
+
+        }
+        noTracks = tmpBuf[0];
+        noSides  = tmpBuf[1];
+
+        offset = 0x100; // Disk Information Block size.
+        // Go to track 1 and retrieve the sector size.
+        // The offset is built up by the track entries x 100H added together. The size of tracks can vary hence having to calculate in a loop.
+        for(idx = 0; idx < (1 * noSides); idx++)
+        {
+            result = f_read(&fileDesc, &tmpBuf, 1, &actualReadSize);
+            if(actualReadSize != 1)
+            {
+                debugf("Failed to traverse track structure:%s", fileName);
+                f_close(&fileDesc);
+                return(-1);
+            }
+            if(tmpBuf == 0x00)
+            {
+                debugf("Track doesnt exist (%d), bad image:%s", idx/noSides, fileName);
+                f_close(&fileDesc);
+                return(-1);
+            }
+
+            // Bug on HD images, track reports 0x25 sectors but this is only applicable for the first track.
+            if(idx > 0 && tmpBuf[0] == 0x25) tmpBuf[0] = 0x11;
+
+            // Position 0 = number of tracks x sides -> Should be constant but it isnt!
+            offset += tmpBuf[0] * 0x100;
+        }
+printf("Offset:%08lx\n", offset);
+        // Go to the first sector information list on track 1 to retrieve sector size.
+        result = f_lseek(&fileDesc, offset+0x10);
+        if(!result)
+            result = f_read(&fileDesc, &tmpBuf, 6, &actualReadSize);
+        if(result)
+        {
+            debugf("Failed to read track 1 info:%s", fileName);
+            f_close(&fileDesc);
+            return(-1);
+        }
+        noSectors = tmpBuf[5] == 0x25 ? 0x11 : tmpBuf[5];
+        sectorSize = tmpBuf[4] == 0x00 ? 128 : tmpBuf[4] == 0x01 ? 256 : tmpBuf[4] == 0x02 ? 512 : 1024;
+printf("%dT %dH %dS\n", noTracks, noSides, noSectors);
+printf("SectorSize:%08lx,%02x\n", sectorSize, tmpBuf[4]);
+        
+        // A lot of conversions on the internet are not accurate, for example a 40T 2H 16S 256B image can be encapsulated in a DSK image with 41T 2H 17S 256B, so need to cater for these images here, mapping
+        // to a known image definition. This list needs to be updated as more unusual images are encountered or alternatively use samDisk or HxC 2000 to convert them correctly.
+        if(noTracks > 40 && noTracks < 42) noTracks = 0x28;
+        if(noTracks > 80 && noTracks < 82) noTracks = 0x50;
+        if(noSectors > 16 && noSectors <= 18 && sectorSize == 256) noSectors = 16;
+
+        // Now match what we have read with known disks.
+        debugf("EDISK File(%s) has format:%dT, %dH, %dS, %dB", fileName, noTracks, noSides, noSectors, sectorSize);
+        for(idx= 0; idx < NUMELEM(FLOPPY_DEFINITIONS); idx++)
+        {
+            if(FLOPPY_DEFINITIONS[idx].tracks == noTracks && FLOPPY_DEFINITIONS[idx].heads == noSides && FLOPPY_DEFINITIONS[idx].sectors == noSectors && FLOPPY_DEFINITIONS[idx].sectorSize == sectorSize)
+                break;
+        }
+        if(idx == NUMELEM(FLOPPY_DEFINITIONS))
+        {
+            debugf("Couldnt match image definition to known floppy definition: %dT %dH %dS %dB:%s", noTracks, noSides, noSectors, sectorSize, fileName);
+            f_close(&fileDesc);
+            return(-1);
+        }
+
+        // Save type to configuration list.
+        emuConfig.params[emuConfig.machineModel].fdd[driveNo].diskType = idx;
+    } else
+    // Not much you can set on a binary image - apart from filename, the disk type must be set manually as it cannot be determined.
+    if(imgType == IMAGETYPE_IMG)
+    {
+        ;
+    } else
+    {
+        f_close(&fileDesc);
+        return(-1);
+    }    
+
+    // Set parameters on success.
+    strcpy(emuConfig.params[emuConfig.machineModel].fdd[driveNo].fileName, fileName);
+
+    // Close image to exit.
+    f_close(&fileDesc);
+
+    // Success.
+    return(0);
+}
+
+// Method to process an interrupt request from the Floppy Disk Drive unit, generally raised by the WD1793 controller.
+//
+short EMZProcessFDDRequest(uint8_t ctrlReg, uint8_t trackNo, uint8_t sectorNo, uint8_t fdcReg)
+{
+    // Locals.
+    //
+    static FIL        fileDesc[MZ_EMU_FDD_MAX_DISKS];
+    static uint8_t    opened;
+    static uint8_t    dirty;
+    static uint8_t    lastTrack[MZ_EMU_FDD_MAX_DISKS] = {0xff, 0xff, 0xff, 0xff};
+    static uint32_t   trackOffset[MZ_EMU_FDD_MAX_DISKS] = {0, 0, 0, 0};
+    static uint32_t   trackLen[MZ_EMU_FDD_MAX_DISKS] = {0, 0, 0, 0};
+    uint8_t           driveNo = ((ctrlReg & FDD_IOP_DISK_SELECT_NO) >> 5) & 0x03;
+    uint8_t           idx;
+    uint8_t           noSides = FLOPPY_DEFINITIONS[emuConfig.params[emuConfig.machineModel].fdd[driveNo].diskType].heads;
+    uint8_t           side = ctrlReg & FDD_IOP_SIDE ? 1 : 0;
+    uint8_t           sectorsPerTrack = FLOPPY_DEFINITIONS[emuConfig.params[emuConfig.machineModel].fdd[driveNo].diskType].sectors;
+    uint8_t           sectorBuffer[1024];
+    uint8_t           sectorCount;
+    uint16_t          sectorSize      = FLOPPY_DEFINITIONS[emuConfig.params[emuConfig.machineModel].fdd[driveNo].diskType].sectorSize;
+    uint32_t          actualReadSize;
+    uint32_t          sectorOffset;
+    uint32_t          thisSectorSize;
+    FRESULT           result;
+printf("Drive No:%d, %02x, %d\n", driveNo, ctrlReg & FDD_IOP_SECTOR_REQ, emuConfig.params[emuConfig.machineModel].fdd[driveNo].mounted);
+    // If this is a sector request, process.
+    //
+    if(ctrlReg & FDD_IOP_SECTOR_REQ)
+    {
+        // Is the disk mounted? Cannot process if no disk!
+        //
+        if(emuConfig.params[emuConfig.machineModel].fdd[driveNo].mounted)
+        {
+            // If the disk hasnt yet been opened, open to save time on next sector requests.
+            if(!(opened >> driveNo))
+            {
+printf("Opening disk:%s,%d\n", emuConfig.params[emuConfig.machineModel].fdd[driveNo].fileName, driveNo);
+                result = f_open(&fileDesc[driveNo], emuConfig.params[emuConfig.machineModel].fdd[driveNo].fileName, FA_OPEN_EXISTING | FA_READ);
+                if(result)
+                {
+                    debugf("EMZProcessFDDRequest(open) File:%s, error: %d.\n", emuConfig.params[emuConfig.machineModel].fdd[driveNo].fileName, fileDesc[driveNo]);
+                    return(-1);
+                } 
+                // Mark drive as being opened.
+                opened |= 1 << driveNo;
+            }
+    
+            // Read sector according to image type.
+            if(emuConfig.params[emuConfig.machineModel].fdd[driveNo].imgType == IMAGETYPE_EDSK)
+            {
+                // If track has changed (or first call as lastTrack = 255), calculate the track offset position.
+                if(trackNo != lastTrack[driveNo])
+                {
+                    // Seek to the track information block, get initial sector count to calculate the track length, then back to the start to iterate tracks.
+                    result = f_lseek(&fileDesc[driveNo], 0x34);
+                //    if(!result) result = f_read(&fileDesc, &sectorBuffer, 2, &actualReadSize);
+                //    if(!result) result = f_lseek(&fileDesc[driveNo], 0x34);
+                    if(result)
+                    {
+                        debugf("Failed to seek to start of TIB:%d, sector:%d, drive:%d", trackNo, sectorNo, driveNo);
+                        return(-1);
+                    }
+
+                    // Disk Information Block size.
+                    trackOffset[driveNo] = 0x100;
+                    
+                    // Go to track and retrieve the sector information.
+                    for(idx = 0; idx < (trackNo * noSides); idx++)
+                    {
+                        result = f_read(&fileDesc, &sectorBuffer, 1, &actualReadSize);
+                        if(actualReadSize != 1)
+                        {
+                            debugf("Failed to traverse track structure:%d", trackNo);
+                            return(-1);
+                        }
+                        if(sectorBuffer[0] == 0x00)
+                        {
+                            debugf("Track doesnt exist (%d), bad image:%d", idx/noSides, trackNo);
+RETURN TRACK ERROR HERE
+                            return(-1);
+                        }
+
+                        // Bug on HD images, track reports 0x25 sectors but this is only applicable for the first track.
+                            if(idx > 0 && sectorBuffer[0] == 0x25) sectorBuffer[0] = 0x11;
+
+                        trackOffset[driveNo] += sectorBuffer[0] * 0x100;
+                    }
+                    // Get next track length for Side 1 offset addition.
+                    result = f_read(&fileDesc, &sectorBuffer, 1, &actualReadSize);
+                    if(result)
+                    {
+                        debugf("Failed to seek to start of TIB:%d, sector:%d, drive:%d", trackNo, sectorNo, driveNo);
+                        return(-1);
+                    }
+                    trackLen[driveNo] = (uint32_t)sectorBuffer[0] * 0x100;
+
+                    // Read the sector count for this track,
+                    result = f_lseek(&fileDesc[driveNo], trackOffset[driveNo] + 0x14);
+                    if(!result)
+                        result = f_read(&fileDesc, &sectorBuffer, 2, &actualReadSize);
+                    if(result)
+                    {
+                        debugf("Failed to seek to sector count in TIB:%d, sector:%d, trackOffset:%04x, drive:%d", trackNo, sectorNo, trackOffset[driveNo], driveNo);
+                        return(-1);
+                    }
+                    sectorCount = (uint8_t)sectorBuffer[1];
+                    thisSectorSize = sectorBuffer[0] == 0x00 ? 128 : sectorBuffer[0] == 0x01 ? 256 : sectorBuffer[0] == 0x02 ? 512 : 1024;
+printf("%02x,%02x trackOffset:%08lx, side:%d, sectorSize:%d\n", sectorBuffer[0], sectorBuffer[1], trackOffset[driveNo], side, thisSectorSize);
+printf("trackLen:%08lx\n", trackLen[driveNo]);
+                }
+RAISE SECTOR ERROR HERE if SectorNo > sectorCount
+
+                // Traverse the sector list to find the required sector.
+                sectorOffset = trackOffset[driveNo] + (side ? trackLen[driveNo] : 0);
+                
+                // Seek to the Sector Information List for this track.
+                result = f_lseek(&fileDesc[driveNo], trackOffset[driveNo] + (side ? trackLen[driveNo] : 0) + 0x18);
+
+                // Loop through the SIL looking for a sector/head match.
+                sectorOffset += 0x100;
+                for(idx = 1; idx <= sectorCount; idx++)
+                {
+                    if(!result) result = f_read(&fileDesc, &sectorBuffer, 8, &actualReadSize);
+                    if(result)
+                    {
+                        debugf("Failed to seek and read the Sector Information List for track:%d, sector:%d", trackNo, sectorNo);
+                        return(-1);
+                    }
+printf("%d:%d:%d,%02x,%02x,%08lx\n", idx, sectorNo, side, sectorBuffer[2], sectorBuffer[1], sectorOffset);
+
+                    thisSectorSize = sectorBuffer[3] == 0x00 ? 128 : sectorBuffer[3] == 0x01 ? 256 : sectorBuffer[3] == 0x02 ? 512 : 1024;
+                    if(sectorBuffer[2] == sectorNo)
+                    {
+                     //   // Check the sector size for mismatch - if any found then this code needs to be updated to change the controller size parameter dynamically.
+                     //   if(thisSectorSize != sectorSize)
+                     //   {
+                     //       debugf("Sector size mismatch, Track:%d, Sector:%d, DefSize:%d, ReadSize:%d", trackNo, sectorNo, sectorSize, thisSectorSize);
+                     //       return(-1);
+                     //   }
+                       // sectorOffset += 0x100; //thisSectorSize;
+                        break;
+                    }
+                    sectorOffset += thisSectorSize;
+                }
+printf("Offset End:%08lx\n", sectorOffset);
+
+                // Not found?
+                if(idx == sectorCount+1)
+                {
+                    debugf("Sector not found, Track:%d, Sector:%d", trackNo, sectorNo);
+                    return(-1);
+                }
+
+                // Get the sector.
+                result = f_lseek(&fileDesc[driveNo], sectorOffset);
+                if(!result)
+                    result = f_read(&fileDesc, &sectorBuffer, sectorSize, &actualReadSize);
+                if(result)
+                {
+                    debugf("Failed to read the required sector, Track:%d, Sector:%d, offset:%04x", trackNo, sectorNo, sectorOffset);
+                    return(-1);
+                }
+
+            } else
+            if(emuConfig.params[emuConfig.machineModel].fdd[driveNo].imgType == IMAGETYPE_IMG)
+            {
+                // Calculate block based on disk configuration.
+                //
+                sectorOffset = (sectorsPerTrack * (sectorNo-1) + (trackNo * sectorsPerTrack) + (ctrlReg & FDD_IOP_SIDE ? sectorsPerTrack : 0)) * sectorSize;
+                printf("SectorsPerTrack=%d, Offset=%d\n", sectorsPerTrack, sectorOffset);
+
+                result = f_lseek(&fileDesc[driveNo], sectorOffset);
+                if(!result)
+                    result = f_read(&fileDesc, &sectorBuffer, sectorSize, &actualReadSize);
+                if(result)
+                {
+                    debugf("Failed to seek and read track:%d, sector:%d, drive:%d", trackNo, sectorNo, driveNo);
+                    return(-1);
+                }
+            } else
+            {
+                debugf("Unrecognised disk image type:%d", emuConfig.params[emuConfig.machineModel].fdd[driveNo].imgType);
+                return(-1);
+            }
+
+            // Write the sector to the sector cache memory.
+            writeZ80Array(MZ_EMU_FDD_CACHE_ADDR, sectorBuffer, sectorSize, FPGA);
+        }
+    } else
+    {
+        // Update the mounted status of all the disks.
+        //
+        for(uint8_t idx=0; idx < MZ_EMU_FDD_MAX_DISKS; idx++)
+        {
+            // If a disk is mounted, unmount (close) it.
+            if(opened >> idx)
+            {
+printf("Closing disk:%d\n", idx);
+                f_close(&fileDesc[idx]);
+                opened &= ~(1 << idx);
+                dirty  &= ~(1 << idx);
+                lastTrack[idx] = 0xff;
+            }
+        }
+    }
+
+    return;
+}
+        
+
 // Method to invoke necessary services for the Sharp MZ Series emulations, ie. User OSD Menu, Tape Queuing, Floppy Disk loading etc.
 // When interrupt = 1 then an interrupt from the FPGA has occurred, when 0 it is a scheduling call.
 //
@@ -4194,6 +5172,14 @@ void EMZservice(uint8_t interrupt)
     uint8_t               emuISRReason[MZ_EMU_INTR_MAX_REGISTERS];
     uint8_t               emuInData[256];
     uint8_t               emuOutData[256];
+    uint8_t               cmdType;
+    uint8_t               cmdSvc;
+    const char *          cmdStr;
+    unsigned long         time = 0;
+    uint32_t              timeElapsed;
+
+    // Get elapsed time since last service poll.
+    time = *ms;
 
     // Has an interrupt been generated by the emulator support hardware?
     if(interrupt)
@@ -4271,7 +5257,13 @@ printf("KeyReg:"); for(uint16_t idx=MZ_EMU_KEYB_CTRL_REG; idx < MZ_EMU_KEYB_CTRL
                           
                             // Switch to the requested machine if changed, update the configuration in the FPGA.
                             //
-                            EMZSwitchToMachine(emuConfig.machineModel, 0);
+                            if(emuConfig.machineChanged)
+                            {
+                                EMZRun();
+                            } else
+                            {
+                                EMZSwitchToMachine(emuConfig.machineModel, 0);
+                            }
 
                         // Direct key intercept, process according to state.
                         } else
@@ -4312,36 +5304,180 @@ printf("KeyReg:"); for(uint16_t idx=MZ_EMU_KEYB_CTRL_REG; idx < MZ_EMU_KEYB_CTRL
                 emuConfig.emuRegisters[MZ_EMU_REG_CMT2] = emuInData[MZ_EMU_CMT_STATUS2_INTR_REG];
 
                 // When debugging output register change as text message.
-                debugf("CMT/CMT2 (%s%s%s%s%s%s:%s%s%s%s%s).", emuInData[MZ_EMU_CMT_STATUS_REG]       & MZ_EMU_CMT_PLAY_READY    ? "PLAY_READY,"  : "",
+                debugf("CMT/CMT2 (%02x,%02x,%s%s%s%s%s%s:%s%s%s%s%s).",
+                                                              emuInData[MZ_EMU_CMT_STATUS_REG], emuInData[MZ_EMU_CMT_STATUS2_REG],
+                                                              emuInData[MZ_EMU_CMT_STATUS_REG]       & MZ_EMU_CMT_PLAY_READY    ? "PLAY_READY,"  : "",
                                                               emuInData[MZ_EMU_CMT_STATUS_REG]       & MZ_EMU_CMT_PLAYING       ? "PLAYING,"     : "",
                                                               emuInData[MZ_EMU_CMT_STATUS_REG]       & MZ_EMU_CMT_RECORD_READY  ? "RECORD_READY,": "",
                                                               emuInData[MZ_EMU_CMT_STATUS_REG]       & MZ_EMU_CMT_RECORDING     ? "RECORDING,"   : "",
                                                               emuInData[MZ_EMU_CMT_STATUS_REG]       & MZ_EMU_CMT_ACTIVE        ? "ACTIVE,"      : "",
                                                               emuInData[MZ_EMU_CMT_STATUS_REG]       & MZ_EMU_CMT_SENSE         ? "SENSE,"       : "",
                                                               emuInData[MZ_EMU_CMT_STATUS2_REG]      & MZ_EMU_CMT2_APSS         ? "APSS,"        : "",
-                                                              emuInData[MZ_EMU_CMT_STATUS2_REG]      & MZ_EMU_CMT2_DIRECTION    ? "DIRECTION,"   : "",
+                                                              emuInData[MZ_EMU_CMT_STATUS2_REG]      & MZ_EMU_CMT2_APSS         ? emuInData[MZ_EMU_CMT_STATUS2_REG] & MZ_EMU_CMT2_DIRECTION      ? "FFWD," : "REW," : "",
                                                               emuInData[MZ_EMU_CMT_STATUS2_REG]      & MZ_EMU_CMT2_EJECT        ? "EJECT,"       : "",
                                                               emuInData[MZ_EMU_CMT_STATUS2_REG]      & MZ_EMU_CMT2_PLAY         ? "PLAY,"        : "",
-                                                              emuInData[MZ_EMU_CMT_STATUS2_REG]      & MZ_EMU_CMT2_STOP         ? "STOP"         : "");
-                debugf("CMT/CMT2i(%s%s%s%s%s%s:%s%s%s%s%s).", emuInData[MZ_EMU_CMT_STATUS_INTR_REG]  & MZ_EMU_CMT_PLAY_READY    ? "PLAY_READY,"  : "",
+                                                              emuInData[MZ_EMU_CMT_STATUS2_REG]      & MZ_EMU_CMT2_STOP         ? "STOP,"        : "",
+                                                              emuInData[MZ_EMU_CMT_STATUS2_REG]      & MZ_EMU_CMT2_AUTOREW      ? "AUTOREW,"     : "",
+                                                              emuInData[MZ_EMU_CMT_STATUS2_REG]      & MZ_EMU_CMT2_AUTOPLAY     ? "AUTOPLAY"     : "");
+
+                debugf("CMT/CMT2i(%02x,%02x,%s%s%s%s%s%s:%s%s%s%s%s).",
+                                                              emuInData[MZ_EMU_CMT_STATUS_INTR_REG], emuInData[MZ_EMU_CMT_STATUS2_INTR_REG],
+                                                              emuInData[MZ_EMU_CMT_STATUS_INTR_REG]  & MZ_EMU_CMT_PLAY_READY    ? "PLAY_READY,"  : "",
                                                               emuInData[MZ_EMU_CMT_STATUS_INTR_REG]  & MZ_EMU_CMT_PLAYING       ? "PLAYING,"     : "",
                                                               emuInData[MZ_EMU_CMT_STATUS_INTR_REG]  & MZ_EMU_CMT_RECORD_READY  ? "RECORD_READY,": "",
                                                               emuInData[MZ_EMU_CMT_STATUS_INTR_REG]  & MZ_EMU_CMT_RECORDING     ? "RECORDING,"   : "",
                                                               emuInData[MZ_EMU_CMT_STATUS_INTR_REG]  & MZ_EMU_CMT_ACTIVE        ? "ACTIVE,"      : "",
                                                               emuInData[MZ_EMU_CMT_STATUS_INTR_REG]  & MZ_EMU_CMT_SENSE         ? "SENSE,"       : "",
                                                               emuInData[MZ_EMU_CMT_STATUS2_INTR_REG] & MZ_EMU_CMT2_APSS         ? "APSS,"        : "",
-                                                              emuInData[MZ_EMU_CMT_STATUS2_INTR_REG] & MZ_EMU_CMT2_DIRECTION    ? "DIRECTION,"   : "",
+                                                              emuInData[MZ_EMU_CMT_STATUS2_INTR_REG] & MZ_EMU_CMT2_APSS         ? emuInData[MZ_EMU_CMT_STATUS2_INTR_REG] & MZ_EMU_CMT2_DIRECTION ? "FFWD," : "REW," : "",
                                                               emuInData[MZ_EMU_CMT_STATUS2_INTR_REG] & MZ_EMU_CMT2_EJECT        ? "EJECT,"       : "",
                                                               emuInData[MZ_EMU_CMT_STATUS2_INTR_REG] & MZ_EMU_CMT2_PLAY         ? "PLAY,"        : "",
-                                                              emuInData[MZ_EMU_CMT_STATUS2_INTR_REG] & MZ_EMU_CMT2_STOP         ? "STOP"         : "");
+                                                              emuInData[MZ_EMU_CMT_STATUS2_INTR_REG] & MZ_EMU_CMT2_STOP         ? "STOP,"        : "",
+                                                              emuInData[MZ_EMU_CMT_STATUS2_INTR_REG] & MZ_EMU_CMT2_AUTOREW      ? "AUTOREW,"     : "",
+                                                              emuInData[MZ_EMU_CMT_STATUS2_INTR_REG] & MZ_EMU_CMT2_AUTOPLAY     ? "AUTOPLAY"     : "");
                
                 // Process the tape queue according to signals received from the hardware.
-                EMZProcessTapeQueue();
+                EMZProcessTapeQueue(1);
+            }
+
+            // Floppy Disk Drive unit interrupt?
+            if(emuISRReason[MZ_EMU_INTR_REG_ISR] & MZ_EMU_INTR_SRC_FDD)
+            {
+                // Read the control data to allow a decision as to what is required.
+                result=readZ80Array(MZ_EMU_FDD_CTRL_ADDR, emuInData, MZ_EMU_FDD_MAX_REGISTERS, FPGA);
+
+                // Debug information to evaluate interrupt.
+                result=readZ80Array(MZ_EMU_FDC_CTRL_ADDR, &emuInData[MZ_EMU_FDD_MAX_REGISTERS], 32, FPGA); //MZ_EMU_FDC_MAX_REGISTERS, FPGA);
+                debugf("FDD: (%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x)", 
+                                                              emuInData[MZ_EMU_FDD_CTRL_REG],
+                                                              emuInData[MZ_EMU_FDD_SECTOR_REG],
+                                                              emuInData[MZ_EMU_FDD_TRACK_REG],
+                                                              emuInData[MZ_EMU_FDD_CST_REG],
+                                                              emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_CTRL_REG],
+                                                              emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_TRACK_REG],
+                                                              emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_SECTOR_REG],
+                                                              emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_DATA_REG],
+                                                              emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_LCMD_REG]);
+
+                debugf("FDD IOP: Drive No:%d, Head:%s,  Request:%s, Direction: %s, Sector:%d, Track:%d",
+                                                              ((emuInData[MZ_EMU_FDD_CTRL_REG] & FDD_IOP_DISK_SELECT_NO) >> 5) & 0x03,
+                                                              emuInData[MZ_EMU_FDD_CTRL_REG] & FDD_IOP_SIDE                                   ?                              "1"              : "0",
+                                                              emuInData[MZ_EMU_FDD_CTRL_REG] & FDD_IOP_SECTOR_REQ                             ?                              "YES "           : "NO",
+                                                              emuInData[MZ_EMU_FDD_CTRL_REG] & FDD_IOP_SECTOR_DIR                             ?                              "WRITE"          : "READ",
+                                                              emuInData[MZ_EMU_FDD_SECTOR_REG],
+                                                              emuInData[MZ_EMU_FDD_TRACK_REG]);
+                debugf("    FDD Signals:(%s%s%s%s) Raw Drive Select:(%d)",
+                                                              emuInData[MZ_EMU_FDD_CST_REG] & FDD_DISK_BUSY                                   ?                              "BUSY,"          : "",
+                                                              emuInData[MZ_EMU_FDD_CST_REG] & FDD_DISK_DRQ                                    ?                              "DRQ,"           : "",
+                                                              emuInData[MZ_EMU_FDD_CST_REG] & FDD_DISK_DDEN                                   ?                              ""               : "DDEN,",
+                                                              emuInData[MZ_EMU_FDD_CST_REG] & FDD_DISK_MOTORON                                ?                              ""               : "MOTOR",
+                                                              emuInData[MZ_EMU_FDD_CST_REG] & FDD_DISK_SELECT_NO);
+
+                cmdSvc = 0;
+                switch(emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_LCMD_REG] & 0xF0)
+                {
+                    case FDC_CMD_RESTORE:      
+                        cmdStr = "RESTORE";
+                        cmdType = 1;
+                        break;
+                    case FDC_CMD_SEEK:         
+                        cmdStr = "SEEK";
+                        cmdType = 1;
+                        break;
+                    case FDC_CMD_STEP:         
+                        cmdStr = "STEP";
+                        cmdType = 1;
+                        break;
+                    case FDC_CMD_STEP_TU:      
+                        cmdStr = "STEP TU";
+                        cmdType = 1;
+                        break;
+                    case FDC_CMD_STEP_IN:      
+                        cmdStr = "STEPIN";
+                        cmdType = 1;
+                        break;
+                    case FDC_CMD_STEPIN_TU:    
+                        cmdStr = "STEPIN TU";
+                        cmdType = 1;
+                        break;
+                    case FDC_CMD_STEPOUT:      
+                        cmdStr = "STEPOUT";
+                        cmdType = 1;
+                        break;
+                    case FDC_CMD_STEPOUT_TU:   
+                        cmdStr = "STEPOUT TU";
+                        cmdType = 1;
+                        break;
+                    case FDC_CMD_READSEC:      
+                        cmdStr = "READSEC";
+                        cmdSvc = 1;
+                        cmdType = 2;
+                        break;
+                    case FDC_CMD_READSEC_MULT: 
+                        cmdStr = "READSEC MULT";
+                        cmdSvc = 1;
+                        cmdType = 2;
+                        break;
+                    case FDC_CMD_WRITESEC:     
+                        cmdStr = "WRITESEC";
+                        cmdSvc = 1;
+                        cmdType = 2;
+                        break;
+                    case FDC_CMD_WRITESEC_MULT:
+                        cmdStr = "WRITESEC MULT";
+                        cmdSvc = 1;
+                        cmdType = 2;
+                        break;
+                    case FDC_CMD_READADDR:     
+                        cmdStr = "READADDR";
+                        cmdType = 3;
+                        break;
+                    case FDC_CMD_READTRACK:    
+                        cmdStr = "READTRACK";
+                        cmdSvc = 1;
+                        cmdType = 3;
+                        break;
+                    case FDC_CMD_WRITETRACK:   
+                        cmdStr = "WRITETRACK";
+                        cmdSvc = 1;
+                        cmdType = 3;
+                        break;
+                    case FDC_CMD_FORCEINT:     
+                        cmdStr = "FORCEINT";
+                        cmdType = 4;
+                        break;
+                }
+                debugf("    WD1793 Signals:(%s%s%s%s%s%s%s%s%s[%02x,%d])",
+                                                              emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_CTRL_REG] & FDC_STI_NOTRDY        ?                                   "NOTRDY,"        : "",
+                                                              emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_CTRL_REG] & FDC_STI_PROTECTED     ?                                   "PROTECTED,"     : "",
+                                                              emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_CTRL_REG] & FDC_STI_HEADLOADED    ? cmdType != 1 ? "RTYPE/WFAULT,"  : "HEADLOADED,"    : "",
+                                                              emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_CTRL_REG] & FDC_STI_SEEKERROR     ? cmdType != 1 ? "RNF,"           : "SEEKERROR,"     : "",
+                                                              emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_CTRL_REG] & FDC_STI_CRCERROR      ?                                   "CRCERROR,"      : "",
+                                                              emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_CTRL_REG] & FDC_STI_TRACK0        ? cmdType != 1 ? "LOSTDATA,"      : "TRACK0,"        : "",
+                                                              emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_CTRL_REG] & FDC_STI_INDEX         ? cmdType != 1 ? "DRQ,"           : "INDEX,"         : "",
+                                                              emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_CTRL_REG] & FDC_STI_BUSY          ?                                   "BUSY,"          : "",
+                                                              cmdStr, emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_LCMD_REG], cmdType);
+                if(cmdType == 3)
+                    debugf("READADDR:%02x,%02x,%02x,%02x,%02x,%02x", emuInData[MZ_EMU_FDD_MAX_REGISTERS+16], emuInData[MZ_EMU_FDD_MAX_REGISTERS+17],emuInData[MZ_EMU_FDD_MAX_REGISTERS+18],emuInData[MZ_EMU_FDD_MAX_REGISTERS+19],emuInData[MZ_EMU_FDD_MAX_REGISTERS+20],emuInData[MZ_EMU_FDD_MAX_REGISTERS+21]);
+
+                // Clear the READY flag. This also clears the interrupt, basically an acknowledgement.
+                emuControl.fdd.ctrlReg &= ~FDD_CTRL_READY;
+                writeZ80Array(MZ_EMU_FDD_CTRL_ADDR+MZ_EMU_FDD_CTRL_REG, &emuControl.fdd.ctrlReg, 1, FPGA);
+
+                // Process the request if it requires servicing.
+                if(cmdSvc) EMZProcessFDDRequest(emuInData[MZ_EMU_FDD_CTRL_REG], emuInData[MZ_EMU_FDD_TRACK_REG], emuInData[MZ_EMU_FDD_SECTOR_REG], emuInData[MZ_EMU_FDD_CST_REG]);
+
+                // Processing complete, set the READY flag.
+                emuControl.fdd.ctrlReg |= FDD_CTRL_READY;
+                writeZ80Array(MZ_EMU_FDD_CTRL_ADDR+MZ_EMU_FDD_CTRL_REG, &emuControl.fdd.ctrlReg, 1, FPGA);
             }
         } else
         {
             printf("Interrupt reason retrieval error.\n");
         }
+      
+        // Indicate processing time.
+        debugf("Int time:%ld", *ms - time);
     }
 
     // Scheduling block, called periodically by the zOS scheduling.
@@ -4391,12 +5527,12 @@ printf("KeyReg:"); for(uint16_t idx=MZ_EMU_KEYB_CTRL_REG; idx < MZ_EMU_KEYB_CTRL
         // When the startup banner has been displayed, normal operations can commence as this module has been initialised.
         else if(entryScreenTimer == 0x00000000)
         {
-            // Call the OSD service scheduling routine to allow any OSD updates to take plave.
+            // Call the OSD service scheduling routine to allow any OSD updates to take place.
             OSDService();
 
             // Process the tape queue periodically, this is generally only needed for uploading a new file from the queue, all other actions are serviced 
             // via interrupt.
-            EMZProcessTapeQueue();
+            EMZProcessTapeQueue(0);
         }
     }
 
@@ -4406,7 +5542,7 @@ printf("KeyReg:"); for(uint16_t idx=MZ_EMU_KEYB_CTRL_REG; idx < MZ_EMU_KEYB_CTRL
 
 // Initialise the EmuMZ subsystem. This method is called at startup to intialise control structures and hardware settings.
 //
-uint8_t EMZInit(enum MACHINE_HW_TYPES hostMachine)
+uint8_t EMZInit(enum MACHINE_HW_TYPES hostMachine, uint8_t machineModel)
 {
     // Locals.
     //
@@ -4454,6 +5590,13 @@ uint8_t EMZInit(enum MACHINE_HW_TYPES hostMachine)
         {
             printf("Failed to read initial emulator register configuration.\n");
         }
+
+        // Initialise Floppy control variables.
+        emuControl.fdd.ctrlReg = 0;
+
+        // Finally set the initial machine and group.
+        emuConfig.machineModel = machineModel;
+        emuConfig.machineGroup = EMZGetMachineGroup();
     }
 
     return(result);
@@ -4461,15 +5604,18 @@ uint8_t EMZInit(enum MACHINE_HW_TYPES hostMachine)
 
 // Once the tranZPUter has been engaged and configured, start the emulation with the required machine.
 //
-void EMZRun(uint8_t machineModel)
+void EMZRun(void)
 {
     // Locals.
     uint8_t     errCode;
     uint8_t     keyCnt;
 
+    // Ensure the tape queue is cleared, dont persist between emulations.
+    EMZClearTapeQueue();
+
     // Switch to the requested machine and upload the configuration to the FPGA.
     //
-    EMZSwitchToMachine(machineModel, 1);
+    EMZSwitchToMachine(emuConfig.machineModel, 1);
 
     // If startup application is enabled and pre key insertion keys given, send them to the emulation keyboard module. This functionality works without 
     // an actual application for load being specified and these keys can also be used to interact with the I/O processor menu, ie. to set a CPU speed.
@@ -4477,7 +5623,6 @@ void EMZRun(uint8_t machineModel)
     {
         // Count the number of keys for insertion.
         for(keyCnt=0; keyCnt < MAX_KEY_INS_BUFFER; keyCnt++) { if(emuConfig.params[emuConfig.machineModel].loadApp.preKeyInsertion[keyCnt].i == 0xffffffff) break; }
-
     }
 
     // If a startup application is specified, load it direct to RAM.

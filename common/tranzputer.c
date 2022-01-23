@@ -1214,8 +1214,12 @@ uint8_t writeZ80Array(uint32_t addr, uint8_t *data, uint32_t size, enum TARGETS 
         // Loop through the array and write out the data to the next Z80 memory location.
         for(uint32_t idx=0; idx < size; idx++, nxtAddr++, ptr++)
         {
+//printf("%08lx:%02x ", nxtAddr, *ptr);
+//if(addr >= 0x300000 && addr < 0x300010)
+//    delay(1);
             writeZ80Memory(nxtAddr, *ptr, target);
         }
+//printf("\n");
     }
 
     // Release the bus if it is not being held for further transations.
@@ -3416,9 +3420,9 @@ printf("CPUCONFIG=%02x\n", cpuConfig);
 
         case CPUMODE_IS_EMU_MZ:
             printf("Sharp MZ Series Emulation Active\n");
-
+         
             // Start the emulation.
-            EMZRun((uint8_t)(svcControl.cmd - TZSVC_CMD_EMU_SETMZ80K));
+            EMZRun();
             break;
     }
 
@@ -3471,6 +3475,7 @@ printf("CPUCONFIG=%02x\n", cpuConfig);
         // For the Sharp MZ Series Emulations we just issue a soft reset so that the T80 starts processing the ROM contents.
         else if(cpuConfig == CPUMODE_IS_EMU_MZ)
         {
+printf("Writing CPUCFG:%02x\n", cpuConfig | CPUMODE_CLK_EN | CPUMODE_RESET_CPU);
             writeZ80IO(IO_TZ_CPUCFG, cpuConfig | CPUMODE_CLK_EN | CPUMODE_RESET_CPU, TRANZPUTER);
         } else
         {
@@ -5356,7 +5361,7 @@ void processServiceRequest(void)
                 case TZSVC_CMD_EMU_SETMZ2200:
                 case TZSVC_CMD_EMU_SETMZ2500:
                     // Initialise the emulation and OSD.
-                    if(!EMZInit(z80Control.hostType))
+                    if(!EMZInit(z80Control.hostType, (uint8_t)(svcControl.cmd - TZSVC_CMD_EMU_SETMZ80K)))
                     {
                         // Switch to the emulation CPU (T80).
                         writeZ80IO(IO_TZ_CPUCFG, CPUMODE_SET_EMU_MZ, TRANZPUTER);

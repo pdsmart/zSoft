@@ -130,7 +130,7 @@
 #endif
 
 // Version info.
-#define VERSION      "v1.40b"
+#define VERSION      "v1.41"
 #define VERSION_DATE "28/10/2021"
 #define PROGRAM_NAME "zOS"
 

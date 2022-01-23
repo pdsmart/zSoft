@@ -1005,19 +1005,18 @@ uint8_t OSDInit(enum WINDOWS window)
     {
         debugf("Freeing OSD display framebuffer:%08lx\n", osdWindow.display);
         free(osdWindow.display);
+    }
+
+    // Allocate largest required block on the heap which will act as the OSD window framebuffer - this is necessary as updating the physical display is time consuming due to control overhead.
+    //
+    osdWindow.display = malloc(VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE > VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE ? VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE : VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE);
+    if(osdWindow.display == NULL)
+    {
+        printf("Failed to allocate heap for the OSD display framebuffer, %d bytes\n", VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE > VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE ? VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE : VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE);
+        result = 1;
     } else
     {
-        // Allocate largest required block on the heap which will act as the OSD window framebuffer - this is necessary as updating the physical display is time consuming due to control overhead.
-        //
-        osdWindow.display = malloc(VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE > VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE ? VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE : VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE);
-        if(osdWindow.display == NULL)
-        {
-            printf("Failed to allocate heap for the OSD display framebuffer, %d bytes\n", VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE > VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE ? VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE : VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE);
-            result = 1;
-        } else
-        {
-            debugf("OSD window framebuffer allocated: %dBytes@%08lx\n", VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE > VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE ? VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE : VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE, osdWindow.display);
-        }
+        debugf("OSD window framebuffer allocated: %dBytes@%08lx\n", VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE > VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE ? VC_MENU_RGB_BITS * VC_MENU_BUFFER_SIZE : VC_STATUS_RGB_BITS * VC_STATUS_BUFFER_SIZE, osdWindow.display);
     }
    
     // Clear screen ready for use.
