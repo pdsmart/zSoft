@@ -80,8 +80,8 @@ extern "C" {
 #define debugfx(a, ...)       if(emuControl.debug) { printf("\033[1;32m%s: " a "\033[0m\n", __func__, ##__VA_ARGS__); }
 
 // Version data.
-#define EMUMZ_VERSION       1.44
-#define EMUMZ_VERSION_DATE  "16/01/2022"
+#define EMUMZ_VERSION       1.45
+#define EMUMZ_VERSION_DATE  "26/01/2022"
 
 //////////////////////////////////////////////////////////////
 // Sharp MZ Series Emulation Service Methods                //
@@ -4543,9 +4543,7 @@ printf("DisplayOutput:%02x,%02x\n", emuConfig.params[machineModel].displayOutput
 
     // Floppy disk configuration register.
     emuConfig.emuRegisters[MZ_EMU_REG_FDD]      = emuConfig.params[machineModel].fdd[3].mounted << 7 | emuConfig.params[machineModel].fdd[2].mounted << 6 | emuConfig.params[machineModel].fdd[1].mounted << 5 | emuConfig.params[machineModel].fdd[0].mounted << 4 | emuConfig.params[machineModel].fddEnabled;
-    emuConfig.emuRegisters[MZ_EMU_REG_FDD2]     = emuConfig.params[machineModel].fdd[1].diskType << 4 | emuConfig.params[machineModel].fdd[0].diskType;
-    emuConfig.emuRegisters[MZ_EMU_REG_FDD3]     = emuConfig.params[machineModel].fdd[3].diskType << 4 | emuConfig.params[machineModel].fdd[2].diskType;
-    emuConfig.emuRegisters[MZ_EMU_REG_FDD4]     = emuConfig.params[machineModel].fdd[3].updateMode << 7 | emuConfig.params[machineModel].fdd[3].polarity << 6 |
+    emuConfig.emuRegisters[MZ_EMU_REG_FDD2]     = emuConfig.params[machineModel].fdd[3].updateMode << 7 | emuConfig.params[machineModel].fdd[3].polarity << 6 |
                                                   emuConfig.params[machineModel].fdd[2].updateMode << 5 | emuConfig.params[machineModel].fdd[2].polarity << 4 |
                                                   emuConfig.params[machineModel].fdd[1].updateMode << 3 | emuConfig.params[machineModel].fdd[1].polarity << 2 |
                                                   emuConfig.params[machineModel].fdd[0].updateMode << 1 | emuConfig.params[machineModel].fdd[0].polarity;
@@ -4626,7 +4624,7 @@ printf("%s load\n", MZMACHINES[machineModel]);
         writeZ80Array(MZ_EMU_FDD_CTRL_ADDR+MZ_EMU_FDD_CTRL_REG, &emuControl.fdd.ctrlReg, 1, FPGA);
 
         // Update disk loaded state (ie. close or flush any ejected disks).
-        EMZProcessFDDRequest(0, 0, 0, 0);
+        EMZProcessFDDRequest(0, 0, 0, 0, 0, 0);
     }
 
     // Reenable the T80 as it needs to be running prior to reset.
@@ -4953,52 +4951,53 @@ printf("SectorSize:%08lx,%02x\n", sectorSize, tmpBuf[4]);
 
 // Method to process an interrupt request from the Floppy Disk Drive unit, generally raised by the WD1793 controller.
 //
-short EMZProcessFDDRequest(uint8_t ctrlReg, uint8_t trackNo, uint8_t sectorNo, uint8_t fdcReg)
+enum FLOPPYERRORCODES EMZProcessFDDRequest(uint8_t ctrlReg, uint8_t trackNo, uint8_t sectorNo, uint8_t fdcReg, uint16_t *sectorSize, uint16_t *rotationalSpeed)
 {
     // Locals.
     //
     static FIL        fileDesc[MZ_EMU_FDD_MAX_DISKS];
     static uint8_t    opened;
     static uint8_t    dirty;
-    static uint8_t    lastTrack[MZ_EMU_FDD_MAX_DISKS] = {0xff, 0xff, 0xff, 0xff};
+    static uint8_t    lastTrack[MZ_EMU_FDD_MAX_DISKS]   = {0xff, 0xff, 0xff, 0xff};
     static uint32_t   trackOffset[MZ_EMU_FDD_MAX_DISKS] = {0, 0, 0, 0};
-    static uint32_t   trackLen[MZ_EMU_FDD_MAX_DISKS] = {0, 0, 0, 0};
-    uint8_t           driveNo = ((ctrlReg & FDD_IOP_DISK_SELECT_NO) >> 5) & 0x03;
-    uint8_t           idx;
-    uint8_t           noSides = FLOPPY_DEFINITIONS[emuConfig.params[emuConfig.machineModel].fdd[driveNo].diskType].heads;
-    uint8_t           side = ctrlReg & FDD_IOP_SIDE ? 1 : 0;
+    static uint32_t   trackLen[MZ_EMU_FDD_MAX_DISKS]    = {0, 0, 0, 0};
+    static uint8_t    sectorCount[MZ_EMU_FDD_MAX_DISKS];
+    uint8_t           driveNo         = ((ctrlReg & FDD_IOP_DISK_SELECT_NO) >> 5) & 0x03;
+    uint8_t           noSides         = FLOPPY_DEFINITIONS[emuConfig.params[emuConfig.machineModel].fdd[driveNo].diskType].heads;
+    uint8_t           side            = ctrlReg & FDD_IOP_SIDE ? 1 : 0;
     uint8_t           sectorsPerTrack = FLOPPY_DEFINITIONS[emuConfig.params[emuConfig.machineModel].fdd[driveNo].diskType].sectors;
+    uint8_t           cmd             = (ctrlReg & FDD_IOP_SERVICE_REQ) == 0 ? FDD_IOP_REQ_NOP : ctrlReg & FDD_IOP_REQ_MODE;
     uint8_t           sectorBuffer[1024];
-    uint8_t           sectorCount;
-    uint16_t          sectorSize      = FLOPPY_DEFINITIONS[emuConfig.params[emuConfig.machineModel].fdd[driveNo].diskType].sectorSize;
+    uint8_t           idx;
+  //  uint16_t          sectorSize      = FLOPPY_DEFINITIONS[emuConfig.params[emuConfig.machineModel].fdd[driveNo].diskType].sectorSize;
     uint32_t          actualReadSize;
     uint32_t          sectorOffset;
-    uint32_t          thisSectorSize;
+    uint32_t          thisSectorSize = FLOPPY_DEFINITIONS[emuConfig.params[emuConfig.machineModel].fdd[driveNo].diskType].sectorSize;
     FRESULT           result;
-printf("Drive No:%d, %02x, %d\n", driveNo, ctrlReg & FDD_IOP_SECTOR_REQ, emuConfig.params[emuConfig.machineModel].fdd[driveNo].mounted);
-    // If this is a sector request, process.
+printf("Drive No:%d, %02x, %d\n", driveNo, ctrlReg & FDD_IOP_SERVICE_REQ, emuConfig.params[emuConfig.machineModel].fdd[driveNo].mounted);
+    // If this is a valid service request, process.
     //
-    if(ctrlReg & FDD_IOP_SECTOR_REQ)
+    if(cmd != FDD_IOP_REQ_NOP)
     {
         // Is the disk mounted? Cannot process if no disk!
         //
         if(emuConfig.params[emuConfig.machineModel].fdd[driveNo].mounted)
         {
             // If the disk hasnt yet been opened, open to save time on next sector requests.
-            if(!(opened >> driveNo))
+            if(!((opened >> driveNo) & 0x01))
             {
 printf("Opening disk:%s,%d\n", emuConfig.params[emuConfig.machineModel].fdd[driveNo].fileName, driveNo);
                 result = f_open(&fileDesc[driveNo], emuConfig.params[emuConfig.machineModel].fdd[driveNo].fileName, FA_OPEN_EXISTING | FA_READ);
                 if(result)
                 {
-                    debugf("EMZProcessFDDRequest(open) File:%s, error: %d.\n", emuConfig.params[emuConfig.machineModel].fdd[driveNo].fileName, fileDesc[driveNo]);
-                    return(-1);
+                    debugf("[open] File:%s, error: %d.\n", emuConfig.params[emuConfig.machineModel].fdd[driveNo].fileName, fileDesc[driveNo]);
+                    return(FLPYERR_DISK_ERROR);
                 } 
                 // Mark drive as being opened.
                 opened |= 1 << driveNo;
             }
-    
-            // Read sector according to image type.
+           
+            // Locate sector according to image type.
             if(emuConfig.params[emuConfig.machineModel].fdd[driveNo].imgType == IMAGETYPE_EDSK)
             {
                 // If track has changed (or first call as lastTrack = 255), calculate the track offset position.
@@ -5011,73 +5010,89 @@ printf("Opening disk:%s,%d\n", emuConfig.params[emuConfig.machineModel].fdd[driv
                     if(result)
                     {
                         debugf("Failed to seek to start of TIB:%d, sector:%d, drive:%d", trackNo, sectorNo, driveNo);
-                        return(-1);
+                        return(FLPYERR_TRACK_NOT_FOUND);
                     }
 
-                    // Disk Information Block size.
-                    trackOffset[driveNo] = 0x100;
-                    
                     // Go to track and retrieve the sector information.
-                    for(idx = 0; idx < (trackNo * noSides); idx++)
+                    for(idx = 0; idx == 0 || idx < (trackNo * noSides)+1; idx++)
                     {
-                        result = f_read(&fileDesc, &sectorBuffer, 1, &actualReadSize);
+                        result = f_read(&fileDesc[driveNo], &sectorBuffer, 1, &actualReadSize);
                         if(actualReadSize != 1)
                         {
                             debugf("Failed to traverse track structure:%d", trackNo);
-                            return(-1);
+                            return(FLPYERR_TRACK_NOT_FOUND);
                         }
                         if(sectorBuffer[0] == 0x00)
                         {
                             debugf("Track doesnt exist (%d), bad image:%d", idx/noSides, trackNo);
-RETURN TRACK ERROR HERE
-                            return(-1);
+                            return(FLPYERR_TRACK_NOT_FOUND);
                         }
 
                         // Bug on HD images, track reports 0x25 sectors but this is only applicable for the first track.
-                            if(idx > 0 && sectorBuffer[0] == 0x25) sectorBuffer[0] = 0x11;
+                        if(idx > 0 && sectorBuffer[0] == 0x25) sectorBuffer[0] = 0x11;
 
-                        trackOffset[driveNo] += sectorBuffer[0] * 0x100;
+                        if(idx == 0)
+                        {
+                            // Disk Information Block size.
+                            trackOffset[driveNo] = 0x100;
+                        } else
+                        {
+                            trackOffset[driveNo] += sectorBuffer[0] * 0x100;
+                        }
                     }
                     // Get next track length for Side 1 offset addition.
-                    result = f_read(&fileDesc, &sectorBuffer, 1, &actualReadSize);
-                    if(result)
-                    {
-                        debugf("Failed to seek to start of TIB:%d, sector:%d, drive:%d", trackNo, sectorNo, driveNo);
-                        return(-1);
-                    }
+               //     result = f_read(&fileDesc[driveNo], &sectorBuffer, 1, &actualReadSize);
+               //     if(result)
+               //     {
+               //         debugf("Failed to seek to start of TIB:%d, sector:%d, drive:%d", trackNo, sectorNo, driveNo);
+               //         return(FLPYERR_TRACK_NOT_FOUND);
+               //     }
                     trackLen[driveNo] = (uint32_t)sectorBuffer[0] * 0x100;
+                    uint8_t sectorCountFromTIB = sectorBuffer[0];
 
                     // Read the sector count for this track,
                     result = f_lseek(&fileDesc[driveNo], trackOffset[driveNo] + 0x14);
                     if(!result)
-                        result = f_read(&fileDesc, &sectorBuffer, 2, &actualReadSize);
+                        result = f_read(&fileDesc[driveNo], &sectorBuffer, 2, &actualReadSize);
                     if(result)
                     {
                         debugf("Failed to seek to sector count in TIB:%d, sector:%d, trackOffset:%04x, drive:%d", trackNo, sectorNo, trackOffset[driveNo], driveNo);
-                        return(-1);
+                        return(FLPYERR_TRACK_NOT_FOUND);
                     }
-                    sectorCount = (uint8_t)sectorBuffer[1];
+                    // There are some wierd formats available, some report one set of sectors in the TIB which differes from the SIB and the TIB is right yet others
+                    // report sectors in the TIB which differs from the SIB and the SIB is right! Work around, choose the maximum sector as the loop below will either find it or error out.
+                    sectorCount[driveNo] = (uint8_t)sectorCountFromTIB > (uint8_t)sectorBuffer[1] ? (uint8_t)sectorCountFromTIB : (uint8_t)sectorBuffer[1];
+printf("trackLen=%08lx, trackOffset=%08lx, sectorCount=%d, %02x,%02x\n", trackLen[driveNo], trackOffset[driveNo], sectorCount[driveNo], sectorBuffer[0], sectorBuffer[1]);
                     thisSectorSize = sectorBuffer[0] == 0x00 ? 128 : sectorBuffer[0] == 0x01 ? 256 : sectorBuffer[0] == 0x02 ? 512 : 1024;
-printf("%02x,%02x trackOffset:%08lx, side:%d, sectorSize:%d\n", sectorBuffer[0], sectorBuffer[1], trackOffset[driveNo], side, thisSectorSize);
+printf("%02x,%02x trackOffset:%08lx, side:%d, thisSectorSize:%d\n", sectorBuffer[0], sectorBuffer[1], trackOffset[driveNo], side, thisSectorSize);
 printf("trackLen:%08lx\n", trackLen[driveNo]);
                 }
-RAISE SECTOR ERROR HERE if SectorNo > sectorCount
+              
+           //     // Check sector requested against sector available, error if request is greater.
+           //     //
+           //     if(sectorNo > sectorCount)
+           //     {
+           //         debugf("Requested sector (%d) greater than track max sector (%d), drive:%d", sectorNo, sectorCount, driveNo);
+           //         return(FLPYERR_SECTOR_NOT_FOUND);
+           //     }
 
                 // Traverse the sector list to find the required sector.
                 sectorOffset = trackOffset[driveNo] + (side ? trackLen[driveNo] : 0);
+                uint32_t offsetLimit = sectorOffset + trackLen[driveNo];
                 
                 // Seek to the Sector Information List for this track.
                 result = f_lseek(&fileDesc[driveNo], trackOffset[driveNo] + (side ? trackLen[driveNo] : 0) + 0x18);
 
-                // Loop through the SIL looking for a sector/head match.
+                // Loop through the SIL looking for a sector/head match. Constrain the search to a maximum track length of data. This check is in place
+                // because of the loose usage by host software of the 'sector' number and sector count which differs in the TIB/SIB.
                 sectorOffset += 0x100;
-                for(idx = 1; idx <= sectorCount; idx++)
+                for(idx = 1; idx <= sectorCount[driveNo] && sectorOffset < offsetLimit; idx++)
                 {
-                    if(!result) result = f_read(&fileDesc, &sectorBuffer, 8, &actualReadSize);
+                    if(!result) result = f_read(&fileDesc[driveNo], &sectorBuffer, 8, &actualReadSize);
                     if(result)
                     {
                         debugf("Failed to seek and read the Sector Information List for track:%d, sector:%d", trackNo, sectorNo);
-                        return(-1);
+                        return(FLPYERR_SECTOR_NOT_FOUND);
                     }
 printf("%d:%d:%d,%02x,%02x,%08lx\n", idx, sectorNo, side, sectorBuffer[2], sectorBuffer[1], sectorOffset);
 
@@ -5088,56 +5103,81 @@ printf("%d:%d:%d,%02x,%02x,%08lx\n", idx, sectorNo, side, sectorBuffer[2], secto
                      //   if(thisSectorSize != sectorSize)
                      //   {
                      //       debugf("Sector size mismatch, Track:%d, Sector:%d, DefSize:%d, ReadSize:%d", trackNo, sectorNo, sectorSize, thisSectorSize);
-                     //       return(-1);
+                     //       return(FLPYERR_SECTOR_NOT_FOUND);
                      //   }
                        // sectorOffset += 0x100; //thisSectorSize;
                         break;
                     }
                     sectorOffset += thisSectorSize;
                 }
-printf("Offset End:%08lx\n", sectorOffset);
+printf("Offset End:%08lx,idx=%d,sectorCount=%d\n", sectorOffset, idx, sectorCount[driveNo]+1);
 
                 // Not found?
-                if(idx == sectorCount+1)
+                if(idx == sectorCount[driveNo]+1 || sectorOffset >= offsetLimit)
                 {
                     debugf("Sector not found, Track:%d, Sector:%d", trackNo, sectorNo);
-                    return(-1);
+                    return(FLPYERR_SECTOR_NOT_FOUND);
                 }
-
-                // Get the sector.
-                result = f_lseek(&fileDesc[driveNo], sectorOffset);
-                if(!result)
-                    result = f_read(&fileDesc, &sectorBuffer, sectorSize, &actualReadSize);
-                if(result)
-                {
-                    debugf("Failed to read the required sector, Track:%d, Sector:%d, offset:%04x", trackNo, sectorNo, sectorOffset);
-                    return(-1);
-                }
-
             } else
+
             if(emuConfig.params[emuConfig.machineModel].fdd[driveNo].imgType == IMAGETYPE_IMG)
             {
                 // Calculate block based on disk configuration.
                 //
-                sectorOffset = (sectorsPerTrack * (sectorNo-1) + (trackNo * sectorsPerTrack) + (ctrlReg & FDD_IOP_SIDE ? sectorsPerTrack : 0)) * sectorSize;
+                sectorOffset = (sectorsPerTrack * (sectorNo-1) + (trackNo * sectorsPerTrack) + (ctrlReg & FDD_IOP_SIDE ? sectorsPerTrack : 0)) * thisSectorSize;
                 printf("SectorsPerTrack=%d, Offset=%d\n", sectorsPerTrack, sectorOffset);
-
-                result = f_lseek(&fileDesc[driveNo], sectorOffset);
-                if(!result)
-                    result = f_read(&fileDesc, &sectorBuffer, sectorSize, &actualReadSize);
-                if(result)
-                {
-                    debugf("Failed to seek and read track:%d, sector:%d, drive:%d", trackNo, sectorNo, driveNo);
-                    return(-1);
-                }
             } else
             {
                 debugf("Unrecognised disk image type:%d", emuConfig.params[emuConfig.machineModel].fdd[driveNo].imgType);
-                return(-1);
+                return(FLPYERR_DISK_ERROR);
             }
 
-            // Write the sector to the sector cache memory.
-            writeZ80Array(MZ_EMU_FDD_CACHE_ADDR, sectorBuffer, sectorSize, FPGA);
+            // Sector details determined, sectorOffset points to the exact disk location where the required sector is stored. Complete the command according to request, ie. read/write or info.
+            //
+            switch(cmd)
+            {
+                case FDD_IOP_REQ_READ:
+                    // Get the sector.
+                    result = f_lseek(&fileDesc[driveNo], sectorOffset);
+                    if(!result)
+                        result = f_read(&fileDesc[driveNo], &sectorBuffer, thisSectorSize, &actualReadSize);
+                    if(result)
+                    {
+                        debugf("Failed to read the required sector, Track:%d, Sector:%d, offset:%04x", trackNo, sectorNo, sectorOffset);
+                        return(FLPYERR_SECTOR_NOT_FOUND);
+                    }
+                   
+                    // Write the sector to the sector cache memory.
+                    writeZ80Array(MZ_EMU_FDD_CACHE_ADDR, sectorBuffer, thisSectorSize, FPGA);
+                    break;
+
+                case FDD_IOP_REQ_WRITE:
+                    // Fetch the sector from FDC cache.
+                    //
+                    // Seek to the correct disk location.
+                    //
+                    // Write out the cache.
+                    break;
+
+                case FDD_IOP_REQ_INFO:
+                    // Nothing else needs to be done, the sector has been located and the parameters obtained, these will now be returned to the FDC.
+                    break;
+
+                default:
+                    debugf("Unrecognised service command:%d", cmd);
+                    return(FLPYERR_DISK_ERROR);
+                    break;
+            }
+
+
+            // Update the callers variable to indicate actual disk type parameters, ie. sector size - this is necessary as some disks have various sector sizes per track. The rotational speed is taken from
+            // the parameters and shouldnt change but kept here just in case!
+printf("Check1:%08lx, %08lx, %08lx, %08lx, %d, %d\n", sectorSize, *sectorSize, rotationalSpeed, *rotationalSpeed, thisSectorSize, FLOPPY_DEFINITIONS[emuConfig.params[emuConfig.machineModel].fdd[driveNo].diskType].rpm ); 
+            if(sectorSize != NULL)
+                (*sectorSize) = thisSectorSize;
+            if(rotationalSpeed != NULL)
+                (*rotationalSpeed) = FLOPPY_DEFINITIONS[emuConfig.params[emuConfig.machineModel].fdd[driveNo].diskType].rpm;
+printf("Check2:%08lx, %08lx, %08lx, %08lx\n", sectorSize, *sectorSize, rotationalSpeed, *rotationalSpeed); 
         }
     } else
     {
@@ -5157,7 +5197,7 @@ printf("Closing disk:%d\n", idx);
         }
     }
 
-    return;
+    return(FLPYERR_NOERROR);
 }
         
 
@@ -5359,18 +5399,18 @@ printf("KeyReg:"); for(uint16_t idx=MZ_EMU_KEYB_CTRL_REG; idx < MZ_EMU_KEYB_CTRL
                                                               emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_DATA_REG],
                                                               emuInData[MZ_EMU_FDD_MAX_REGISTERS+MZ_EMU_FDC_LCMD_REG]);
 
-                debugf("FDD IOP: Drive No:%d, Head:%s,  Request:%s, Direction: %s, Sector:%d, Track:%d",
+                debugf("FDD IOP: Drive No:%d, Head:%s,  Request:%s, Command: %s, Sector:%d, Track:%d",
                                                               ((emuInData[MZ_EMU_FDD_CTRL_REG] & FDD_IOP_DISK_SELECT_NO) >> 5) & 0x03,
-                                                              emuInData[MZ_EMU_FDD_CTRL_REG] & FDD_IOP_SIDE                                   ?                              "1"              : "0",
-                                                              emuInData[MZ_EMU_FDD_CTRL_REG] & FDD_IOP_SECTOR_REQ                             ?                              "YES "           : "NO",
-                                                              emuInData[MZ_EMU_FDD_CTRL_REG] & FDD_IOP_SECTOR_DIR                             ?                              "WRITE"          : "READ",
+                                                              emuInData[MZ_EMU_FDD_CTRL_REG] & FDD_IOP_SIDE                                   ? "1"              : "0",
+                                                              emuInData[MZ_EMU_FDD_CTRL_REG] & FDD_IOP_SERVICE_REQ                            ? "YES "           : "NO",
+                                                              (emuInData[MZ_EMU_FDD_CTRL_REG] & FDD_IOP_REQ_MODE) == 0                        ? "NOP"            : (emuInData[MZ_EMU_FDD_CTRL_REG] & FDD_IOP_REQ_MODE) == 1 ? "READ" : (emuInData[MZ_EMU_FDD_CTRL_REG] & FDD_IOP_REQ_MODE) == 2 ? "WRITE" : "INFO",
                                                               emuInData[MZ_EMU_FDD_SECTOR_REG],
                                                               emuInData[MZ_EMU_FDD_TRACK_REG]);
                 debugf("    FDD Signals:(%s%s%s%s) Raw Drive Select:(%d)",
-                                                              emuInData[MZ_EMU_FDD_CST_REG] & FDD_DISK_BUSY                                   ?                              "BUSY,"          : "",
-                                                              emuInData[MZ_EMU_FDD_CST_REG] & FDD_DISK_DRQ                                    ?                              "DRQ,"           : "",
-                                                              emuInData[MZ_EMU_FDD_CST_REG] & FDD_DISK_DDEN                                   ?                              ""               : "DDEN,",
-                                                              emuInData[MZ_EMU_FDD_CST_REG] & FDD_DISK_MOTORON                                ?                              ""               : "MOTOR",
+                                                              emuInData[MZ_EMU_FDD_CST_REG] & FDD_DISK_BUSY                                   ? "BUSY,"          : "",
+                                                              emuInData[MZ_EMU_FDD_CST_REG] & FDD_DISK_DRQ                                    ? "DRQ,"           : "",
+                                                              emuInData[MZ_EMU_FDD_CST_REG] & FDD_DISK_DDEN                                   ? ""               : "DDEN,",
+                                                              emuInData[MZ_EMU_FDD_CST_REG] & FDD_DISK_MOTORON                                ? ""               : "MOTOR",
                                                               emuInData[MZ_EMU_FDD_CST_REG] & FDD_DISK_SELECT_NO);
 
                 cmdSvc = 0;
@@ -5430,6 +5470,7 @@ printf("KeyReg:"); for(uint16_t idx=MZ_EMU_KEYB_CTRL_REG; idx < MZ_EMU_KEYB_CTRL
                         break;
                     case FDC_CMD_READADDR:     
                         cmdStr = "READADDR";
+                        cmdSvc = 1;
                         cmdType = 3;
                         break;
                     case FDC_CMD_READTRACK:    
@@ -5461,14 +5502,18 @@ printf("KeyReg:"); for(uint16_t idx=MZ_EMU_KEYB_CTRL_REG; idx < MZ_EMU_KEYB_CTRL
                     debugf("READADDR:%02x,%02x,%02x,%02x,%02x,%02x", emuInData[MZ_EMU_FDD_MAX_REGISTERS+16], emuInData[MZ_EMU_FDD_MAX_REGISTERS+17],emuInData[MZ_EMU_FDD_MAX_REGISTERS+18],emuInData[MZ_EMU_FDD_MAX_REGISTERS+19],emuInData[MZ_EMU_FDD_MAX_REGISTERS+20],emuInData[MZ_EMU_FDD_MAX_REGISTERS+21]);
 
                 // Clear the READY flag. This also clears the interrupt, basically an acknowledgement.
-                emuControl.fdd.ctrlReg &= ~FDD_CTRL_READY;
+                emuControl.fdd.ctrlReg &= ~FDD_CTRL_READY & 0x0f;
                 writeZ80Array(MZ_EMU_FDD_CTRL_ADDR+MZ_EMU_FDD_CTRL_REG, &emuControl.fdd.ctrlReg, 1, FPGA);
 
                 // Process the request if it requires servicing.
-                if(cmdSvc) EMZProcessFDDRequest(emuInData[MZ_EMU_FDD_CTRL_REG], emuInData[MZ_EMU_FDD_TRACK_REG], emuInData[MZ_EMU_FDD_SECTOR_REG], emuInData[MZ_EMU_FDD_CST_REG]);
+                enum FLOPPYERRORCODES floppyError = FLPYERR_NOERROR; 
+                uint16_t thisSectorSize = 0;
+                uint16_t thisRotationalSpeed = 0;
+                if(cmdSvc) floppyError = (uint8_t)EMZProcessFDDRequest(emuInData[MZ_EMU_FDD_CTRL_REG], emuInData[MZ_EMU_FDD_TRACK_REG], emuInData[MZ_EMU_FDD_SECTOR_REG], emuInData[MZ_EMU_FDD_CST_REG], &thisSectorSize, &thisRotationalSpeed);
+printf("Error Code:%d, Sector Size:%d, Rotational Speed:%d\n", floppyError, thisSectorSize, thisRotationalSpeed);
 
-                // Processing complete, set the READY flag.
-                emuControl.fdd.ctrlReg |= FDD_CTRL_READY;
+                // Processing complete, set the READY flag along with current sector size, rotational speed and error code. 7:5 = error code, 4 = rotational speed, 3:1 = sector size code, 0 = Ready flag.
+                emuControl.fdd.ctrlReg |= (floppyError << 5 | thisRotationalSpeed == 360 ? 0x08 : 0x00 | ((uint8_t)((thisSectorSize&0xff00) >> 7) & 0x0E) | FDD_CTRL_READY);
                 writeZ80Array(MZ_EMU_FDD_CTRL_ADDR+MZ_EMU_FDD_CTRL_REG, &emuControl.fdd.ctrlReg, 1, FPGA);
             }
         } else

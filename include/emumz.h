@@ -137,15 +137,20 @@
 // Floppy Disk Control bits.
 //
 #define FDD_IOP_DISK_SELECT_NO       0xE0                                // Floppy disk selected drive number.
-#define FDD_IOP_SIDE                 0x04                                // IOP Control parameters: Disk side selected.
-#define FDD_IOP_SECTOR_REQ           0x02                                // IOP Control parameters: Sector request service flag/
-#define FDD_IOP_SECTOR_DIR           0x01                                // IOP Control parameters: Sector request direction, 0 = write, host has written into the cache, 1 = read, IOP needs to write the requested sector into cache.
+#define FDD_IOP_SIDE                 0x08                                // IOP Control parameters: Disk side selected.
+#define FDD_IOP_SERVICE_REQ          0x04                                // IOP Control parameters: Service request flag.
+#define FDD_IOP_REQ_MODE             0x03                                // IOP Control parameters: 00 = NOP, 01 = sector is written into cache (IOP->WD1793), 10 = sector is read from cache (WD1793->IOP), 11 = Obtain sector information
+#define FDD_IOP_REQ_NOP              0x00                                // FDD request is to do nothing.
+#define FDD_IOP_REQ_READ             0x01                                // FDD request to read a sector.
+#define FDD_IOP_REQ_WRITE            0x02                                // FDD request to write a sector.
+#define FDD_IOP_REQ_INFO             0x03                                // FDD request to get current information on disk sector/rpm.
 #define FDD_DISK_BUSY                0x40                                // Floppy disk BUSY signal state.
 #define FDD_DISK_DRQ                 0x20                                // Floppy disk DRQ signal state.
 #define FDD_DISK_MOTORON             0x10                                // Floppy disk MOTOR signal state, 0 = on.
 #define FDD_DISK_DDEN                0x10                                // Floppy disk Double Density DDEN signal state, 0 = double density.
 #define FDD_DISK_SELECT_NO           0x07                                // Floppy disk selected drive number.
 #define FDD_CTRL_READY               0x01                                // Flag to indicate the I/O processor is ready. 1 = ready, 0 = busy.
+#define FDD_CTRL_SECTOR              0x0E                                // Addressed sector size, may differ from disk geometry
 #define FDD_CTRL_TYPE                0xF0                                // Configuration of the controller for a given disk type.
 #define FDD_DISK_0_WRITEN            0x02                                // Write enable Disk 0
 #define FDD_DISK_1_WRITEN            0x08                                // Write enable Disk 1
@@ -204,8 +209,8 @@
 #define MZ_EMU_REG_CMT3              8                                   // CMT (tape drive) status register.       
 #define MZ_EMU_REG_FDD               9                                   // Floppy Disk Drive configuration register 1.
 #define MZ_EMU_REG_FDD2              10                                  // Floppy Disk Drive configuration register 2.
-#define MZ_EMU_REG_FDD3              11                                  // Floppy Disk Drive configuration register 3.
-#define MZ_EMU_REG_FDD4              12                                  // Floppy Disk Drive configuration register 4.
+#define MZ_EMU_REG_FREE1             11                                  // Spare register 1
+#define MZ_EMU_REG_FREE2             12                                  // Spare register 2
 #define MZ_EMU_REG_ROMS              13                                  // Options ROMS configuration
 #define MZ_EMU_REG_SWITCHES          14                                  // Hardware switches, MZ800 = 3:0
 #define MZ_EMU_REG_CTRL              15                                  // Emulator control register.
@@ -222,8 +227,8 @@
 #define MZ_EMU_ADDR_REG_CMT3         MZ_EMU_REG_BASE_ADDR + 8            // Address of the CMT (tape drive) status register.
 #define MZ_EMU_ADDR_REG_FDD          MZ_EMU_REG_BASE_ADDR + 9            // Address of the Floppy Disk Drive configuration register 1.
 #define MZ_EMU_ADDR_REG_FDD2         MZ_EMU_REG_BASE_ADDR + 10           // Address of the Floppy Disk Drive configuration register 2.
-#define MZ_EMU_ADDR_REG_FDD3         MZ_EMU_REG_BASE_ADDR + 11           // Address of the Floppy Disk Drive configuration register 3.
-#define MZ_EMU_ADDR_REG_FDD4         MZ_EMU_REG_BASE_ADDR + 12           // Address of the Floppy Disk Drive configuration register 4.
+#define MZ_EMU_ADDR_REG_FREE1        MZ_EMU_REG_BASE_ADDR + 11           // Address of the unused regiser 1.
+#define MZ_EMU_ADDR_REG_FREE2        MZ_EMU_REG_BASE_ADDR + 12           // Address of the unused regiser 2.
 #define MZ_EMU_ADDR_REG_ROMS         MZ_EMU_REG_BASE_ADDR + 13           // Address of the optional ROMS configuration register.
 #define MZ_EMU_ADDR_REG_SWITCHES     MZ_EMU_REG_BASE_ADDR + 14           // Address of the Hardware configuration switches.
 #define MZ_EMU_ADDR_REG_CTRL         MZ_EMU_REG_BASE_ADDR + 15           // Address of the Control reigster.
@@ -381,6 +386,17 @@ enum ACTIONMODE {
     ACTION_TOGGLECHOICE              = 0x02,                             // Action callback implements toggle feature.
 };
 
+// Error return codes from processing a floppy disk request.
+//
+enum FLOPPYERRORCODES {
+    FLPYERR_NOERROR                  = 0x00,                             // No error in processing detected.
+    FLPYERR_SECTOR_NOT_FOUND         = 0x01,                             // Sector wasnt found in image.
+    FLPYERR_TRACK_NOT_FOUND          = 0x02,                             // Track wasnt found in image.
+    FLPYERR_HEAD_NOT_FOUND           = 0x03,                             // Head wasnt found in image.
+    FLPYERR_WRITE_ERROR              = 0x04,                             // Write error, ie. permissions, disk full or hardware error (SD card removed).
+    FLPYERR_DISK_ERROR               = 0x05,                             // Generic error for any disk retrieval error, ie. cant open, cant read etc.
+};
+
 // Types of disks recognised by the Sharp MZ hardware.
 // These definitions are coded into the WD1773 controller so any changes in this source file must be reflected in the controller VHDL.
 enum DISKTYPES {
@@ -392,7 +408,7 @@ enum DISKTYPES {
     DISKTYPE_350K                    = 0x05,                             // 35T DS 10S 512B 350K
     DISKTYPE_280K                    = 0x06,                             // 35T DS 16S 256B 280K
     DISKTYPE_400K                    = 0x07,                             // 40T 2H 10S 512B 400K
-    DISKTYPE_TBD4                    = 0x08,                             // 
+    DISKTYPE_1440K                   = 0x08,                             // 80T 2H 18S 512B 1440K
     DISKTYPE_TBD5                    = 0x09,                             // 
     DISKTYPE_TBD6                    = 0x0A,                             // 
     DISKTYPE_TBD7                    = 0x0B,                             // 
@@ -727,7 +743,7 @@ const t_floppyDef FLOPPY_DEFINITIONS[16]= { { .tracks = 40,     .heads = 2,     
                                             { .tracks = 35,     .heads = 2,       .sectors = 10,     .sectorSize = 512,  .rpm = 300 },   // 5  35T DS 10S 512B 350K 
                                             { .tracks = 35,     .heads = 2,       .sectors = 16,     .sectorSize = 256,  .rpm = 300 },   // 6  35T DS 16S 256B 280K 
                                             { .tracks = 40,     .heads = 2,       .sectors = 10,     .sectorSize = 512,  .rpm = 300 },   // 7  40T 2H 10S 512B 400K 
-                                            { .tracks = 40,     .heads = 2,       .sectors = 16,     .sectorSize = 256,  .rpm = 300 },   // 8   
+                                            { .tracks = 80,     .heads = 2,       .sectors = 18,     .sectorSize = 512,  .rpm = 300 },   // 8  80T 2H 18S 512B 1440K 
                                             { .tracks = 40,     .heads = 2,       .sectors = 16,     .sectorSize = 256,  .rpm = 300 },   // 9   
                                             { .tracks = 40,     .heads = 2,       .sectors = 16,     .sectorSize = 256,  .rpm = 300 },   // 10  
                                             { .tracks = 40,     .heads = 2,       .sectors = 16,     .sectorSize = 256,  .rpm = 300 },   // 11  
@@ -824,6 +840,7 @@ const char *SHARPMZ_FDD_DISK_TYPE[]      = { "40T DS 16S 256B 320K",
                                              "35T DS 10S 512B 350K",
                                              "35T DS 16S 256B 280K",
                                              "40T DS 10S 512B 400K",
+                                             "80T DS 18S 512B 1440K",
                                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 const char *SHARPMZ_FDD_IMAGE_POLARITY[] = { "Normal", "Inverted" };
 const char *SHARPMZ_FDD_UPDATE_MODE[]    = { "Read/Write", "Read Only" };
@@ -1017,7 +1034,7 @@ void       EMZNextMountDrive0(enum ACTIONMODE);
 void       EMZNextMountDrive1(enum ACTIONMODE);
 void       EMZNextMountDrive2(enum ACTIONMODE);
 void       EMZNextMountDrive3(enum ACTIONMODE);
-short      EMZProcessFDDRequest(uint8_t, uint8_t, uint8_t, uint8_t);
+enum FLOPPYERRORCODES  EMZProcessFDDRequest(uint8_t, uint8_t, uint8_t, uint8_t, uint16_t *, uint16_t *);
 short      EMZCheckFDDImage(char *);
 short      EMZSetFDDImageParams(char *, uint8_t, enum IMAGETYPES);
 
