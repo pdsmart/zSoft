@@ -88,7 +88,7 @@
 #define MZ_EMU_RAM_ADDR              0x120000                            // Sharp MZ Series Emulation RAM address.
 #define MZ_EMU_CGROM_ADDR            0x220000                            // VideoController CGROM address.
 #define MZ_EMU_USER_ROM_ADDR         0x12E800                            // Sharp MZ Series Emulation USER ROM address.
-#define MZ_EMU_FDC_ROM_ADDR          0x12F000                            // Sharp MZ Series Emulation FDC ROM address.
+#define MZ_EMU_FDC_ROM_ADDR          0x103000                            // Sharp MZ Series Emulation FDC ROM address. A 16K BRAM banks is used, upper part is for FDC.
 #define MZ_EMU_TEXT_VRAM_ADDR        0x21D000                            // Base address for the text based VRAM.
 #define MZ_EMU_ATTR_VRAM_ADDR        0x21D800                            // Base address for the text based attributes VRAM.
 #define MZ_EMU_RED_FB_ADDR           0x240000                            // Base address for the pixel based frame buffer - Red.
@@ -262,7 +262,7 @@
 #define MZ_EMU_KEYB_FIFO_SIZE        0x40                                // Size of the key insertion FIFO.
 #define MZ_EMU_KEYB_FIFO_ADDR        0x0100                              // Key insertion FIFO.
 #define MZ_EMU_KEYB_MAP_ADDR         0x0800                              // Address of the emulation keyboard mapping table.
-#define MZ_EMU_KEYB_IOP_MAP_ADDR     0x0900                              // Address offset to the scan code:key map array for the I/O processor keys.
+#define MZ_EMU_KEYB_IOP_MAP_ADDR     0x0C00                              // Address offset to the scan code:key map array for the I/O processor keys.
 #define MZ_EMU_KEYB_DISABLE_EMU      0x01                                // Disable keyboard scan codes being sent to the emulation.
 #define MZ_EMU_KEYB_ENABLE_INTR      0x02                                // Enable interrupt on every key press.
 #define MZ_EMU_KEYB_SEND_KEY_EVENTS  0x04                                // Send keyboard up and down interrupt events.
@@ -409,7 +409,7 @@ enum DISKTYPES {
     DISKTYPE_280K                    = 0x06,                             // 35T DS 16S 256B 280K
     DISKTYPE_400K                    = 0x07,                             // 40T 2H 10S 512B 400K
     DISKTYPE_1440K                   = 0x08,                             // 80T 2H 18S 512B 1440K
-    DISKTYPE_TBD5                    = 0x09,                             // 
+    DISKTYPE_160K                    = 0x09,                             // 40T 2H 16S 128B 160K
     DISKTYPE_TBD6                    = 0x0A,                             // 
     DISKTYPE_TBD7                    = 0x0B,                             // 
     DISKTYPE_TBD8                    = 0x0C,                             // 
@@ -744,7 +744,7 @@ const t_floppyDef FLOPPY_DEFINITIONS[16]= { { .tracks = 40,     .heads = 2,     
                                             { .tracks = 35,     .heads = 2,       .sectors = 16,     .sectorSize = 256,  .rpm = 300 },   // 6  35T DS 16S 256B 280K 
                                             { .tracks = 40,     .heads = 2,       .sectors = 10,     .sectorSize = 512,  .rpm = 300 },   // 7  40T 2H 10S 512B 400K 
                                             { .tracks = 80,     .heads = 2,       .sectors = 18,     .sectorSize = 512,  .rpm = 300 },   // 8  80T 2H 18S 512B 1440K 
-                                            { .tracks = 40,     .heads = 2,       .sectors = 16,     .sectorSize = 256,  .rpm = 300 },   // 9   
+                                            { .tracks = 40,     .heads = 2,       .sectors = 16,     .sectorSize = 128,  .rpm = 300 },   // 9  40T 2H 16S 128B 160K
                                             { .tracks = 40,     .heads = 2,       .sectors = 16,     .sectorSize = 256,  .rpm = 300 },   // 10  
                                             { .tracks = 40,     .heads = 2,       .sectors = 16,     .sectorSize = 256,  .rpm = 300 },   // 11  
                                             { .tracks = 40,     .heads = 2,       .sectors = 16,     .sectorSize = 256,  .rpm = 300 },   // 12  
@@ -841,7 +841,8 @@ const char *SHARPMZ_FDD_DISK_TYPE[]      = { "40T DS 16S 256B 320K",
                                              "35T DS 16S 256B 280K",
                                              "40T DS 10S 512B 400K",
                                              "80T DS 18S 512B 1440K",
-                                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+                                             "40T DS 16S 128B 160K",
+                                             NULL, NULL, NULL, NULL, NULL, NULL };
 const char *SHARPMZ_FDD_IMAGE_POLARITY[] = { "Normal", "Inverted" };
 const char *SHARPMZ_FDD_UPDATE_MODE[]    = { "Read/Write", "Read Only" };
 const char *SHARPMZ_FDD_FILE_FILTERS[]   = { "*.DSK", "*.D88", "*.IMG", "*.*" };

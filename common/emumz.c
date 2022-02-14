@@ -114,40 +114,42 @@ const static t_emuControl          emuControlDefault = {
                                               }
                                           };
 
-const static t_emuConfig           emuConfigDefault = {
+// Default configuration values for each emulation. As the number of target hosts on which the tranZPUter and emuMZ increase this will increase. This initial aim is that one binary fits all targets, ie. upload this software into an MZ-700 hosted
+// tranZPUter or MZ-2000 hosted tranZPUter it will detect the hardware and adapt. This is fine so long as there is free resources in the MK64FX512's 512KB ROM and FPGA but may need to be revisited in future, ie. be stored on disk.
+const static t_emuConfig           emuConfigDefault_MZ700 = {
                                               .machineModel = MZ80K, .machineGroup = GROUP_MZ80K, .machineChanged = 1,
                                               .params[MZ80K] = {
                                                   .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
                                                   .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
                                                   .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ80K",
-                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
-                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
-                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
-                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
-                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 0,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\sp1002.rom",        .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz80k_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
-                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_80K_km.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000080 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_80K_km.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
                                                   .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00001000 },
-                                                  .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00000100 },
+                                                  .romFDC       = { .romFileName = "0:\\TZFS\\mz80kfdif.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00000400 },
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ80C] = {
                                                   .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_640x480, 
                                                   .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
                                                   .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ80C",
-                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
-                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
-                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
-                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
-                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 0,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\sp1002.rom",        .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz80c_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
-                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_80C_km.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000080 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_80C_km.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
                                                   .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00001000 },
-                                                  .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00000100 },
+                                                  .romFDC       = { .romFileName = "0:\\TZFS\\mz80kfdif.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00000400 },
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ1200] = {
@@ -162,9 +164,9 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\sa1510.rom",        .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz80c_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
-                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_1200_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000080 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_1200_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
                                                   .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
-                                                  .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00000100 },
+                                                  .romFDC       = { .romFileName = "0:\\TZFS\\mz80a_fdc.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00000800 },
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ80A] = {
@@ -179,9 +181,9 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\sa1510.rom",        .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "0:\\TZFS\\sa1510-8.rom",      .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz80a_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
-                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_80A_km.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000080 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_80A_km.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
                                                   .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_USER_ROM_ADDR,                      .loadSize = 0x00000800 },
-                                                  .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00000100 },
+                                                  .romFDC       = { .romFileName = "0:\\TZFS\\mz80a_fdc.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00000800 },
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ700] = {
@@ -196,9 +198,9 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\1z-013a.rom",       .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "0:\\TZFS\\1z-013a-8.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz700_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00001000 },
-                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_700_km.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000080 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_700_km.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
                                                   .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00001000 },
-                                                  .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00000100 },
+                                                  .romFDC       = { .romFileName = "0:\\TZFS\\mz-1e05.rom",       .romEnabled = 1, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00001000 },
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               },
                                               .params[MZ800] = {
@@ -213,7 +215,7 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\mz800_ipl.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00004000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz800_cgrom.rom",   .romEnabled = 0, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00001000 },
-                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_800_km.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000080 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_800_km.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
                                                   .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00001000 },
                                                   .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
@@ -230,7 +232,7 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\mz1500_ipl.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00004000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz1500_cgrom.rom",  .romEnabled = 0, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00001000 },
-                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_1500_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000080 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_1500_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
                                                   .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00001000 },
                                                   .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
@@ -247,7 +249,7 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\mz80b_ipl.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00000800 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00000800 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz80b_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
-                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_80B_km.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000080 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_80B_km.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
                                                   .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
                                                   .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
@@ -264,7 +266,7 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\mz2000_ipl.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz2000_cgrom.rom",  .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
-                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_2000_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000080 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_2000_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
                                                   .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
                                                   .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
@@ -281,7 +283,7 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\mz2200-ipl.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz2200_cgrom.rom",  .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
-                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_2200_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000080 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_2200_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
                                                   .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
                                                   .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
@@ -298,12 +300,205 @@ const static t_emuConfig           emuConfigDefault = {
                                                   .romMonitor40 = { .romFileName = "0:\\TZFS\\mz2500-ipl.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
                                                   .romCG        = { .romFileName = "0:\\TZFS\\mz2500_cgrom.rom",  .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
-                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_2500_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000080 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\700_2500_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
                                                   .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
                                                   .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
                                                   .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
                                               }
                                           };
+
+// Default configuration for an MZ-2000 host.
+const static t_emuConfig           emuConfigDefault_MZ2000 = {
+                                              .machineModel = MZ80K, .machineGroup = GROUP_MZ80K, .machineChanged = 1,
+                                              .params[MZ80K] = {
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_INT, 
+                                                  .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ80K",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 0,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
+                                                  .romMonitor40 = { .romFileName = "0:\\TZFS\\sp1002.rom",        .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romCG        = { .romFileName = "0:\\TZFS\\mz80k_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\2000_80K_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
+                                                  .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00001000 },
+                                                  .romFDC       = { .romFileName = "0:\\TZFS\\mz80kfdif.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00000400 },
+                                                  .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
+                                              },
+                                              .params[MZ80C] = {
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_INT, 
+                                                  .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ80C",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 0,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_160K,    .polarity = POLARITY_NORMAL,       .updateMode = UPDATEMODE_READWRITE },
+                                                  .romMonitor40 = { .romFileName = "0:\\TZFS\\sp1002.rom",        .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romCG        = { .romFileName = "0:\\TZFS\\mz80c_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\2000_80C_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
+                                                  .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00001000 },
+                                                  .romFDC       = { .romFileName = "0:\\TZFS\\mz80kfdif.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00000400 },
+                                                  .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
+                                              },
+                                              .params[MZ1200] = {
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_INT, 
+                                                  .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ1200",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .romMonitor40 = { .romFileName = "0:\\TZFS\\sa1510.rom",        .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romCG        = { .romFileName = "0:\\TZFS\\mz80c_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\2000_1200_km.rom",  .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
+                                                  .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
+                                                  .romFDC       = { .romFileName = "0:\\TZFS\\mz80a_fdc.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00000800 },
+                                                  .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
+                                              },
+                                              .params[MZ80A] = {
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_INT, 
+                                                  .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ80A",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .romMonitor40 = { .romFileName = "0:\\TZFS\\sa1510.rom",        .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romMonitor80 = { .romFileName = "0:\\TZFS\\sa1510-8.rom",      .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romCG        = { .romFileName = "0:\\TZFS\\mz80a_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\2000_80A_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
+                                                  .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_USER_ROM_ADDR,                      .loadSize = 0x00000800 },
+                                                  .romFDC       = { .romFileName = "0:\\TZFS\\mz80a_fdc.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00000800 },
+                                                  .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
+                                              },
+                                              .params[MZ700] = {
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_COLOUR,       .displayOption = 0,                   .displayOutput = VMMODE_VGA_INT, 
+                                                  .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ700",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .romMonitor40 = { .romFileName = "0:\\TZFS\\1z-013a.rom",       .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romMonitor80 = { .romFileName = "0:\\TZFS\\1z-013a-8.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romCG        = { .romFileName = "0:\\TZFS\\mz700_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00001000 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\2000_700_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
+                                                  .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00001000 },
+                                                  .romFDC       = { .romFileName = "0:\\TZFS\\mz-1e05.rom",       .romEnabled = 1, .loadAddr = MZ_EMU_FDC_ROM_ADDR,                       .loadSize = 0x00001000 },
+                                                  .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
+                                              },
+                                              .params[MZ800] = {
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_COLOUR,       .displayOption = 0,                   .displayOutput = VMMODE_VGA_INT, 
+                                                  .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ800",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .romMonitor40 = { .romFileName = "0:\\TZFS\\mz800_ipl.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00004000 },
+                                                  .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romCG        = { .romFileName = "0:\\TZFS\\mz800_cgrom.rom",   .romEnabled = 0, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00001000 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\2000_800_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
+                                                  .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00001000 },
+                                                  .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
+                                                  .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
+                                              },
+                                              .params[MZ1500] = {
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_COLOUR,       .displayOption = 0,                   .displayOutput = VMMODE_VGA_INT, 
+                                                  .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ1500",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .romMonitor40 = { .romFileName = "0:\\TZFS\\mz1500_ipl.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00004000 },
+                                                  .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romCG        = { .romFileName = "0:\\TZFS\\mz1500_cgrom.rom",  .romEnabled = 0, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00001000 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\2000_1500_km.rom",  .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
+                                                  .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00001000 },
+                                                  .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
+                                                  .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
+                                              },
+                                              .params[MZ80B] = {
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 2,                   .displayOutput = VMMODE_VGA_INT, 
+                                                  .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ80B",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .romMonitor40 = { .romFileName = "0:\\TZFS\\mz80b_ipl.rom",     .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00000800 },
+                                                  .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00000800 },
+                                                  .romCG        = { .romFileName = "0:\\TZFS\\mz80b_cgrom.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\2000_80B_km.rom",   .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
+                                                  .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
+                                                  .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
+                                                  .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
+                                              },
+                                              .params[MZ2000] = {
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 4,                   .displayOutput = VMMODE_VGA_INT, 
+                                                  .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ2000",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .romMonitor40 = { .romFileName = "0:\\TZFS\\mz2000_ipl.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romCG        = { .romFileName = "0:\\TZFS\\mz2000_cgrom.rom",  .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\2000_2000_km.rom",  .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
+                                                  .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
+                                                  .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
+                                                  .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
+                                              },
+                                              .params[MZ2200] = {
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_MONO,         .displayOption = 0,                   .displayOutput = VMMODE_VGA_INT, 
+                                                  .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ2200",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .romMonitor40 = { .romFileName = "0:\\TZFS\\mz2200-ipl.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romCG        = { .romFileName = "0:\\TZFS\\mz2200_cgrom.rom",  .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\2000_2200_km.rom",  .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
+                                                  .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
+                                                  .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
+                                                  .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
+                                              },
+                                              .params[MZ2500] = {
+                                                  .cpuSpeed = 0 ,        .memSize = 1,         .audioSource = 0,  .audioHardware = 1,    .audioVolume = 1,     .audioMute = 0,     .audioMix = 0,          .displayType = MZ_EMU_DISPLAY_COLOUR,       .displayOption = 0,                   .displayOutput = VMMODE_VGA_INT, 
+                                                  .vramMode = 0,         .vramWaitMode = 0,    .gramMode = 0,     .pcgMode = 0,          .aspectRatio = 0,     .scanDoublerFX = 0, .loadDirectFilter = 0,
+                                                  .mz800Mode = 0,        .mz800Printer = 0,    .mz800TapeIn = 0,  .queueTapeFilter = 0,  .tapeButtons = 3,    .fastTapeLoad = 2,  .tapeSavePath = "0:\\MZF\\MZ2500",
+                                                  .cmtAsciiMapping = 3,  .cmtMode = 0,         .fddEnabled = 1,   .autoStart = 0,
+                                                  .fdd[0]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[1]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[2]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .fdd[3]       = { .fileName = "",            .imgType = IMAGETYPE_IMG,    .mounted = 0,    .diskType = DISKTYPE_320K,    .polarity = POLARITY_INVERTED,     .updateMode = UPDATEMODE_READWRITE },
+                                                  .romMonitor40 = { .romFileName = "0:\\TZFS\\mz2500-ipl.rom",    .romEnabled = 1, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romMonitor80 = { .romFileName = "",                            .romEnabled = 0, .loadAddr = MZ_EMU_ROM_ADDR,                           .loadSize = 0x00001000 },
+                                                  .romCG        = { .romFileName = "0:\\TZFS\\mz2500_cgrom.rom",  .romEnabled = 1, .loadAddr = MZ_EMU_CGROM_ADDR,                         .loadSize = 0x00000800 },
+                                                  .romKeyMap    = { .romFileName = "0:\\TZFS\\2000_2500_km.rom",  .romEnabled = 1, .loadAddr = MZ_EMU_REG_KEYB_ADDR+MZ_EMU_KEYB_MAP_ADDR, .loadSize = 0x00000200 },
+                                                  .romUser      = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
+                                                  .romFDC       = { .romFileName = "",                            .romEnabled = 0, .loadAddr = 0x000000,                                  .loadSize = 0x00000100 },
+                                                  .loadApp      = { .appFileName = "",                            .appEnabled = 0, .preKeyInsertion = {},                                 .postKeyInsertion = {} }
+                                              }
+                                          };
+
 const static t_scanMap             mapToScanCode[] = { //          MZ-80K                          MZ-80C                          MZ-1200                         MZ-80A                          MZ-700                          MZ-1500                         MZ-800                          MZ-80B                          MZ-2000                         MZ-2200                         MZ-2500
                                                        { 'A',  { { 0xff, 0xff, KEY_NOCTRL_BIT }, { 0xff, 0xff, KEY_NOCTRL_BIT }, {    1, 0xf7, KEY_NOCTRL_BIT }, {    1, 0xf7, KEY_NOCTRL_BIT }, {    4, 0x7f, KEY_NOCTRL_BIT }, {    4, 0x7f, KEY_NOCTRL_BIT }, {    4, 0x7f, KEY_NOCTRL_BIT }, { 0xff, 0xff, KEY_NOCTRL_BIT }, { 0xff, 0xff, KEY_NOCTRL_BIT }, { 0xff, 0xff, KEY_NOCTRL_BIT }, { 0xff, 0xff, KEY_NOCTRL_BIT } } }, 
                                                        { 'B',  { { 0xff, 0xff, KEY_NOCTRL_BIT }, { 0xff, 0xff, KEY_NOCTRL_BIT }, {    3, 0xfe, KEY_NOCTRL_BIT }, {    3, 0xfe, KEY_NOCTRL_BIT }, {    4, 0xbf, KEY_NOCTRL_BIT }, {    4, 0xbf, KEY_NOCTRL_BIT }, {    4, 0xbf, KEY_NOCTRL_BIT }, { 0xff, 0xff, KEY_NOCTRL_BIT }, { 0xff, 0xff, KEY_NOCTRL_BIT }, { 0xff, 0xff, KEY_NOCTRL_BIT }, { 0xff, 0xff, KEY_NOCTRL_BIT } } },
@@ -2335,7 +2530,7 @@ printf("ext=%s, filterExt=%s, filter=%s, file=%s\n", ext, filterExt, filter, fno
 //FIX ME: Doesnt process wildcard filename           
 // ext=.dsk, filterExt=.*, filter=*.*, file=z80bcpm.dsk
             //   Is a File                Is not a Wildcard      Filter doesnt match the extension
-            if(!(fno.fattrib & AM_DIR) && !(filterExt != NULL && strcmp(filterExt, "\*") == 0) && (ext == NULL || strcasecmp(++ext, (filterExt == NULL ? filter : ++filterExt)) != 0))
+            if(!(fno.fattrib & AM_DIR) && !(filterExt != NULL && strcmp(filterExt, "\.\*") == 0) && (ext == NULL || strcasecmp(++ext, (filterExt == NULL ? filter : ++filterExt)) != 0))
                 continue;
            
             // Filter out hidden directories.
@@ -3682,7 +3877,16 @@ void EMZMainMenu(void)
 
     EMZSetupMenu(EMZGetMachineTitle(), "Main Menu", FONT_7X8);
     EMZAddToMenu(row++,  0, "Tape Storage",               'T',  MENUTYPE_SUBMENU,                   MENUSTATE_ACTIVE, EMZTapeStorageMenu,     MENUCB_REFRESH,          NULL,   NULL );
-    EMZAddToMenu(row++,  0, "Floppy Storage",             'F',  MENUTYPE_SUBMENU,                   MENUSTATE_ACTIVE, EMZFloppyStorageMenu,   MENUCB_REFRESH,          NULL,   NULL );
+
+    // The MZ80K/MZ80C Floppy Disk drives use a different controller to the rest of the models, so not yet implemented.
+    if(emuConfig.machineModel == MZ80K || emuConfig.machineModel == MZ80C)
+    {
+        EMZAddToMenu(row++,  0, "Floppy Storage",             'F',  MENUTYPE_SUBMENU,                   MENUSTATE_GREYED, EMZFloppyStorageMenu,   MENUCB_REFRESH,          NULL,   NULL );
+    } else
+    {
+        EMZAddToMenu(row++,  0, "Floppy Storage",             'F',  MENUTYPE_SUBMENU,                   MENUSTATE_ACTIVE, EMZFloppyStorageMenu,   MENUCB_REFRESH,          NULL,   NULL );
+    }
+
     EMZAddToMenu(row++,  0, "Machine",                    'M',  MENUTYPE_SUBMENU,                   MENUSTATE_ACTIVE, EMZMachineMenu,         MENUCB_REFRESH,          NULL,   NULL );
     EMZAddToMenu(row++,  0, "Display",                    'D',  MENUTYPE_SUBMENU,                   MENUSTATE_ACTIVE, EMZDisplayMenu,         MENUCB_REFRESH,          NULL,   NULL );
     EMZAddToMenu(row++,  0, "Audio",                      'A',  MENUTYPE_SUBMENU,                   MENUSTATE_ACTIVE, EMZAudioMenu,           MENUCB_REFRESH,          NULL,   NULL );
@@ -4467,7 +4671,7 @@ void EMZResetConfig(enum ACTIONMODE mode)
     if(mode == ACTION_DEFAULT || mode == ACTION_SELECT)
     {
         // Restore the reset parameters into the working set.
-        memcpy(emuConfig.params, emuConfigDefault.params, sizeof(emuConfig.params));
+        memcpy(emuConfig.params, emuControl.hostMachine == HW_MZ2000 ? emuConfigDefault_MZ2000.params : emuConfigDefault_MZ700.params, sizeof(emuConfig.params));
         for(uint16_t idx=0; idx < MAX_MZMACHINES; idx++) { for(uint16_t idx2=0; idx2 < MAX_KEY_INS_BUFFER; idx2++) { if(emuConfig.params[idx].loadApp.preKeyInsertion[idx2].i  == 0) { emuConfig.params[idx].loadApp.preKeyInsertion[idx2].i  = 0xffffffff; } } }
         for(uint16_t idx=0; idx < MAX_MZMACHINES; idx++) { for(uint16_t idx2=0; idx2 < MAX_KEY_INS_BUFFER; idx2++) { if(emuConfig.params[idx].loadApp.postKeyInsertion[idx2].i == 0) { emuConfig.params[idx].loadApp.postKeyInsertion[idx2].i = 0xffffffff; } } }
 
@@ -4844,17 +5048,17 @@ short EMZSetFDDImageParams(char *fileName, uint8_t driveNo, enum IMAGETYPES imgT
     // Check to see if this is a valid EDSK image.
     if(imgType == IMAGETYPE_EDSK)
     {
-        result = f_read(&fileDesc, tmpBuf, 34, &actualReadSize);
-        if(result)
-        {
-            debugf("Cannot read image description block:%d,%s", fileName);
-            f_close(&fileDesc);
-            return(-1);
-        }
+     //   result = f_read(&fileDesc, tmpBuf, 34, &actualReadSize);
+     //   if(result)
+     //   {
+     //       debugf("Cannot read image description block:%d,%s", fileName);
+     //       f_close(&fileDesc);
+     //       return(-1);
+     //   }
 
         result = f_lseek(&fileDesc, 0x30);
         if(!result)
-            result = f_read(&fileDesc, &tmpBuf, 4, &actualReadSize);
+            result = f_read(&fileDesc, &tmpBuf, 8, &actualReadSize);
         if(result)
         {
             debugf("Failed to obtain Track/Side info:%s", fileName);
@@ -4870,8 +5074,10 @@ short EMZSetFDDImageParams(char *fileName, uint8_t driveNo, enum IMAGETYPES imgT
         // The offset is built up by the track entries x 100H added together. The size of tracks can vary hence having to calculate in a loop.
         for(idx = 0; idx < (1 * noSides); idx++)
         {
-            result = f_read(&fileDesc, &tmpBuf, 1, &actualReadSize);
-            if(actualReadSize != 1)
+            result = f_lseek(&fileDesc, offset + 0x14);
+            if(!result)
+                result = f_read(&fileDesc, &tmpBuf[10], 2, &actualReadSize);
+            if(actualReadSize != 2)
             {
                 debugf("Failed to traverse track structure:%s", fileName);
                 f_close(&fileDesc);
@@ -4884,11 +5090,15 @@ short EMZSetFDDImageParams(char *fileName, uint8_t driveNo, enum IMAGETYPES imgT
                 return(-1);
             }
 
+            // Get sector size.
+            sectorSize = tmpBuf[10] == 0x00 ? 128 : tmpBuf[10] == 0x01 ? 256 : tmpBuf[10] == 0x02 ? 512 : 1024;
+printf("Sector Size:%d,%02x:%02x\n", sectorSize, tmpBuf[10], tmpBuf[4+idx]);
             // Bug on HD images, track reports 0x25 sectors but this is only applicable for the first track.
-            if(idx > 0 && tmpBuf[0] == 0x25) tmpBuf[0] = 0x11;
+            if(idx > 0 && tmpBuf[4+idx] == 0x25) tmpBuf[4+idx] = 0x11;
 
             // Position 0 = number of tracks x sides -> Should be constant but it isnt!
-            offset += tmpBuf[0] * 0x100;
+            offset += tmpBuf[4+idx] * 0x100; //sectorSize;
+printf("Loop Offset:%08lx\n", offset);
         }
 printf("Offset:%08lx\n", offset);
         // Go to the first sector information list on track 1 to retrieve sector size.
@@ -4959,6 +5169,7 @@ enum FLOPPYERRORCODES EMZProcessFDDRequest(uint8_t ctrlReg, uint8_t trackNo, uin
     static uint8_t    opened;
     static uint8_t    dirty;
     static uint8_t    lastTrack[MZ_EMU_FDD_MAX_DISKS]   = {0xff, 0xff, 0xff, 0xff};
+    static uint8_t    lastSide[MZ_EMU_FDD_MAX_DISKS]    = {0xff, 0xff, 0xff, 0xff};
     static uint32_t   trackOffset[MZ_EMU_FDD_MAX_DISKS] = {0, 0, 0, 0};
     static uint32_t   trackLen[MZ_EMU_FDD_MAX_DISKS]    = {0, 0, 0, 0};
     static uint8_t    sectorCount[MZ_EMU_FDD_MAX_DISKS];
@@ -5000,8 +5211,9 @@ printf("Opening disk:%s,%d\n", emuConfig.params[emuConfig.machineModel].fdd[driv
             // Locate sector according to image type.
             if(emuConfig.params[emuConfig.machineModel].fdd[driveNo].imgType == IMAGETYPE_EDSK)
             {
-                // If track has changed (or first call as lastTrack = 255), calculate the track offset position.
-                if(trackNo != lastTrack[driveNo])
+                // If track or side has changed (or first call as lastTrack = 255), calculate the track offset position.
+                // This is necessary as the track length can vary from track to track, side to side.
+                if(trackNo != lastTrack[driveNo] || side != lastSide[driveNo])
                 {
                     // Seek to the track information block, get initial sector count to calculate the track length, then back to the start to iterate tracks.
                     result = f_lseek(&fileDesc[driveNo], 0x34);
@@ -5014,7 +5226,9 @@ printf("Opening disk:%s,%d\n", emuConfig.params[emuConfig.machineModel].fdd[driv
                     }
 
                     // Go to track and retrieve the sector information.
-                    for(idx = 0; idx == 0 || idx < (trackNo * noSides)+1; idx++)
+                    trackLen[driveNo] = 0x0100;
+                    trackOffset[driveNo] = 0x00000000;
+                    for(idx = 0; idx == 0 || idx <= (trackNo * noSides)+side; idx++)
                     {
                         result = f_read(&fileDesc[driveNo], &sectorBuffer, 1, &actualReadSize);
                         if(actualReadSize != 1)
@@ -5022,23 +5236,21 @@ printf("Opening disk:%s,%d\n", emuConfig.params[emuConfig.machineModel].fdd[driv
                             debugf("Failed to traverse track structure:%d", trackNo);
                             return(FLPYERR_TRACK_NOT_FOUND);
                         }
-                        if(sectorBuffer[0] == 0x00)
-                        {
-                            debugf("Track doesnt exist (%d), bad image:%d", idx/noSides, trackNo);
-                            return(FLPYERR_TRACK_NOT_FOUND);
-                        }
 
                         // Bug on HD images, track reports 0x25 sectors but this is only applicable for the first track.
                         if(idx > 0 && sectorBuffer[0] == 0x25) sectorBuffer[0] = 0x11;
 
-                        if(idx == 0)
-                        {
-                            // Disk Information Block size.
-                            trackOffset[driveNo] = 0x100;
-                        } else
-                        {
-                            trackOffset[driveNo] += sectorBuffer[0] * 0x100;
-                        }
+                    //    if(idx == 0)
+                    //    {
+                    //        // Disk Information Block size.
+                    //        trackOffset[driveNo] = 0x100;
+                    //    } else
+                    //    {
+                    //        trackOffset[driveNo] += sectorBuffer[0] * 0x100;
+                   //     }
+                        trackOffset[driveNo] += trackLen[driveNo];
+                        trackLen[driveNo] = (uint32_t)sectorBuffer[0] * 0x100;
+//printf("idx=%d,%08lx:%02x:%08lx,\n", idx,trackOffset[driveNo], sectorBuffer[0], trackLen[driveNo]);
                     }
                     // Get next track length for Side 1 offset addition.
                //     result = f_read(&fileDesc[driveNo], &sectorBuffer, 1, &actualReadSize);
@@ -5047,7 +5259,14 @@ printf("Opening disk:%s,%d\n", emuConfig.params[emuConfig.machineModel].fdd[driv
                //         debugf("Failed to seek to start of TIB:%d, sector:%d, drive:%d", trackNo, sectorNo, driveNo);
                //         return(FLPYERR_TRACK_NOT_FOUND);
                //     }
-                    trackLen[driveNo] = (uint32_t)sectorBuffer[0] * 0x100;
+               //     trackLen[driveNo] = (uint32_t)sectorBuffer[0] * 0x100;
+                    // Check to see if the track exists, some EDSK files have missing tracks and a request for one is an error.
+                    //
+                    if(sectorBuffer[0] == 0x00)
+                    {
+                        debugf("Track doesnt exist (%d,%d), bad image:%s", side, trackNo, emuConfig.params[emuConfig.machineModel].fdd[driveNo].fileName);
+                        return(FLPYERR_TRACK_NOT_FOUND);
+                    }
                     uint8_t sectorCountFromTIB = sectorBuffer[0];
 
                     // Read the sector count for this track,
@@ -5066,6 +5285,10 @@ printf("trackLen=%08lx, trackOffset=%08lx, sectorCount=%d, %02x,%02x\n", trackLe
                     thisSectorSize = sectorBuffer[0] == 0x00 ? 128 : sectorBuffer[0] == 0x01 ? 256 : sectorBuffer[0] == 0x02 ? 512 : 1024;
 printf("%02x,%02x trackOffset:%08lx, side:%d, thisSectorSize:%d\n", sectorBuffer[0], sectorBuffer[1], trackOffset[driveNo], side, thisSectorSize);
 printf("trackLen:%08lx\n", trackLen[driveNo]);
+
+                    // Store track and side so this section is skipped if we remain on a track and side.
+                    lastTrack[driveNo] = trackNo;
+                    lastSide[driveNo] = side;
                 }
               
            //     // Check sector requested against sector available, error if request is greater.
@@ -5077,15 +5300,15 @@ printf("trackLen:%08lx\n", trackLen[driveNo]);
            //     }
 
                 // Traverse the sector list to find the required sector.
-                sectorOffset = trackOffset[driveNo] + (side ? trackLen[driveNo] : 0);
+                sectorOffset = trackOffset[driveNo]; // + (side ? trackLen[driveNo] : 0);
                 uint32_t offsetLimit = sectorOffset + trackLen[driveNo];
                 
                 // Seek to the Sector Information List for this track.
-                result = f_lseek(&fileDesc[driveNo], trackOffset[driveNo] + (side ? trackLen[driveNo] : 0) + 0x18);
+                result = f_lseek(&fileDesc[driveNo], sectorOffset + 0x18); //trackOffset[driveNo] + (side ? trackLen[driveNo] : 0) + 0x18);
 
                 // Loop through the SIL looking for a sector/head match. Constrain the search to a maximum track length of data. This check is in place
                 // because of the loose usage by host software of the 'sector' number and sector count which differs in the TIB/SIB.
-                sectorOffset += 0x100;
+                //sectorOffset += 0x0100;
                 for(idx = 1; idx <= sectorCount[driveNo] && sectorOffset < offsetLimit; idx++)
                 {
                     if(!result) result = f_read(&fileDesc[driveNo], &sectorBuffer, 8, &actualReadSize);
@@ -5094,7 +5317,7 @@ printf("trackLen:%08lx\n", trackLen[driveNo]);
                         debugf("Failed to seek and read the Sector Information List for track:%d, sector:%d", trackNo, sectorNo);
                         return(FLPYERR_SECTOR_NOT_FOUND);
                     }
-printf("%d:%d:%d,%02x,%02x,%08lx\n", idx, sectorNo, side, sectorBuffer[2], sectorBuffer[1], sectorOffset);
+//printf("%d:%d:%d,%02x,%02x,%08lx\n", idx, sectorNo, side, sectorBuffer[2], sectorBuffer[1], sectorOffset);
 
                     thisSectorSize = sectorBuffer[3] == 0x00 ? 128 : sectorBuffer[3] == 0x01 ? 256 : sectorBuffer[3] == 0x02 ? 512 : 1024;
                     if(sectorBuffer[2] == sectorNo)
@@ -5110,8 +5333,9 @@ printf("%d:%d:%d,%02x,%02x,%08lx\n", idx, sectorNo, side, sectorBuffer[2], secto
                     }
                     sectorOffset += thisSectorSize;
                 }
+                // Add in the offset to track data, which is 256 bytes from the Track Information Block.
+                sectorOffset += 0x100;
 printf("Offset End:%08lx,idx=%d,sectorCount=%d\n", sectorOffset, idx, sectorCount[driveNo]+1);
-
                 // Not found?
                 if(idx == sectorCount[driveNo]+1 || sectorOffset >= offsetLimit)
                 {
@@ -5146,7 +5370,7 @@ printf("Offset End:%08lx,idx=%d,sectorCount=%d\n", sectorOffset, idx, sectorCoun
                         debugf("Failed to read the required sector, Track:%d, Sector:%d, offset:%04x", trackNo, sectorNo, sectorOffset);
                         return(FLPYERR_SECTOR_NOT_FOUND);
                     }
-                   
+printf("sectorOffset=%08lx, thisSectorSize=%08lx, actualReadSize=%08lx\n", sectorOffset,thisSectorSize,  actualReadSize);                 
                     // Write the sector to the sector cache memory.
                     writeZ80Array(MZ_EMU_FDD_CACHE_ADDR, sectorBuffer, thisSectorSize, FPGA);
                     break;
@@ -5501,8 +5725,13 @@ printf("KeyReg:"); for(uint16_t idx=MZ_EMU_KEYB_CTRL_REG; idx < MZ_EMU_KEYB_CTRL
                 if(cmdType == 3)
                     debugf("READADDR:%02x,%02x,%02x,%02x,%02x,%02x", emuInData[MZ_EMU_FDD_MAX_REGISTERS+16], emuInData[MZ_EMU_FDD_MAX_REGISTERS+17],emuInData[MZ_EMU_FDD_MAX_REGISTERS+18],emuInData[MZ_EMU_FDD_MAX_REGISTERS+19],emuInData[MZ_EMU_FDD_MAX_REGISTERS+20],emuInData[MZ_EMU_FDD_MAX_REGISTERS+21]);
 
+                for(uint8_t tst=0; tst < 32; tst ++)
+                {
+                    printf("%02x,", emuInData[MZ_EMU_FDD_MAX_REGISTERS+tst]);
+                }
                 // Clear the READY flag. This also clears the interrupt, basically an acknowledgement.
-                emuControl.fdd.ctrlReg &= ~FDD_CTRL_READY & 0x0f;
+                emuControl.fdd.ctrlReg &= ((~FDD_CTRL_READY) & 0x1f);
+printf("CTRLREG ENTER:%02x\n", emuControl.fdd.ctrlReg );
                 writeZ80Array(MZ_EMU_FDD_CTRL_ADDR+MZ_EMU_FDD_CTRL_REG, &emuControl.fdd.ctrlReg, 1, FPGA);
 
                 // Process the request if it requires servicing.
@@ -5513,7 +5742,14 @@ printf("KeyReg:"); for(uint16_t idx=MZ_EMU_KEYB_CTRL_REG; idx < MZ_EMU_KEYB_CTRL
 printf("Error Code:%d, Sector Size:%d, Rotational Speed:%d\n", floppyError, thisSectorSize, thisRotationalSpeed);
 
                 // Processing complete, set the READY flag along with current sector size, rotational speed and error code. 7:5 = error code, 4 = rotational speed, 3:1 = sector size code, 0 = Ready flag.
-                emuControl.fdd.ctrlReg |= (floppyError << 5 | thisRotationalSpeed == 360 ? 0x08 : 0x00 | ((uint8_t)((thisSectorSize&0xff00) >> 7) & 0x0E) | FDD_CTRL_READY);
+                if(floppyError != FLPYERR_NOERROR)
+                {
+                    emuControl.fdd.ctrlReg = (floppyError << 5 | FDD_CTRL_READY);
+                } else
+                {
+                    emuControl.fdd.ctrlReg = thisRotationalSpeed == 360 ? 0x10 : 0x00 | ((uint8_t)((thisSectorSize&0xff00) >> 7) & 0x0E) | FDD_CTRL_READY;
+                }
+printf("CTRLREG EXIT:%02x\n", emuControl.fdd.ctrlReg );
                 writeZ80Array(MZ_EMU_FDD_CTRL_ADDR+MZ_EMU_FDD_CTRL_REG, &emuControl.fdd.ctrlReg, 1, FPGA);
             }
         } else
@@ -5595,7 +5831,7 @@ uint8_t EMZInit(enum MACHINE_HW_TYPES hostMachine, uint8_t machineModel)
 
     // On initialisation, copy the default configuration into the working data structures and if an SD configuration is found, overwrite as necessary.
     memcpy(&emuControl, &emuControlDefault, sizeof(t_emuControl));
-    memcpy(&emuConfig,  &emuConfigDefault,  sizeof(t_emuConfig));
+    memcpy(&emuConfig,  hostMachine == HW_MZ2000 ? &emuConfigDefault_MZ2000 : &emuConfigDefault_MZ700,  sizeof(t_emuConfig));
     for(uint16_t idx=0; idx < MAX_MZMACHINES; idx++) { for(uint16_t idx2=0; idx2 < MAX_KEY_INS_BUFFER; idx2++) { if(emuConfig.params[idx].loadApp.preKeyInsertion[idx2].i  == 0) { emuConfig.params[idx].loadApp.preKeyInsertion[idx2].i  = 0xffffffff; } } }
     for(uint16_t idx=0; idx < MAX_MZMACHINES; idx++) { for(uint16_t idx2=0; idx2 < MAX_KEY_INS_BUFFER; idx2++) { if(emuConfig.params[idx].loadApp.postKeyInsertion[idx2].i == 0) { emuConfig.params[idx].loadApp.postKeyInsertion[idx2].i = 0xffffffff; } } }
 

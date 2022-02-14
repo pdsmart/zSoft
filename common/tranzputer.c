@@ -787,6 +787,7 @@ void resetZ80(uint8_t memoryMode)
 
     // On MZ-2000 hosts the RESET is controlled by a gate array so we cannot assert our output. In order to reset we must use the 8255 output to force the gate array to
     // reset as it controls many signal states as well as the system reset signal.
+    // UPDATED: CPLD updated to control the RESET line of the RESET switch thereby creating a true reset event. 8255 no longer used for reset.
     //
     if(z80Control.hostType == HW_MZ2000)
     {
@@ -3246,7 +3247,12 @@ void hardResetTranZPUter(void)
     // Locals.
     uint8_t  cpuConfig;
 printf("Hard Z80 Reset\n");
-    // Firstly, ascertain what CPU we are using, soft or hard. If the read value is illegal default to Z80.
+
+    // Firstly, a small delay to allow the underlying hardware to initialise.
+    //
+    delay(500);
+    
+    // Next, ascertain what CPU we are using, soft or hard. If the read value is illegal default to Z80.
     //
     cpuConfig =  readZ80IO(IO_TZ_CPUCFG, TRANZPUTER);
     if(cpuConfig == 0xff) cpuConfig = CPUMODE_IS_Z80;
