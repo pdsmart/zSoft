@@ -846,27 +846,32 @@ uint8_t reqZ80Bus(uint32_t timeout)
     // Is the Z80 currently being held? If it isnt, request access.
     if(z80Control.holdZ80 == 0)
     {
+        // Set BUSRQ low which sets the Z80 BUSRQ low.
+        pinLow(CTL_BUSRQ);
+printf("Wait for low\n");
         // Set BUSRQ low and wait for a BUSACK or for the timeout period. If no response in the timeout period then the tranZPUter board/CPLD has locked up.
-        do {
-            // Set BUSRQ low which sets the Z80 BUSRQ low.
-            pinLow(CTL_BUSRQ);
+//        do {
+//           // Wait 1ms or until BUSACK goes low.
+//           for(uint32_t timer=*ms; timer == *ms && pinGet(CTL_BUSACK););
 
-            // Wait 1ms or until BUSACK goes low.
-            for(uint32_t timer=*ms; timer == *ms && pinGet(CTL_BUSACK););
-
-            // If BUSACK is still high, bring it inactive so as to pulse it in next loop.
-            if(pinGet(CTL_BUSACK))
-                pinHigh(CTL_BUSRQ);
-        } while(((*ms - startTime) < timeout && pinGet(CTL_BUSACK)));
+            // If BUSACK is still high, bring it inactive and loop as Z80_BUSACK may have gone low under FPGA control.
+        //    if(pinGet(CTL_BUSACK))
+        //    {
+        //        pinHigh(CTL_BUSRQ);
+        //    }
+//       } 
+      while(((*ms - startTime) < timeout && pinGet(CTL_BUSACK)));
 
         // If we timed out, deassert BUSRQ and return error.
         //
         if((*ms - startTime) >= timeout)
         {
+printf("It is HIGH\n");
             pinHigh(CTL_BUSRQ);
             result = 1;
         } else
         {
+printf("It is low\n");
             // Setup the bus ready for transactions, default to read.
             setupSignalsForZ80Access(READ);
    
@@ -919,12 +924,12 @@ uint8_t reqTranZPUterBus(uint32_t timeout, enum TARGETS target)
     //
     uint8_t  result = 0;
 
-    // Now disable the mainboard by setting MBSEL low.
-    pinLow(CTL_MBSEL);
-
     // Requst the Z80 Bus to tri-state the Z80.
     if((result=reqZ80Bus(timeout)) == 0)
     {
+        // Now disable the mainboard by setting MBSEL low.
+        pinLow(CTL_MBSEL);
+
         // Store the mode.
         z80Control.ctrlMode = TRANZPUTER_ACCESS;
       
@@ -3250,7 +3255,7 @@ printf("Hard Z80 Reset\n");
 
     // Firstly, a small delay to allow the underlying hardware to initialise.
     //
-    delay(500);
+//    delay(1000);
     
     // Next, ascertain what CPU we are using, soft or hard. If the read value is illegal default to Z80.
     //
