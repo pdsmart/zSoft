@@ -848,7 +848,7 @@ uint8_t reqZ80Bus(uint32_t timeout)
     {
         // Set BUSRQ low which sets the Z80 BUSRQ low.
         pinLow(CTL_BUSRQ);
-printf("Wait for low\n");
+      
         // Set BUSRQ low and wait for a BUSACK or for the timeout period. If no response in the timeout period then the tranZPUter board/CPLD has locked up.
 //        do {
 //           // Wait 1ms or until BUSACK goes low.
@@ -860,18 +860,16 @@ printf("Wait for low\n");
         //        pinHigh(CTL_BUSRQ);
         //    }
 //       } 
-      while(((*ms - startTime) < timeout && pinGet(CTL_BUSACK)));
+        while(((*ms - startTime) < timeout && pinGet(CTL_BUSACK)));
 
         // If we timed out, deassert BUSRQ and return error.
         //
         if((*ms - startTime) >= timeout)
         {
-printf("It is HIGH\n");
             pinHigh(CTL_BUSRQ);
             result = 1;
         } else
         {
-printf("It is low\n");
             // Setup the bus ready for transactions, default to read.
             setupSignalsForZ80Access(READ);
    
@@ -939,6 +937,54 @@ uint8_t reqTranZPUterBus(uint32_t timeout, enum TARGETS target)
     } else
     {
         printf("Failed to request TranZPUter Bus\n");
+    }
+    return(result);
+}
+
+// Method to request the Z80 bus and once obtained, hold it until later release. This is an external method to allow and prevent multiple
+// bus request transactions and roll them up into one transaction.
+//
+uint8_t lockZ80(void)
+{
+    // Locals.
+    //
+    uint8_t  result = 0;
+printf("LOCK Z80\n");
+    // Requst the Z80 Bus to tri-state the Z80.
+    if((result=reqZ80Bus(DEFAULT_BUSREQ_TIMEOUT)) == 0)
+    {
+        // Lock the bus, prevents it being released on method exit.
+        z80Control.holdZ80 = 1;
+    } else
+    {
+        printf("Failed to lock Z80 Bus\n");
+    }
+    return(result);
+}
+
+// Method to release an acquired lock on the Z80 bus.
+//
+uint8_t releaseLockZ80(void)
+{
+    // Locals.
+    //
+    uint8_t  result = 0;
+printf("RELEASE LOCK Z80\n");
+  
+    // Check to ensure a lock is in place.
+    if(z80Control.holdZ80 == 1)
+    {
+        // Indicate bus lock no longer required.
+        z80Control.holdZ80 = 0;
+
+        // Release the bus to complete.
+        //
+        releaseZ80();
+    } else
+    {
+        result = 1;
+        printf("Request to release lock and no lock active!\n");
+
     }
     return(result);
 }

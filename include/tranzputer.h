@@ -947,6 +947,8 @@ void                                  resetZ80(uint8_t);
 uint8_t                               reqZ80Bus(uint32_t);
 uint8_t                               reqMainboardBus(uint32_t);
 uint8_t                               reqTranZPUterBus(uint32_t, enum TARGETS);
+uint8_t                               lockZ80(void);
+uint8_t                               releaseLockZ80(void);
 void                                  setupSignalsForZ80Access(enum BUS_DIRECTION);
 void                                  releaseZ80(void);
 void                                  refreshZ80(void);
