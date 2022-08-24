@@ -1602,7 +1602,7 @@ uint32_t setZ80CPUFrequency(float frequency, uint8_t action)
     // Locals.
     //
     uint32_t actualFreq = 0;
-
+printf("Change freq:%d, %f\n", action, frequency);
     // Setup the alternative clock frequency on the CTL_CLK pin.
     //
     if(action < 3)
@@ -3455,6 +3455,8 @@ printf("CPUCONFIG=%02x\n", cpuConfig);
                         // Make sure the video mode in the FPGA is correct (defaults to MZ700).
                         writeZ80IO(IO_TZ_VMCTRL, VMMODE_MZ2000, TRANZPUTER);
                     }
+        printf("Changing freq to 20MHz\n");
+        setZ80CPUFrequency(20000000, 0);
                     break;
 
                 case HW_MZ80A:
